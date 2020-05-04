@@ -1,0 +1,6 @@
+*.o
+*.swp
+Manifest.toml
+docs/build/
+precompile/tmp
+.DS_Store
