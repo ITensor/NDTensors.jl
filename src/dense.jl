@@ -14,19 +14,26 @@ export Dense,
 # Dense storage
 #
 
-struct Dense{ElT,VecT<:AbstractVector} <: TensorStorage{ElT}
+struct Dense{ElT, VecT<:AbstractVector} <: TensorStorage{ElT}
   data::VecT
-  function Dense{ElT,VecT}(data) where {ElT,VecT<:AbstractVector{ElT}}
-    return new{ElT,VecT}(data)
+  function Dense{ElT, VecT}(data::AbstractVector) where {ElT,
+                                                         VecT<:AbstractVector{ElT}}
+    return new{ElT, VecT}(data)
   end
 end
 
-function Dense(data::VecT) where {VecT<:AbstractVector{ElT}} where {ElT}
+function Dense(data::VecT) where {VecT <: AbstractVector{ElT}} where {ElT}
   return Dense{ElT,VecT}(data)
 end
 
 function Dense{ElR}(data::AbstractVector{ElT}) where {ElR,ElT}
   ElT == ElR ? Dense(data) : Dense(ElR.(data))
+end
+
+# Construct from a set of indices
+function Dense{ElT, VecT}(inds) where {ElT,
+                                       VecT <: AbstractVector{ElT}}
+  return Dense(VecT(dim(inds)))
 end
 
 Dense{ElT}(dim::Integer) where {ElT} = Dense(zeros(ElT,dim))
