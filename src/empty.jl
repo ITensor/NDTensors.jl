@@ -25,6 +25,10 @@ const EmptyTensor{ElT,
                                   StoreT,
                                   IndsT} where {StoreT <: Empty}
 
+# If no indices are provided, the tensor has Any number of
+# indices
+tensor(S::Empty, ::Nothing) = Tensor{eltype(S), Any, typeof(S), Nothing}(nothing, S)
+
 # From an EmptyTensor, return the closest Tensor type
 function Base.fill(::Type{<:Tensor{ElT, N, EStoreT, IndsT}}) where {ElT,
                                                                     N,
