@@ -306,6 +306,8 @@ end
 # Some generic getindex and setindex! functionality
 #
 
+setindex!!(T::Tensor, x::Number, I...) = setindex!(T, x, I...)
+
 """
 getdiagindex
 
@@ -358,12 +360,13 @@ find_tensor(::Any, rest) = find_tensor(rest)
 
 function Base.summary(io::IO,
                       T::Tensor)
-  println(io,typeof(inds(T)))
-  for (dim,ind) in enumerate(inds(T))
-    println(io,"Dim $dim: ",ind)
+  println(io, typeof(T))
+  println(io, "inds type = ", typeof(inds(T)))
+  for (dim, ind) in enumerate(inds(T))
+    println(io, "Dim $dim: ", ind)
   end
-  println(io,typeof(store(T)))
-  println(io," ",Base.dims2string(dims(T)))
+  println(io, "store type = ", typeof(store(T)))
+  println(io, " ", Base.dims2string(dims(T)))
 end
 
 #

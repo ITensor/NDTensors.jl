@@ -13,6 +13,18 @@ Empty{ElT}() where {ElT} = Empty{ElT, Dense{ElT, Vector{ElT}}}()
 
 Empty() = Empty{Float64}()
 
+Base.copy(S::Empty) = S
+
+Base.isempty(::Empty) = true
+
+Base.size(::Empty) = 0
+
+function Base.show(io::IO,
+                   mime::MIME"text/plain",
+                   S::Empty)
+  println(io, typeof(S))
+end
+
 #
 # EmptyTensor (Tensor using Empty storage)
 #
@@ -25,9 +37,9 @@ const EmptyTensor{ElT,
                                   StoreT,
                                   IndsT} where {StoreT <: Empty}
 
-# If no indices are provided, the tensor has Any number of
-# indices
-tensor(S::Empty, ::Nothing) = Tensor{eltype(S), Any, typeof(S), Nothing}(nothing, S)
+Base.isempty(::EmptyTensor) = true
+
+Base.size(::EmptyTensor) = 0
 
 # From an EmptyTensor, return the closest Tensor type
 function Base.fill(::Type{<:Tensor{ElT, N, EStoreT, IndsT}}) where {ElT,
@@ -45,13 +57,15 @@ Base.@propagate_inbounds function Base.setindex(T::EmptyTensor{<:Number, N},
   return R
 end
 
-setindex!!(T::EmptyTensor, x::Number, I::Int...) = setindex(T, x, I...)
-
-function Base.show(io::IO,
-                   mime::MIME"text/plain",
-                   ::Empty)
-  nothing
+function Base.setindex(T::EmptyTensor{<:Number, Any},
+                                      x::Number,
+                                      I::Int...)
+  error("Setting element of EmptyTensor with Any number of dimensions not defined")
 end
+
+setindex!!(T::EmptyTensor,
+           x::Number,
+           I::Int...) = setindex(T, x, I...)
 
 function Base.show(io::IO,
                    mime::MIME"text/plain",
