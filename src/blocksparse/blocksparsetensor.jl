@@ -165,6 +165,16 @@ function Base.zeros(::Type{<:BlockSparseTensor{ElT,N}},
   return BlockSparseTensor(ElT,blockoffsets,inds)
 end
 
+function Base.zeros(::BlockSparseTensor{ElT, N},
+                    inds) where {ElT, N}
+  return BlockSparseTensor(ElT, inds)
+end
+
+function Base.zeros(::Type{<: BlockSparseTensor{ElT, N}},
+                    inds) where {ElT, N}
+  return BlockSparseTensor(ElT, inds)
+end
+
 # Basic functionality for AbstractArray interface
 Base.IndexStyle(::Type{<:BlockSparseTensor}) = IndexCartesian()
 
@@ -219,8 +229,9 @@ end
 # Add the specified block to the BlockSparseTensor
 # Insert it such that the blocks remain ordered.
 # Defaults to adding zeros.
-function addblock!(T::BlockSparseTensor{ElT,N},
-                   newblock::Block{N}) where {ElT,N}
+# Returns the offset of the new block added.
+function addblock_offset!(T::BlockSparseTensor{ElT, N},
+                          newblock::Block{N}) where {ElT, N}
   newdim = blockdim(T,newblock)
   newpos = new_block_pos(T,newblock)
   newoffset = 0
@@ -239,13 +250,19 @@ function addblock!(T::BlockSparseTensor{ElT,N},
   return newoffset
 end
 
+function addblock!(T::BlockSparseTensor{<: Number, N},
+                   block::Block{N}) where {N}
+  addblock_offset!(T, block)
+  return T
+end
+
 # TODO: Add a checkbounds
 Base.@propagate_inbounds function Base.setindex!(T::BlockSparseTensor{ElT,N},
                                                  val,
                                                  i::Vararg{Int,N}) where {ElT,N}
   offset,block,offset_within_block = indexoffset(T,i...)
   if isnothing(offset)
-    offset_of_block = addblock!(T,block)
+    offset_of_block = addblock_offset!(T, block)
     offset = offset_of_block+offset_within_block
   end
   store(T)[offset] = val

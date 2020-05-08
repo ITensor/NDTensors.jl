@@ -12,7 +12,7 @@ interface and no assumption of labels)
 """
 struct Tensor{ElT,
               N,
-              StoreT<:TensorStorage,
+              StoreT <: TensorStorage,
               IndsT} <: AbstractArray{ElT,N}
   store::StoreT
   inds::IndsT
@@ -66,7 +66,13 @@ store(T::Tensor) = T.store
 
 data(T::Tensor) = data(store(T))
 
-storetype(::Tensor{ElT,N,StoreT}) where {ElT,N,StoreT} = StoreT
+storetype(::Tensor{<: Number,
+                   <: Any,
+                   StoreT}) where {StoreT} = StoreT
+
+storetype(::Type{<: Tensor{<: Number,
+                           <: Any,
+                           StoreT}}) where {StoreT} = StoreT
 
 inds(T::Tensor) = T.inds
 
@@ -163,15 +169,9 @@ function Base.convert(::Type{<:Tensor{<:Number,N,StoreR,Inds}},
   return tensor(convert(StoreR,store(T)),inds(T))
 end
 
-function Base.zeros(::Type{<:Tensor{ElT,N,StoreT}},
+function Base.zeros(TensorT::Type{<:Tensor{ElT,N,StoreT}},
                     inds) where {ElT,N,StoreT}
-  return tensor(zeros(StoreT,dim(inds)),inds)
-end
-
-# This is to fix a method ambiguity with a Base array function
-function Base.zeros(::Type{<:Tensor{ElT,N,StoreT}},
-                    inds::Dims{N}) where {ElT,N,StoreT}
-  return tensor(zeros(StoreT,dim(inds)),inds)
+  error("zeros(::Type{$TensorT}, inds) not implemented yet")
 end
 
 function Base.promote_rule(::Type{<:Tensor{ElT1,N1,StoreT1,IndsT1}},
@@ -214,6 +214,8 @@ end
 array(T::Tensor) = array(dense(T))
 matrix(T::Tensor{<:Number,2}) = array(T)
 vector(T::Tensor{<:Number,1}) = array(T)
+
+Base.isempty(T::Tensor) = isempty(store(T))
 
 #
 # Helper functions for BlockSparse-type storage
@@ -307,6 +309,8 @@ end
 #
 
 setindex!!(T::Tensor, x::Number, I...) = setindex!(T, x, I...)
+
+addblock!!(T::Tensor, block) = addblock!(T, block)
 
 """
 getdiagindex

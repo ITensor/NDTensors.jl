@@ -36,7 +36,7 @@ function Dense{ElT, VecT}(inds) where {ElT,
   return Dense(VecT(dim(inds)))
 end
 
-Dense{ElT}(dim::Integer) where {ElT} = Dense(zeros(ElT,dim))
+Dense{ElT}(dim::Integer) where {ElT} = Dense(zeros(ElT, dim))
 
 Dense{ElT}(::UndefInitializer,
            dim::Integer) where {ElT} = Dense(Vector{ElT}(undef,dim))
@@ -60,17 +60,31 @@ Dense(::Type{ElT}) where {ElT} = Dense{ElT}()
 
 Base.copy(D::Dense) = Dense(copy(data(D)))
 
-Base.complex(::Type{Dense{ElT,Vector{ElT}}}) where {ElT} = Dense{complex(ElT),Vector{complex(ElT)}}
+function Base.complex(::Type{Dense{ElT,
+                             Vector{ElT}}}) where {ElT}
+  return Dense{complex(ElT),Vector{complex(ElT)}}
+end
 
 Base.similar(D::Dense) = Dense(similar(data(D)))
 
-Base.similar(D::Dense,length::Int) = Dense(similar(data(D),length))
-Base.similar(::Type{<:Dense{ElT,VecT}},length::Int) where {ElT,VecT} = Dense(similar(VecT,length))
+Base.similar(D::Dense,
+             length::Int) = Dense(similar(data(D), length))
 
-Base.similar(D::Dense,::Type{T}) where {T<:Number} = Dense(similar(data(D),T))
+function Base.similar(::Type{<: Dense{ElT, VecT}},
+                      length::Int) where {ElT,
+                                          VecT <: AbstractVector{ElT}}
+  return Dense(similar(Vector{ElT}, length))
+end
+
+Base.similar(D::Dense,
+             ::Type{T}) where {T<:Number} = Dense(similar(data(D),T))
+
+Base.zeros(DenseT::Type{<: Dense{ElT}},
+           inds) where {ElT} = zeros(DenseT, dim(inds))
 
 # TODO: should this do something different for SubArray?
-Base.zeros(::Type{<:Dense{ElT}},dim::Int) where {ElT} = Dense{ElT}(dim)
+Base.zeros(::Type{<: Dense{ElT}},
+           dim::Int) where {ElT} = Dense{ElT}(dim)
 
 function Base.promote_rule(::Type{<:Dense{ElT1,VecT1}},
                            ::Type{<:Dense{ElT2,VecT2}}) where {ElT1,VecT1,
@@ -162,27 +176,50 @@ Base.IndexStyle(::Type{<:DenseTensor}) = IndexLinear()
 # linearly through the Dense storage (faster)
 Base.iterate(T::DenseTensor,args...) = iterate(store(T),args...)
 
-function Base.similar(::Type{<:DenseTensor{ElT}},
-                      inds) where {ElT}
-  return DenseTensor(ElT,undef,inds)
+function _zeros(TensorT::Type{<: DenseTensor},
+                inds)
+  return tensor(zeros(storetype(TensorT), dim(inds)), inds)
+end
+
+function Base.zeros(TensorT::Type{<: DenseTensor},
+                    inds)
+  return _zeros(TensorT, inds)
+end
+
+# To fix method ambiguity with zeros(::Type, ::Tuple)
+function Base.zeros(TensorT::Type{<: DenseTensor},
+                    inds::Dims)
+  return _zeros(TensorT, inds)
+end
+
+function _similar(TensorT::Type{<: DenseTensor},
+                  inds)
+  return tensor(similar(storetype(TensorT), dim(inds)), inds)
+end
+
+function Base.similar(TensorT::Type{<: DenseTensor},
+                      inds)
+  return _similar(TensorT, inds)
+end
+
+# To fix method ambiguity with similar(::AbstractArray,::Tuple)
+function Base.similar(TensorT::Type{<: DenseTensor},
+                      inds::Dims)
+  return _similar(TensorT, inds)
 end
 
 # To fix method ambiguity with similar(::AbstractArray,::Type)
 function Base.similar(T::DenseTensor,
                       ::Type{ElT}) where {ElT}
-  return tensor(similar(store(T),ElT), inds(T))
+  return tensor(similar(store(T), ElT), inds(T))
 end
 
-# To fix method ambiguity with similar(::AbstractArray,::Tuple)
-function Base.similar(::Type{<:DenseTensor{ElT}},
-                      inds::Dims) where {ElT}
-  return DenseTensor(ElT,undef,inds)
-end
+_similar(T::DenseTensor, inds) = similar(typeof(T), inds)
 
-Base.similar(T::DenseTensor,inds) = similar(typeof(T),inds)
+Base.similar(T::DenseTensor, inds) = _similar(T, inds)
 
 # To fix method ambiguity with similar(::AbstractArray,::Tuple)
-Base.similar(T::DenseTensor,inds::Dims) = similar(typeof(T),inds)
+Base.similar(T::DenseTensor,inds::Dims) = _similar(T, inds)
 
 #
 # Single index
