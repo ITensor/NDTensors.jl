@@ -47,21 +47,25 @@ function Base.conj(S::T;always_copy = false) where {T<:TensorStorage}
   return T(conj(data(S)))
 end
 
-Base.complex(S::T) where {T<:TensorStorage} = complex(T)(complex(data(S)))
+function Base.complex(S::T) where {T <: TensorStorage}
+  return complex(T)(complex(data(S)))
+end
 
 Base.copyto!(S1::TensorStorage,
-             S2::TensorStorage) = (copyto!(data(S1),data(S2)); S1)
+             S2::TensorStorage) = (copyto!(data(S1), data(S2)); S1)
 
 Random.randn!(S::TensorStorage) = (randn!(data(S)); S)
 
-Base.fill!(S::TensorStorage,v) = (fill!(data(S),v); S)
+Base.fill!(S::TensorStorage, v) = (fill!(data(S), v); S)
 
-LinearAlgebra.rmul!(S::TensorStorage,v::Number) = (rmul!(data(S),v); S)
-scale!(S::TensorStorage,v::Number) = rmul!(S,v)
+LinearAlgebra.rmul!(S::TensorStorage,
+                    v::Number) = (rmul!(data(S), v); S)
+
+scale!(S::TensorStorage, v::Number) = rmul!(S, v)
 
 LinearAlgebra.norm(S::TensorStorage) = norm(data(S))
 
-Base.convert(::Type{T},S::T) where {T<:TensorStorage} = S
+Base.convert(::Type{T},S::T) where {T <: TensorStorage} = S
 
 blockoffsets(S::TensorStorage) = S.blockoffsets
 

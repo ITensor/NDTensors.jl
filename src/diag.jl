@@ -186,6 +186,11 @@ function Base.Array(T::DiagTensor{ElT,N}) where {ElT,N}
   return Array{ElT,N}(T)
 end
 
+function Base.zeros(TensorT::Type{<: DiagTensor},
+                    inds)
+  return tensor(zeros(storetype(TensorT), mindim(inds)), inds)
+end
+
 # Needed to get slice of DiagTensor like T[1:3,1:3]
 function Base.similar(T::DiagTensor{<:Number,N},
                       ::Type{ElR},
