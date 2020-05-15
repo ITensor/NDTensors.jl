@@ -364,12 +364,10 @@ find_tensor(::Any, rest) = find_tensor(rest)
 
 function Base.summary(io::IO,
                       T::Tensor)
-  println(io, typeof(T))
-  println(io, "inds type = ", typeof(inds(T)))
   for (dim, ind) in enumerate(inds(T))
     println(io, "Dim $dim: ", ind)
   end
-  println(io, "store type = ", typeof(store(T)))
+  println(io, typeof(store(T)))
   println(io, " ", Base.dims2string(dims(T)))
 end
 

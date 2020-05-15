@@ -1023,19 +1023,12 @@ function Base.show(io::IO,
                    mime::MIME"text/plain",
                    T::BlockSparseTensor)
   summary(io,T)
-  println(io)
-  for (block,_) in blockoffsets(T)
+  for (n, (block, _)) in enumerate(blockoffsets(T))
     blockdimsT = blockdims(T,block)
-    # Print the location of the current block
-    println(io,"Block: ",block)
-    println(io," [",_range2string(blockstart(T,block),blockend(T,block)),"]")
-    #println(io,"Start: ",Tuple(blockstart(T,block)))
-    #println(io,"End: ",Tuple(blockend(T,block)))
-    # Print the dimension of the current block
-    #println(io,"   (",Base.dims2string(blockdimsT),")")
-    print_tensor(io,blockview(T,block))
-    println(io)
-    println(io)
+    println(io, "Block: ", block)
+    println(io, " [", _range2string(blockstart(T,block),blockend(T,block)),"]")
+    print_tensor(io, blockview(T,block))
+    n < nnzblocks(T) && print(io, "\n\n")
   end
 end
 
