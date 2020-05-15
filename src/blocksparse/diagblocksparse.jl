@@ -576,15 +576,12 @@ function Base.show(io::IO,
                    mime::MIME"text/plain",
                    T::DiagBlockSparseTensor)
   summary(io,T)
-  println(io)
-  for (block,_) in diagblockoffsets(T)
+  for (n, (block, _)) in enumerate(diagblockoffsets(T))
     blockdimsT = blockdims(T,block)
-    # Print the location of the current block
     println(io,"Block: ",block)
     println(io," [",_range2string(blockstart(T,block),blockend(T,block)),"]")
     print_tensor(io,blockview(T,block))
-    println(io)
-    println(io)
+    n < nnzblocks(T) && print(io, "\n\n")
   end
 end
 

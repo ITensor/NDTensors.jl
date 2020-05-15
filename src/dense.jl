@@ -788,8 +788,6 @@ function Base.show(io::IO,
                    mime::MIME"text/plain",
                    T::DenseTensor)
   summary(io,T)
-  println(io)
   print_tensor(io,T)
-  println(io)
 end
 
