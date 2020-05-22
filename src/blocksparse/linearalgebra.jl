@@ -75,13 +75,13 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
       else
         Strunc = tensor(Diag(store(Ss[n])[1:blockdim]),
                         (blockdim,blockdim))
-        Ss[n] = Strunc
         Us[n] = copy(Us[n][1:dim(Us[n],1),1:blockdim])
+        Ss[n] = Strunc
         Vs[n] = copy(Vs[n][1:dim(Vs[n],1),1:blockdim])
       end
     end
-    deleteat!(Ss,dropblocks)
     deleteat!(Us,dropblocks)
+    deleteat!(Ss,dropblocks)
     deleteat!(Vs,dropblocks)
     deleteat!(nzblocksT,dropblocks)
     else
@@ -148,24 +148,23 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
     nzblocksV[n] = blockV
   end
 
-  U = BlockSparseTensor(undef, nzblocksU, indsU)
-  V = BlockSparseTensor(undef, nzblocksV, indsV)
-  S = DiagBlockSparseTensor(undef, nzblocksS, indsS)
+  U = BlockSparseTensor(ElT, undef, nzblocksU, indsU)
+  S = DiagBlockSparseTensor(real(ElT), undef, nzblocksS, indsS)
+  V = BlockSparseTensor(ElT, undef, nzblocksV, indsV)
 
   for n in 1:nnzblocksT
     Ub, Sb, Vb = Us[n], Ss[n], Vs[n]
 
     blockU = nzblocksU[n]
-    blockV = nzblocksV[n]
     blockS = nzblocksS[n]
+    blockV = nzblocksV[n]
 
     blockview(U, blockU) .= Ub
-    blockview(V, blockV) .= Vb
-
     blockviewS = blockview(S, blockS)
     for i in 1:diaglength(Sb)
       setdiagindex!(blockviewS, getdiagindex(Sb, i), i)
     end
+    blockview(V, blockV) .= Vb
   end
 
   return U,S,V,Spectrum(d,truncerr)
