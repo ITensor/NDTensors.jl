@@ -2,6 +2,7 @@ export eigs,
        entropy,
        polar,
        random_orthog,
+       random_unitary,
        Spectrum,
        svd,
        truncerror
@@ -220,6 +221,32 @@ function random_orthog(n::Int,m::Int)::Matrix
     if real(F.R[c,c]) < 0.0
       Q[:,c] *= -1
     end
+  end
+  return Q
+end
+
+"""
+    random_unitary(n::Int,m::Int)::Matrix
+
+Return a random complex matrix U of dimensions (n,m)
+such that if n >= m, U'*U is the
+identity, or if m > n U*U' is the
+identity.
+
+Sampling is based on https://arxiv.org/abs/math-ph/0609050
+such that in the case `n==m`, the unitary matrix will be sampled
+according to the Haar measure.
+"""
+function random_unitary(n::Int,m::Int)
+  if n < m
+    return Matrix(random_unitary(m,n)')
+  end
+  F = qr(randn(ComplexF64,n,m))
+  Q = Matrix(F.Q)
+  A = diag(Matrix(F.R))
+  A ./= abs.(A)
+  for c in 1:size(Q,2)
+      Q[:,c] *= A[c]
   end
   return Q
 end
