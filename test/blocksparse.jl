@@ -1,5 +1,6 @@
 using ITensors.NDTensors,
       Test
+using LinearAlgebra
 
 @testset "BlockSparseTensor basic functionality" begin
 
@@ -272,6 +273,27 @@ using ITensors.NDTensors,
       U,S,V = svd(A)
       @test isapprox(norm(array(U)*array(S)*array(V)'-array(A)),0.0; atol=1e-14)
     end
+  end
+
+  @testset "exp" begin
+    A = BlockSparseTensor([(1,1),(2,2)],[2,4],[2,4])
+    randn!(A)
+    expT = exp(A)
+    @test isapprox(norm(array(expT) - exp(array(A))), 0.0; atol=1e-14)
+
+    # Hermitian case
+    A = BlockSparseTensor(ComplexF64,[(1,1),(2,2)],([2,2],[2,2]))
+    randn!(A)
+    Ah = BlockSparseTensor(ComplexF64,undef,[(1,1),(2,2)],([2,2],[2,2]))
+    for n in 1:nnzblocks(A)
+      b= blockview(A,n)
+      blockview(Ah,n) .= b + b'
+    end
+    expTh = exp(Hermitian(Ah))
+    @test isapprox(norm(array(expTh) - exp(Hermitian(array(Ah)))), 0.0; atol=1e-14)
+
+    A = BlockSparseTensor([(2,1),(1,2)],[2,2],[2,2])
+    @test_throws ErrorException exp(A)
   end
 
 end

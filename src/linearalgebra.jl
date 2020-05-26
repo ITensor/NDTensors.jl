@@ -22,7 +22,7 @@ function Base.:*(T1::Tensor{ElT1,2,StoreT1},
   return tensor(Dense(vec(RM)), indsR)
 end
 
-function LinearAlgebra.exp(T::DenseTensor{ElT,2}) where {ElT}
+function LinearAlgebra.exp(T::DenseTensor{ElT,2}) where {ElT<:Union{Real,Complex}}
   expTM = exp(matrix(T))
   return tensor(Dense(vec(expTM)),inds(T))
 end
