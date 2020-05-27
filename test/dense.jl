@@ -97,3 +97,18 @@ using ITensors.NDTensors,
   K = Tensor(2,2)
   @test Array(J * K) ≈ Array(J) * Array(K) 
 end
+
+@testset "Random constructor" begin
+  T = randomTensor(2, 2)
+  @test dims(T) == (2,2)
+  @test eltype(T) == Float64
+  @test T[1,1] ≉ 0
+  @test norm(T) ≉ 0
+
+  Tc = randomTensor(ComplexF64, 2, 2)
+  @test dims(Tc) == (2,2)
+  @test eltype(Tc) == ComplexF64
+  @test Tc[1,1] ≉ 0
+  @test norm(Tc) ≉ 0
+end
+

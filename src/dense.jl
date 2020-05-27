@@ -58,6 +58,15 @@ Dense(::UndefInitializer,dim::Integer) = Dense(Float64,undef,dim)
 Dense{ElT}() where {ElT} = Dense(ElT[])
 Dense(::Type{ElT}) where {ElT} = Dense{ElT}()
 
+#
+# Random constructors
+#
+
+function Base.randn(::Type{StoreT},
+                    dim::Integer) where {StoreT<:Dense}
+  return Dense(randn(eltype(StoreT), dim))
+end
+
 Base.copy(D::Dense) = Dense(copy(data(D)))
 
 function Base.complex(::Type{Dense{ElT,
@@ -168,6 +177,38 @@ Tensor(::UndefInitializer,
 
 Tensor(A::Array{<:Number,N},
        inds::Dims{N}) where {N} = tensor(Dense(vec(A)),inds)
+
+#
+# Random constructors
+#
+
+function randomDenseTensor(::Type{ElT},
+                           inds::Dims) where {ElT}
+  return tensor(randn(Dense{ElT},dim(inds)),inds)
+end
+
+function randomDenseTensor(::Type{ElT},
+                           inds::Int...) where {ElT}
+  return randomDenseTensor(ElT, inds)
+end
+
+randomDenseTensor(inds::Dims) = randomDenseTensor(Float64, inds)
+
+randomDenseTensor(inds::Int...) = randomDenseTensor(Float64, inds)
+
+function randomTensor(::Type{ElT},
+                      inds::Dims) where {ElT}
+  return randomDenseTensor(ElT,inds)
+end
+
+function randomTensor(::Type{ElT},
+                      inds::Int...) where {ElT}
+  return randomDenseTensor(ElT, inds...)
+end
+
+randomTensor(inds::Dims) = randomDenseTensor(Float64, inds)
+
+randomTensor(inds::Int...) = randomDenseTensor(Float64, inds)
 
 # Basic functionality for AbstractArray interface
 Base.IndexStyle(::Type{<:DenseTensor}) = IndexLinear()

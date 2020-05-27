@@ -129,6 +129,25 @@ end
 #  return tensor(storage,inds)
 #end
 
+function Base.randn(::Type{ <: BlockSparseTensor{ElT, N}},
+                    blocks::Blocks{N},
+                    inds) where {ElT, N}
+  boffs, nnz = blockoffsets(blocks, inds)
+  storage = randn(BlockSparse{ElT}, boffs, nnz)
+  return tensor(storage, inds)
+end
+
+function randomBlockSparseTensor(::Type{ElT},
+                                 blocks::Blocks{N},
+                                 inds) where {ElT, N}
+  return randn(BlockSparseTensor{ElT, N}, blocks, inds)
+end
+
+function randomBlockSparseTensor(blocks::Blocks,
+                                 inds)
+  return randomBlockSparseTensor(Float64, blocks, inds)
+end
+
 """
 BlockSparseTensor(blocks::Vector{Block{N}},
                   inds::BlockDims...)
