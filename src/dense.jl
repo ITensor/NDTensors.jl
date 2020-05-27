@@ -748,7 +748,7 @@ function LinearAlgebra.exp(T::DenseTensor{ElT,N},
   M = permute_reshape(T,Lpos,Rpos)
   indsTp = permute(inds(T), (Lpos...,Rpos...))
   if ishermitian
-    expM = exp(Hermitian(matrix(M)))
+    expM = parent(exp(Hermitian(matrix(M))))
     return tensor(Dense{ElT}(vec(expM)), indsTp)
   else
     expM = exp(M)
