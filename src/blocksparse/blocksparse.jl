@@ -48,6 +48,16 @@ BlockSparse(::UndefInitializer,
             blockoffsets::BlockOffsets,
             dim::Integer; vargs...) = BlockSparse(Float64,undef,blockoffsets,dim; vargs...)
 
+#
+# Random
+#
+
+function Base.randn(::Type{ <: BlockSparse{ElT}},
+                    blockoffsets::BlockOffsets,
+                    dim::Integer) where {ElT <: Number}
+  return BlockSparse(randn(ElT, dim), blockoffsets)
+end
+
 #function BlockSparse{ElR}(data::VecT,offsets) where {ElR,VecT<:AbstractVector{ElT}} where {ElT}
 #  ElT == ElR ? BlockSparse(data,offsets) : BlockSparse(ElR.(data),offsets)
 #end

@@ -78,6 +78,23 @@ using LinearAlgebra
   @test conj(data(store(A))) == data(store(conj(A)))
   @test typeof(conj(A)) <: BlockSparseTensor
 
+  @testset "Random constructor" begin
+    T = randomBlockSparseTensor([(1,1),(2,2)],
+                                ([2,2],[2,2]))
+    @test nnzblocks(T) == 2
+    @test nnz(T) == 8
+    @test eltype(T) == Float64
+    @test norm(T) ≉ 0
+
+    Tc = randomBlockSparseTensor(ComplexF64,
+                                 [(1,1),(2,2)],
+                                 ([2,2],[2,2]))
+    @test nnzblocks(Tc) == 2
+    @test nnz(Tc) == 8
+    @test eltype(Tc) == ComplexF64
+    @test norm(Tc) ≉ 0
+  end
+
   @testset "BlockSparseTensor setindex! add block" begin
     T = BlockSparseTensor([2,3],[4,5])
 
@@ -290,7 +307,7 @@ using LinearAlgebra
       blockview(Ah,n) .= b + b'
     end
     expTh = exp(Hermitian(Ah))
-    @test isapprox(norm(array(expTh) - exp(Hermitian(array(Ah)))), 0.0; atol=1e-14)
+    @test isapprox(norm(array(expTh) - exp(Hermitian(array(Ah)))), 0.0; atol=1e-13)
 
     A = BlockSparseTensor([(2,1),(1,2)],[2,2],[2,2])
     @test_throws ErrorException exp(A)
