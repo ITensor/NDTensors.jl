@@ -38,7 +38,7 @@ function contract_inds(T1is,
     i < 0 && (ncont += 1)
   end
   IndT = promote_type(eltype(T1is), eltype(T2is))
-  Ris = Vector{IndT}(undef,NR)
+  Ris = MVector{NR, IndT}(undef)
   u = 1
   # TODO: use Rlabels, don't assume ncon convention
   for i1 ∈ 1:N1
@@ -58,9 +58,7 @@ function contract_inds(T1is,
       u += 1 
     end
   end
-  IndsT1 = typeof(T1is)
-  IndsR = similar_type(IndsT1,Val{NR})
-  return IndsR(tuple(Ris...))
+  return Tuple(Ris)
 end
 
 mutable struct ContractionProperties{NA,NB,NC}

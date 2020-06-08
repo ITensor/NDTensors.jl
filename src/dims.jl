@@ -10,6 +10,8 @@ dims(ds::Dims) = ds
 
 dims(::Tuple{}) = ()
 
+dim(::Tuple{}) = 1
+
 dense(ds::Dims) = ds
 
 dense(::Type{DimsT}) where {DimsT<:Dims} = DimsT
@@ -43,6 +45,9 @@ stride(ds::Dims, k::Int) = strides(ds)[k]
 # as Dims{4})
 similar_type(::Type{<:Dims},
              ::Type{Val{N}}) where {N} = Dims{N}
+
+# This is to help with ITensor compatibility
+dim(i::Int) = i
 
 # This is to help with ITensor compatibility
 dir(::Int) = 0
