@@ -170,6 +170,32 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
   return U,S,V,Spectrum(d,truncerr)
 end
 
+"""
+    qr(T::BlockSparseTensor{<:Number,2}; kwargs...)
+
+qr of an order-2 BlockSparseTensor.
+
+This function assumes that there is one block
+per row/column, otherwise it fails.
+This assumption makes it so the result can be
+computed from the dense svds of seperate blocks.
+"""
+function LinearAlgebra.qr(T::BlockSparseMatrix{ElT};
+                          kwargs...) where {ElT}
+  #error("qr for BlockSparseMatrix not implemented yet")
+
+  Q = BlockSparseTensor(ElT, undef, nzblocks(T), inds(T))
+  R = BlockSparseTensor(ElT, undef, nzblocks(T), inds(T))
+  for n in 1:nnzblocks(T)
+    b = nzblock(T, n)
+    Tb = blockview(T, n)
+    Qb, Rb = qr(Tb; kwargs...)
+    blockview(Q, (n, n)) .= Qb
+    blockview(R, b) .= Rb
+  end
+  return Q, R
+end
+
 _eigen_eltypes(T::Hermitian{ElT,<:BlockSparseMatrix{ElT}}) where {ElT} = real(ElT), ElT
 
 _eigen_eltypes(T::BlockSparseMatrix{ElT}) where {ElT} = complex(ElT), complex(ElT)
