@@ -372,7 +372,7 @@ function apply!(R::DenseTensor,
                 f::Function=(r,t)->t)
   RA = array(R)
   TA = array(T)
-  RA .= f.(RA,TA)
+  @strided RA .= f.(RA, TA)
   return R
 end
 
@@ -383,12 +383,12 @@ function permutedims!!(R::Tensor,
                        T::Tensor,
                        perm::NTuple{N,Int},
                        f::Function=(r,t)->t) where {N}
+  RA = array(R)
+  TA = array(T)
   if !is_trivial_permutation(perm)
-    RA = array(R)
-    TA = array(T)
     @strided RA .= f.(RA, permutedims(TA, perm))
   else
-    R = apply!(R,T,f)
+    @strided RA .= f.(RA, TA)
   end
   return R
 end
