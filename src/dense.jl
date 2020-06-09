@@ -100,6 +100,9 @@ function Base.promote_rule(::Type{<:Dense{ElT1,VecT1}},
                                                                ElT2,VecT2}
   ElR = promote_type(ElT1,ElT2)
   VecR = promote_type(VecT1,VecT2)
+
+  @show VecR
+
   return Dense{ElR,VecR}
 end
 
@@ -230,6 +233,11 @@ end
 # To fix method ambiguity with zeros(::Type, ::Tuple)
 function Base.zeros(TensorT::Type{<: DenseTensor},
                     inds::Dims)
+  return _zeros(TensorT, inds)
+end
+
+function Base.zeros(TensorT::Type{<: DenseTensor},
+                    inds::Tuple{})
   return _zeros(TensorT, inds)
 end
 
@@ -372,7 +380,7 @@ function apply!(R::DenseTensor,
                 f::Function=(r,t)->t)
   RA = array(R)
   TA = array(T)
-  RA .= f.(RA,TA)
+  @strided RA .= f.(RA, TA)
   return R
 end
 
@@ -383,12 +391,12 @@ function permutedims!!(R::Tensor,
                        T::Tensor,
                        perm::NTuple{N,Int},
                        f::Function=(r,t)->t) where {N}
+  RA = array(R)
+  TA = array(T)
   if !is_trivial_permutation(perm)
-    RA = array(R)
-    TA = array(T)
     @strided RA .= f.(RA, permutedims(TA, perm))
   else
-    R = apply!(R,T,f)
+    @strided RA .= f.(RA, TA)
   end
   return R
 end
@@ -421,13 +429,32 @@ function Base.permutedims!(R::DenseTensor{<:Number,N},
   return R
 end
 
-function outer!(R::DenseTensor,
-                T1::DenseTensor,
-                T2::DenseTensor)
-  v1 = vec(T1)
-  v2 = vec(T2)
-  RM = reshape(R,dim(v1),dim(v2))
-  RM .= v1 .* transpose(v2)
+function outer!(R::DenseTensor{ElR},
+                T1::DenseTensor{ElT1},
+                T2::DenseTensor{ElT2}) where {ElR, ElT1, ElT2}
+  if ElT1 != ElT2
+    # TODO: use promote instead
+    # T1,T2 = promote(T1,T2)
+
+    ElT1T2 = promote_type(ElT1,ElT2)
+    if ElT1 != ElT1T2
+      # TODO: get this working
+      # T1 = ElR.(T1)
+      T1 = one(ElT1T2) * T1
+    end
+    if ElT2 != ElT1T2
+      # TODO: get this working
+      # T2 = ElR.(T2)
+      T2 = one(ElT1T2) * T2
+    end
+  end
+
+  v1 = data(T1)
+  v2 = data(T2)
+  RM = reshape(R, length(v1), length(v2))
+  #RM .= v1 .* transpose(v2)
+  #mul!(RM, v1, transpose(v2))
+  BLAS.gemm!('N', 'T', one(ElR), v1, v2, zero(ElR), RM)
   return R
 end
 

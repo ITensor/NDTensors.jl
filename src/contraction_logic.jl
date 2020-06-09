@@ -28,22 +28,22 @@ function contract_labels(T1labels::Labels{N1},
   return Labels{NR}(Rlabels)
 end
 
-function contract_inds(T1is,
-                       T1labels::Labels{N1},
-                       T2is,
-                       T2labels::Labels{N2},
-                       Rlabels::Labels{NR}) where {N1,N2,NR}
+function _contract_inds!(Ris,
+                         T1is,
+                         T1labels::Labels{N1},
+                         T2is,
+                         T2labels::Labels{N2},
+                         Rlabels::Labels{NR}) where {N1,N2,NR}
   ncont = 0
   for i in T1labels
     i < 0 && (ncont += 1)
   end
   IndT = promote_type(eltype(T1is), eltype(T2is))
-  Ris = Vector{IndT}(undef,NR)
   u = 1
   # TODO: use Rlabels, don't assume ncon convention
   for i1 ∈ 1:N1
     if T1labels[i1] > 0
-      Ris[u] = T1is[i1]; 
+      Ris[u] = T1is[i1]
       u += 1 
     else
       # This is to check that T1is and T2is
@@ -54,13 +54,33 @@ function contract_inds(T1is,
   end
   for i2 ∈ 1:N2
     if T2labels[i2] > 0
-      Ris[u] = T2is[i2]; 
+      Ris[u] = T2is[i2]
       u += 1 
     end
   end
-  IndsT1 = typeof(T1is)
-  IndsR = similar_type(IndsT1,Val{NR})
-  return IndsR(tuple(Ris...))
+  return nothing
+end
+
+function contract_inds(T1is,
+                       T1labels::Labels{N1},
+                       T2is,
+                       T2labels::Labels{N2},
+                       Rlabels::Labels{NR}) where {N1,N2,NR}
+  if length(T1is) == 0 && length(T2is) == 0
+    return ()
+  end
+  IndT = promote_type(eltype(T1is), eltype(T2is))
+  if (length(T1is) > 0 && isbits(T1is[1])) ||
+      isbits(T2is[1])
+    Ris = MVector{NR, IndT}(undef)
+  else
+    Ris = SizedVector{NR, IndT}(undef)
+  end
+  _contract_inds!(Ris,
+                  T1is, T1labels,
+                  T2is, T2labels,
+                  Rlabels)
+  return Tuple(Ris)
 end
 
 mutable struct ContractionProperties{NA,NB,NC}
@@ -84,23 +104,26 @@ mutable struct ContractionProperties{NA,NB,NC}
   Bcstart::Int
   Austart::Int
   Bustart::Int
-  PA::Vector{Int}
-  PB::Vector{Int}
-  PC::Vector{Int}
+  PA::MVector{NA,Int}
+  PB::MVector{NB,Int}
+  PC::MVector{NC,Int}
   ctrans::Bool
-  newArange::Vector{Int}
-  newBrange::Vector{Int}
-  newCrange::Vector{Int}
+  newArange::NTuple{NA,Int} #Vector{Int}
+  newBrange::NTuple{NB,Int} #Vector{Int}
+  newCrange::NTuple{NC,Int} #Vector{Int}
   function ContractionProperties(ai::NTuple{NA,Int},
                                  bi::NTuple{NB,Int},
                                  ci::NTuple{NC,Int}) where {NA,NB,NC}
     new{NA,NB,NC}(ai,bi,ci,0,0,0,
-                  ntuple(_->0,NA),ntuple(_->0,NA),ntuple(_->0,NB),
+                  #MVector{NA,Int}(undef),MVector{NA,Int}(undef),MVector{NB,Int}(undef),
+                  ntuple(_->0,Val(NA)),ntuple(_->0,Val(NA)),ntuple(_->0,Val(NB)),
                   false,false,false,1,1,1,0,
                   NA,NB,NA,NB,
-                  Vector{Int}(),Vector{Int}(),Vector{Int}(),
+                  #MVector{NA,Int}(undef),MVector{NB,Int}(undef),MVector{NC,Int}(undef),
+                  ntuple(i->i,Val(NA)),ntuple(i->i,Val(NB)),ntuple(i->i,Val(NC)),
                   false,
-                  Vector{Int}(),Vector{Int}(),Vector{Int}())
+                  ntuple(_->0,Val(NA)),ntuple(_->0,Val(NB)),ntuple(_->0,Val(NC)))
+                  #Vector{Int}(),Vector{Int}(),Vector{Int}())
   end
 end
 
@@ -183,19 +206,19 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
   compute_perms!(props)
 
   #Use props.PC.size() as a check to see if we've already run this
-  length(props.PC)!=0 && return
+  #length(props.PC)!=0 && return
 
-  ra = NA #length(props.ai)
-  rb = NB #length(props.bi)
-  rc = NC #length(props.ci)
+  #ra = NA #length(props.ai)
+  #rb = NB #length(props.bi)
+  #rc = NC #length(props.ci)
 
-  props.PC = fill(0,rc)
+  #props.PC = fill(0,rc)
 
   props.dleft = 1
   props.dmid = 1
   props.dright = 1
   c = 1
-  for i = 1:ra
+  for i = 1:NA
     if !contractedA(props,i)
       props.dleft *= size(A,i)
       props.PC[props.AtoC[i]] = c
@@ -204,7 +227,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       props.dmid *= size(A,i)
     end
   end
-  for j = 1:rb
+  for j = 1:NB
     if !contractedB(props,j)
       props.dright *= size(B,j)
       props.PC[props.BtoC[j]] = c
@@ -224,7 +247,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
 
   #Check if A can be treated as a matrix without permuting
   props.permuteA = false
-  if !(contractedA(props,1) || contractedA(props,ra))
+  if !(contractedA(props,1) || contractedA(props,NA))
     #If contracted indices are not all at front or back, 
     #will have to permute A 
     props.permuteA = true
@@ -242,7 +265,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
 
   #Check if B is matrix-like
   props.permuteB = false
-  if !(contractedB(props,1) || contractedB(props,rb))
+  if !(contractedB(props,1) || contractedB(props,NB))
     #If contracted indices are not all at front or back, 
     #will have to permute B
     props.permuteB = true
@@ -287,7 +310,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
   end
 
   if props.permuteA
-    props.PA = fill(0,ra)
+    #props.PA = fill(0,ra)
     #Permute contracted indices to the front,
     #in the same order as on B
     newi = 0
@@ -305,33 +328,33 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     #Permute uncontracted indices to
     #appear in same order as on C
     #TODO: check this is correct for 1-indexing
-    for k = 1:rc
+    for k = 1:NC
       j = findfirst(==(props.ci[k]),props.ai)
       if !isnothing(j)
         props.AtoC[newi] = k
         props.PA[newi+1] = j
         newi += 1
       end
-      newi==ra && break
+      newi==NA && break
     end
   end
 
   ##Also update props.Austart,props.Acstart
-  props.Acstart = ra+1
-  props.Austart = ra+1
+  props.Acstart = NA+1
+  props.Austart = NA+1
   #TODO: check this is correct for 1-indexing
-  for i = 1:ra
+  for i = 1:NA
     if contractedA(props,i)
       props.Acstart = min(i,props.Acstart)
     else
       props.Austart = min(i,props.Austart)
     end
     #props.newArange = permute_extents([size(A)...],props.PA)
-    props.newArange = [size(A)...][props.PA]
+    props.newArange = permute(size(A), props.PA) #[size(A)...][props.PA]
   end
 
   if(props.permuteB)
-    props.PB = fill(0,rb)
+    #props.PB = fill(0,rb)
     #TODO: check this is correct for 1-indexing
     newi = 0 #1
     if(props.permuteA)
@@ -365,18 +388,18 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     fill!(props.BtoC,0)
     #Permute uncontracted indices to
     #appear in same order as on C
-    for k = 1:rc
+    for k = 1:NC
       j = findfirst(==(props.ci[k]),props.bi)
       if !isnothing(j)
         props.BtoC[newi] = k
         props.PB[newi+1] = j
         newi += 1
       end
-      newi==rb && break
+      newi==NB && break
     end
-    props.Bcstart = rb
-    props.Bustart = rb
-    for i = 1:rb
+    props.Bcstart = NB
+    props.Bustart = NB
+    for i = 1:NB
       if(contractedB(props,i))
           props.Bcstart = min(i,props.Bcstart)
       else
@@ -384,21 +407,22 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       end
     end
     #props.newBrange = permute_extents([size(B)...],props.PB)
-    props.newBrange = [size(B)...][props.PB]
+    #props.newBrange = [size(B)...][props.PB]
+    props.newBrange = permute(size(B), props.PB)
   end
 
   if props.permuteA || props.permuteB
     #Recompute props.PC
     c = 1
     #TODO: check this is correct for 1-indexing
-    for i = 1:ra
+    for i = 1:NA
       if !contractedA(props,i)
         props.PC[props.AtoC[i]] = c
         c += 1
       end
     end
     #TODO: check this is correct for 1-indexing
-    for j = 1:rb
+    for j = 1:NB
       if !contractedB(props,j)
         props.PC[props.BtoC[j]] = c
         c += 1
@@ -421,34 +445,43 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
   end
 
   if props.permuteC
-    Rb = Int[]
+    Rb = MVector{NC,Int}(undef) #Int[]
+    k = 1
     if !props.permuteA
       #TODO: check this is correct for 1-indexing
-      for i = 1:ra
+      for i = 1:NA
         if !contractedA(props,i)
-          push!(Rb,size(A,i))
+          #push!(Rb,size(A,i))
+          Rb[k] = size(A, i)
+          k = k + 1
         end
       end
     else
       #TODO: check this is correct for 1-indexing
-      for i = 1:ra
+      for i = 1:NA
         if !contractedA(props,i)
-          push!(Rb,size(props.newArange,i))
+          #push!(Rb,size(props.newArange,i))
+          Rb[k] = size(props.newArange, i)
+          k = k + 1
         end
       end
     end
     if !props.permuteB
       #TODO: check this is correct for 1-indexing
-      for j = 1:rb
+      for j = 1:NB
         if !contractedB(props,j)
-          push!(Rb,size(B,j))
+          #push!(Rb,size(B,j))
+          Rb[k] = size(B, j)
+          k = k + 1
         end
       end
     else
       #TODO: check this is correct for 1-indexing
-      for j = 1:rb
+      for j = 1:NB
         if !contractedB(props,j)
-          push!(Rb,size(props.newBrange,j))
+          #push!(Rb,size(props.newBrange,j))
+          Rb[k] = size(props.newBrange, j)
+          k = k + 1
         end
       end
     end
