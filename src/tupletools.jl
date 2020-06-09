@@ -81,10 +81,10 @@ Determine if P is a trivial permutation. Errors if P is not a valid
 permutation.
 """
 function is_trivial_permutation(P)
-  isperm(P) || error("Input is not a permutation")
+  #isperm(P) || error("Input is not a permutation")
   # TODO: use `all(n->P[n]==n,1:length(P))`?
   N = length(P)
-  for n = 1:N
+  for n in 1:N
     P[n]!=n && return false
   end
   return true
