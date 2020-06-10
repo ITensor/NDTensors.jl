@@ -100,9 +100,6 @@ function Base.promote_rule(::Type{<:Dense{ElT1,VecT1}},
                                                                ElT2,VecT2}
   ElR = promote_type(ElT1,ElT2)
   VecR = promote_type(VecT1,VecT2)
-
-  @show VecR
-
   return Dense{ElR,VecR}
 end
 
