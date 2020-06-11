@@ -84,15 +84,15 @@ function contract_inds(T1is,
 end
 
 mutable struct ContractionProperties{NA,NB,NC}
-  ai::NTuple{NA,Int}
-  bi::NTuple{NB,Int}
-  ci::NTuple{NC,Int}
+  ai::NTuple{NA, Int}
+  bi::NTuple{NB, Int}
+  ci::NTuple{NC, Int}
   nactiveA::Int 
   nactiveB::Int 
   nactiveC::Int
-  AtoB::MVector{NA,Int}
-  AtoC::MVector{NA,Int}
-  BtoC::MVector{NB,Int}
+  AtoB::MVector{NA, Int}
+  AtoC::MVector{NA, Int}
+  BtoC::MVector{NB, Int}
   permuteA::Bool
   permuteB::Bool
   permuteC::Bool
@@ -104,36 +104,38 @@ mutable struct ContractionProperties{NA,NB,NC}
   Bcstart::Int
   Austart::Int
   Bustart::Int
-  PA::MVector{NA,Int}
-  PB::MVector{NB,Int}
-  PC::MVector{NC,Int}
+  PA::MVector{NA, Int}
+  PB::MVector{NB, Int}
+  PC::MVector{NC, Int}
   ctrans::Bool
-  newArange::NTuple{NA,Int} #Vector{Int}
-  newBrange::NTuple{NB,Int} #Vector{Int}
-  newCrange::NTuple{NC,Int} #Vector{Int}
+  newArange::NTuple{NA, Int}
+  newBrange::NTuple{NB, Int}
+  newCrange::NTuple{NC, Int}
   function ContractionProperties(ai::NTuple{NA,Int},
                                  bi::NTuple{NB,Int},
                                  ci::NTuple{NC,Int}) where {NA,NB,NC}
-    new{NA,NB,NC}(ai,bi,ci,0,0,0,
-                  #MVector{NA,Int}(undef),MVector{NA,Int}(undef),MVector{NB,Int}(undef),
-                  ntuple(_->0,Val(NA)),ntuple(_->0,Val(NA)),ntuple(_->0,Val(NB)),
-                  false,false,false,1,1,1,0,
+    new{NA,NB,NC}(ai,bi,ci,
+                  0,0,0,
+                  ntuple(_->0,Val(NA)),
+                  ntuple(_->0,Val(NA)),
+                  ntuple(_->0,Val(NB)),
+                  false,false,false,
+                  1,1,1,
+                  0,
                   NA,NB,NA,NB,
-                  #MVector{NA,Int}(undef),MVector{NB,Int}(undef),MVector{NC,Int}(undef),
-                  ntuple(i->i,Val(NA)),ntuple(i->i,Val(NB)),ntuple(i->i,Val(NC)),
+                  ntuple(i->i,Val(NA)),
+                  ntuple(i->i,Val(NB)),
+                  ntuple(i->i,Val(NC)),
                   false,
-                  ntuple(_->0,Val(NA)),ntuple(_->0,Val(NB)),ntuple(_->0,Val(NC)))
-                  #Vector{Int}(),Vector{Int}(),Vector{Int}())
+                  ntuple(_->0,Val(NA)),
+                  ntuple(_->0,Val(NB)),
+                  ntuple(_->0,Val(NC)))
   end
 end
 
 function compute_perms!(props::ContractionProperties{NA,NB,NC}) where 
                                                            {NA,NB,NC}
   #length(props.AtoB)!=0 && return
-
-  #props.AtoB = fill(0,NA)
-  #props.AtoC = fill(0,NA)
-  #props.BtoC = fill(0,NB)
   for i = 1:NA
     for j = 1:NB
       if props.ai[i]==props.bi[j]
@@ -319,9 +321,9 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     for i = 1:props.ncont
       while !contractedB(props,bind) bind += 1 end
       j = findfirst(==(props.bi[bind]),props.ai)
-      newi += 1
-      props.PA[newi] = j
+      props.PA[newi + 1] = j
       bind += 1
+      newi += 1
     end
     #Reset p.AtoC:
     fill!(props.AtoC,0)
@@ -379,9 +381,9 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       for i = 0:(props.ncont-1)
         while !contractedA(props,aind) aind += 1 end
         j = findfirst(==(props.ai[aind]),props.bi)
-        newi += 1
-        props.PB[newi] = j
+        props.PB[newi + 1] = j
         aind += 1
+        newi += 1
       end
     end
     #Reset p.BtoC:
@@ -391,8 +393,8 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     for k = 1:NC
       j = findfirst(==(props.ci[k]),props.bi)
       if !isnothing(j)
-        props.BtoC[newi] = k
-        props.PB[newi+1] = j
+        props.BtoC[newi + 1] = k
+        props.PB[newi + 1] = j
         newi += 1
       end
       newi==NB && break
