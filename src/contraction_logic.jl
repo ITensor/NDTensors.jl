@@ -461,7 +461,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       for i = 1:NA
         if !contractedA(props,i)
           #push!(Rb,size(props.newArange,i))
-          Rb[k] = size(props.newArange, i)
+          Rb[k] = props.newArange[i]
           k = k + 1
         end
       end
@@ -485,7 +485,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
         end
       end
     end
-    props.newCrange = Rb
+    props.newCrange = Tuple(Rb)
   end
 
 end
