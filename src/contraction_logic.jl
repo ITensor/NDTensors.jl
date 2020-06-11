@@ -480,7 +480,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       for j = 1:NB
         if !contractedB(props,j)
           #push!(Rb,size(props.newBrange,j))
-          Rb[k] = size(props.newBrange, j)
+          Rb[k] = props.newBrange[j]
           k = k + 1
         end
       end

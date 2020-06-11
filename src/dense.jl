@@ -502,18 +502,23 @@ function contraction_output(T1::Tensor,
 end
 
 # TODO: move to tensor.jl?
-function contract(T1::Tensor{<:Any,N1},
+function contract(T1::Tensor{<:Any, N1},
                   labelsT1,
-                  T2::Tensor{<:Any,N2},
+                  T2::Tensor{<:Any, N2},
                   labelsT2,
-                  labelsR = contract_labels(labelsT1,labelsT2)) where {N1,N2}
+                  labelsR = contract_labels(labelsT1,
+                                            labelsT2)) where {N1, N2}
   # TODO: put the contract_inds logic into contraction_output,
   # call like R = contraction_ouput(T1,labelsT1,T2,labelsT2)
   #indsR = contract_inds(inds(T1),labelsT1,inds(T2),labelsT2,labelsR)
-  R = contraction_output(T1,labelsT1,T2,labelsT2,labelsR)
+  R = contraction_output(T1, labelsT1,
+                         T2, labelsT2,
+                         labelsR)
   # contract!! version here since the output R may not
   # be mutable (like UniformDiag)
-  R = contract!!(R,labelsR,T1,labelsT1,T2,labelsT2)
+  R = contract!!(R, labelsR,
+                 T1, labelsT1,
+                 T2, labelsT2)
   return R
 end
 
@@ -543,11 +548,12 @@ function contract!!(R::Tensor{<:Number,NR},
     # TODO: permute T1 and T2 appropriately first (can be more efficient
     # then permuting the result of T1⊗T2)
     # TODO: implement the in-place version directly
-    R = outer!!(R,T1,T2)
+    R = outer!!(R, T1, T2)
     labelsRp = (labelsT1..., labelsT2...)
     perm = getperm(labelsR, labelsRp)
     if !is_trivial_permutation(perm)
-      R = permutedims!!(R, copy(R), perm)
+      Rp = reshape(R, (inds(T1)..., inds(T2)...))
+      R = permutedims!!(R, copy(Rp), perm)
     end
   else
     if α ≠ 1 || β ≠ 0
@@ -601,14 +607,17 @@ function contract!(R::DenseTensor{<:Number,NR},
     return R
   end
 
-  props = ContractionProperties(labelsT1,labelsT2,labelsR)
-  compute_contraction_properties!(props,T1,T2,R)
+  props = ContractionProperties(labelsT1,
+                                labelsT2,
+                                labelsR)
+  compute_contraction_properties!(props,
+                                  T1, T2, R)
 
   if ElT1 != ElT2
     # TODO: use promote instead
-    # T1,T2 = promote(T1,T2)
+    # T1, T2 = promote(T1, T2)
 
-    ElR = promote_type(ElT1,ElT2)
+    ElR = promote_type(ElT1, ElT2)
     if ElT1 != ElR
       # TODO: get this working
       # T1 = ElR.(T1)
@@ -625,12 +634,12 @@ function contract!(R::DenseTensor{<:Number,NR},
   return R
 end
 
-function _contract!(CT::DenseTensor{El,NC},
-                    AT::DenseTensor{El,NA},
-                    BT::DenseTensor{El,NB},
+function _contract!(CT::DenseTensor{El, NC},
+                    AT::DenseTensor{El, NA},
+                    BT::DenseTensor{El, NB},
                     props::ContractionProperties,
-                    α::Number=one(El),
-                    β::Number=zero(El)) where {El,NC,NA,NB}
+                    α::Number = one(El),
+                    β::Number = zero(El)) where {El, NC, NA, NB}
   # TODO: directly use Tensor instead of Array
   C = array(CT)
   A = array(AT)
@@ -638,31 +647,31 @@ function _contract!(CT::DenseTensor{El,NC},
 
   tA = 'N'
   if props.permuteA
-    pA = NTuple{NA,Int}(props.PA)
+    pA = NTuple{NA, Int}(props.PA)
     @strided Ap = permutedims(A, pA)
     AM = reshape(Ap, props.dmid, props.dleft)
     tA = 'T'
   else
     #A doesn't have to be permuted
     if Atrans(props)
-      AM = reshape(A,props.dmid,props.dleft)
+      AM = reshape(A, props.dmid, props.dleft)
       tA = 'T'
     else
-      AM = reshape(A,props.dleft,props.dmid)
+      AM = reshape(A, props.dleft, props.dmid)
     end
   end
 
   tB = 'N'
   if props.permuteB
-    pB = NTuple{NB,Int}(props.PB)
+    pB = NTuple{NB, Int}(props.PB)
     @strided Bp = permutedims(B, pB)
     BM = reshape(Bp, props.dmid, props.dright)
   else
     if Btrans(props)
-      BM = reshape(B,props.dright,props.dmid)
+      BM = reshape(B, props.dright, props.dmid)
       tB = 'T'
     else
-      BM = reshape(B,props.dmid,props.dright)
+      BM = reshape(B, props.dmid, props.dright)
     end
   end
 
@@ -673,9 +682,9 @@ function _contract!(CT::DenseTensor{El,NC},
     CM = reshape(copy(C), props.dleft, props.dright)
   else
     if Ctrans(props)
-      CM = reshape(C,props.dleft,props.dright)
-      (AM,BM) = (BM,AM)
-      if tA==tB
+      CM = reshape(C, props.dleft, props.dright)
+      (AM, BM) = (BM, AM)
+      if tA == tB
         tA = tB = (tA == 'T' ? 'N' : 'T')
       end
     else
@@ -686,8 +695,9 @@ function _contract!(CT::DenseTensor{El,NC},
   BLAS.gemm!(tA, tB, El(α), AM, BM, El(β), CM)
 
   if props.permuteC
-    pC = NTuple{NC,Int}(props.PC)
-    Cr = reshape(CM,props.newCrange...)
+    pC = NTuple{NC, Int}(props.PC)
+    Cr = reshape(CM, props.newCrange...)
+    # TODO: use invperm(pC) here?
     @strided C .= permutedims(Cr, pC)
   end
   return C
