@@ -682,7 +682,7 @@ function _contract!(CT::DenseTensor{El, NC},
     CM = reshape(copy(C), props.dleft, props.dright)
   else
     if Ctrans(props)
-      CM = reshape(C, props.dleft, props.dright)
+      CM = reshape(C, props.dright, props.dleft)
       (AM, BM) = (BM, AM)
       if tA == tB
         tA = tB = (tA == 'T' ? 'N' : 'T')
