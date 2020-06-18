@@ -333,7 +333,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     for k = 1:NC
       j = findfirst(==(props.ci[k]),props.ai)
       if !isnothing(j)
-        props.AtoC[newi] = k
+        props.AtoC[newi+1] = k
         props.PA[newi+1] = j
         newi += 1
       end
