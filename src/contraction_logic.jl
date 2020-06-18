@@ -10,18 +10,25 @@ function contract_labels(T1labels::Labels{N1},
     i < 0 && (ncont += 1)
   end
   NR = N1+N2-2*ncont
-  Rlabels = Vector{Int}(undef,NR)
+  ValNR = Val{NR}
+  return contract_labels(ValNR, T1labels, T2labels)
+end
+
+function contract_labels(::Type{Val{NR}},
+                         T1labels::Labels{N1},
+                         T2labels::Labels{N2}) where {NR,N1,N2}
+  Rlabels = MVector{NR,Int}(undef)
   u = 1
   # TODO: use Rlabels, don't assume ncon convention
-  @inbounds for i ∈ 1:N1
-    if(T1labels[i] > 0)
-      Rlabels[u] = T1labels[i];
+  for i in 1:N1
+    if T1labels[i] > 0
+      @inbounds Rlabels[u] = T1labels[i];
       u += 1
     end
   end
-  @inbounds for i ∈ 1:N2
-    if(T2labels[i] > 0)
-      Rlabels[u] = T2labels[i];
+  for i in 1:N2
+    if T2labels[i] > 0
+      @inbounds Rlabels[u] = T2labels[i];
       u += 1
     end
   end
