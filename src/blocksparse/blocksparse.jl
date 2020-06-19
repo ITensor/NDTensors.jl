@@ -107,6 +107,8 @@ function scale!(D::BlockSparse,α::Number)
   return D
 end
 
+Base.ndims(::BlockSparse{T,V,N}) where {T,V,N} = N
+
 Base.eltype(::BlockSparse{T}) where {T} = eltype(T)
 # This is necessary since for some reason inference doesn't work
 # with the more general definition (eltype(Nothing) === Any)
@@ -218,5 +220,68 @@ function Base.:+(D1::BlockSparse,D2::BlockSparse)
     end
   end
   return R
+end
+
+
+# Helper function for HDF5 write/read of BlockSparse
+function offsets_to_array(boff::BlockOffsets{N}) where {N}
+  nblocks = length(boff)
+  asize = (N+1)*nblocks
+  n = 1
+  a = Vector{Int}(undef,asize)
+  for bo in boff
+    for j=1:N
+      a[n] = bo[1][j]
+      n += 1
+    end
+    a[n] = bo[2]
+    n += 1
+  end
+  return a
+end
+
+# Helper function for HDF5 write/read of BlockSparse
+function array_to_offsets(a,N::Int)
+  asize = length(a)
+  nblocks = div(asize,N+1)
+  boff = BlockOffsets{N}(undef,nblocks)
+  j = 0
+  for b=1:nblocks
+    boff[b] = Pair( ntuple(i->(a[j+i]),N) , a[j+N+1] )
+    j += (N+1)
+  end
+  return boff
+end
+
+function HDF5.write(parent::Union{HDF5File, HDF5Group},
+                    name::String,
+                    B::BlockSparse)
+  g = g_create(parent,name)
+  attrs(g)["type"] = "BlockSparse{$(eltype(B))}"
+  attrs(g)["version"] = 1
+  if eltype(B) != Nothing
+    write(g,"ndims",ndims(B))
+    write(g,"data",data(B))
+    off_array = offsets_to_array(blockoffsets(B))
+    write(g,"offsets",off_array)
+  end
+end
+
+function HDF5.read(parent::Union{HDF5File,HDF5Group},
+                   name::AbstractString,
+                   ::Type{Store}) where {Store <: BlockSparse}
+  g = g_open(parent,name)
+  ElT = eltype(Store)
+  typestr = "BlockSparse{$ElT}"
+  if read(attrs(g)["type"]) != typestr
+    error("HDF5 group or file does not contain $typestr data")
+  end
+  N = read(g,"ndims")
+  data = read(g,"data")
+  off_array = read(g,"offsets")
+  boff = array_to_offsets(off_array,N)
+  @show typeof(data)
+  @show typeof(boff)
+  return BlockSparse(data,boff)
 end
 
