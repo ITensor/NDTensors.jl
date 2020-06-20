@@ -1,4 +1,4 @@
-using ITensors.NDTensors,
+using NDTensors,
       Test
 
 @testset "DenseTensor basic functionality" begin
@@ -112,3 +112,4 @@ end
   @test norm(Tc) ≉ 0
 end
 
+nothing

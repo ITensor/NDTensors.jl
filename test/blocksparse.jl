@@ -1,4 +1,4 @@
-using ITensors.NDTensors,
+using NDTensors,
       Test
 using LinearAlgebra
 
@@ -315,3 +315,4 @@ using LinearAlgebra
 
 end
 
+nothing
