@@ -1,12 +1,7 @@
 name: TagBot
 on:
   schedule:
-    - cron: 0 0 * * *
-  push:
-    branches:
-      - master
-    tags: '*'
-  pull_request:
+    - cron: 0 * * * *
 jobs:
   TagBot:
     runs-on: ubuntu-latest
