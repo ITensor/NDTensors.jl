@@ -280,8 +280,6 @@ function HDF5.read(parent::Union{HDF5File,HDF5Group},
   data = read(g,"data")
   off_array = read(g,"offsets")
   boff = array_to_offsets(off_array,N)
-  @show typeof(data)
-  @show typeof(boff)
   return BlockSparse(data,boff)
 end
 
