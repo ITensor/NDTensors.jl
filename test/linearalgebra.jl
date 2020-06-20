@@ -1,4 +1,4 @@
-using ITensors.NDTensors,
+using NDTensors,
       Test
 using LinearAlgebra
 
@@ -23,3 +23,4 @@ end
   @test norm(U2*U2' - Diagonal(fill(1.,n))) < 1E-14
 end
 
+nothing

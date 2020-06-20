@@ -1,4 +1,4 @@
-using ITensors.NDTensors,
+using NDTensors,
       Test
 
 @testset "DiagTensor basic functionality" begin
@@ -28,3 +28,5 @@ using ITensors.NDTensors,
   #@test permutedims(D, (2, 1)) == tensor(diagITensor(vr, j, i))
   #@test permutedims(tensor(diagITensor(2.0, j, i)), (2, 1)) == tensor(diagITensor(2.0, j, i))
 end
+
+nothing
