@@ -6,6 +6,7 @@ using Test
     "dense.jl",
     "blocksparse.jl",
     "diag.jl",
+    "itensors.jl",
   )
     println("Running $filename")
     include(filename)
