@@ -102,7 +102,7 @@ function contract!!(R::Tensor{<:Number,NR},
     labels_perm = tuple(vlR...) 
     perm = getperm(labels_perm,labelsT2)
     T2p = reshape(R,permute(inds(T2),perm))
-    permutedims!(T2p,T2,perm)
+    #permutedims!(T2p,T2,perm)
     R = reshape(T2p,indsR)
   end
   return R
