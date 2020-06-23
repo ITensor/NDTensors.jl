@@ -641,23 +641,23 @@ function _contract!(CT::DenseTensor{El, NC},
                     α::Number = one(El),
                     β::Number = zero(El)) where {El, NC, NA, NB}
   # TODO: directly use Tensor instead of Array
-  C = array(CT)
-  A = array(AT)
-  B = array(BT)
+  C = Base.ReshapedArray(data(store(CT)), dims(inds(CT)), ())
+  A = Base.ReshapedArray(data(store(AT)), dims(inds(AT)), ())
+  B = Base.ReshapedArray(data(store(BT)), dims(inds(BT)), ())
 
   tA = 'N'
   if props.permuteA
     pA = NTuple{NA, Int}(props.PA)
     @strided Ap = permutedims(A, pA)
-    AM = reshape(Ap, props.dmid, props.dleft)
+    AM = Base.ReshapedArray(Ap, (props.dmid, props.dleft), ())
     tA = 'T'
   else
     #A doesn't have to be permuted
     if Atrans(props)
-      AM = reshape(A, props.dmid, props.dleft)
+      AM = Base.ReshapedArray(A.parent, (props.dmid, props.dleft), ())
       tA = 'T'
     else
-      AM = reshape(A, props.dleft, props.dmid)
+      AM = Base.ReshapedArray(A.parent, (props.dleft, props.dmid), ())
     end
   end
 
@@ -665,13 +665,13 @@ function _contract!(CT::DenseTensor{El, NC},
   if props.permuteB
     pB = NTuple{NB, Int}(props.PB)
     @strided Bp = permutedims(B, pB)
-    BM = reshape(Bp, props.dmid, props.dright)
+    BM = Base.ReshapedArray(Bp, (props.dmid, props.dright), ())
   else
     if Btrans(props)
-      BM = reshape(B, props.dright, props.dmid)
+      BM = Base.ReshapedArray(B.parent, (props.dright, props.dmid), ())
       tB = 'T'
     else
-      BM = reshape(B, props.dmid, props.dright)
+      BM = Base.ReshapedArray(B.parent, (props.dmid, props.dright), ())
     end
   end
 
@@ -679,16 +679,16 @@ function _contract!(CT::DenseTensor{El, NC},
   if props.permuteC
     # Need to copy here since we will be permuting
     # into C later
-    CM = reshape(copy(C), props.dleft, props.dright)
+    CM = Base.ReshapedArray(copy(C), (props.dleft, props.dright), ())
   else
     if Ctrans(props)
-      CM = reshape(C, props.dright, props.dleft)
+      CM = Base.ReshapedArray(C.parent, (props.dright, props.dleft), ())
       (AM, BM) = (BM, AM)
       if tA == tB
         tA = tB = (tA == 'T' ? 'N' : 'T')
       end
     else
-      CM = reshape(C, props.dleft, props.dright)
+      CM = Base.ReshapedArray(C.parent, (props.dleft, props.dright), ())
     end
   end
 
@@ -696,11 +696,11 @@ function _contract!(CT::DenseTensor{El, NC},
 
   if props.permuteC
     pC = NTuple{NC, Int}(props.PC)
-    Cr = reshape(CM, props.newCrange...)
+    Cr = Base.ReshapedArray(CM.parent, props.newCrange, ())
     # TODO: use invperm(pC) here?
     @strided C .= permutedims(Cr, pC)
   end
-  return C
+  return CT
 end
 
 """
