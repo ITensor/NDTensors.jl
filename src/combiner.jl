@@ -19,7 +19,7 @@ blockcomb(C::Combiner) = C.comb
 
 Base.eltype(::Type{<:Combiner}) = Number
 
-Base.eltype(::StoreT) where {StoreT<:Combiner} = eltype(StoreT)
+Base.eltype(::Combiner) = eltype(Combiner)
 
 Base.promote_rule(::Type{<:Combiner},
                   StorageT::Type{<:Dense}) = StorageT
