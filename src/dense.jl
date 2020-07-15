@@ -135,45 +135,49 @@ Base.:*(x::Number,D::Dense) = D*x
 const DenseTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where {StoreT<:Dense}
 
 DenseTensor(::Type{ElT},
-            inds::Dims) where {ElT} = tensor(Dense(ElT,dim(inds)),inds)
+            inds) where {ElT} =
+  tensor(Dense(ElT,dim(inds)),inds)
 
+# Special convenience function for Int
+# dimensions
 DenseTensor(::Type{ElT},
-            inds::Int...) where {ElT} = DenseTensor(ElT,inds)
+            inds::Int...) where {ElT} =
+  DenseTensor(ElT, inds)
 
-DenseTensor(inds::Dims) = tensor(Dense(dim(inds)),inds)
+DenseTensor(inds) = tensor(Dense(dim(inds)), inds)
 
 DenseTensor(inds::Int...) = DenseTensor(inds)
 
 DenseTensor(::Type{ElT},
             ::UndefInitializer,
-            inds) where {ElT} = tensor(Dense(ElT,undef,dim(inds)),inds)
+            inds) where {ElT} =
+  tensor(Dense(ElT, undef, dim(inds)), inds)
 
 DenseTensor(::Type{ElT},
             ::UndefInitializer,
-            inds::Int...) where {ElT} = DenseTensor(ElT,undef,inds)
+            inds::Int...) where {ElT} =
+  DenseTensor(ElT, undef, inds)
 
 DenseTensor(::UndefInitializer,
-            inds::Dims) = tensor(Dense(undef,dim(inds)),inds)
+            inds) =
+  tensor(Dense(undef, dim(inds)), inds)
 
 DenseTensor(::UndefInitializer,
-            inds::Int...) = DenseTensor(undef,inds)
+            inds::Int...) =
+  DenseTensor(undef, inds)
 
 # For convenience, direct Tensor constructors default to Dense
-Tensor(::Type{ElT},inds::Dims) where {ElT} = DenseTensor(ElT,inds)
-Tensor(::Type{ElT},inds::Int...) where {ElT} = DenseTensor(ElT,inds...)
-Tensor(inds::Dims) = DenseTensor(inds)
-Tensor(inds::Int...) = DenseTensor(inds...)
+Tensor(::Type{ElT},
+       inds...) where {ElT} = DenseTensor(ElT, inds...)
+
+Tensor(inds...) = Tensor(Float64, inds...)
 
 Tensor(::Type{ElT},
        ::UndefInitializer,
-       inds::Dims) where {ElT} = DenseTensor(ElT,undef,inds)
-Tensor(::Type{ElT},
-       ::UndefInitializer,
-       inds::Int...) where {ElT} = DenseTensor(ElT,undef,inds...)
+       inds...) where {ElT} = DenseTensor(ElT, undef, inds...)
+
 Tensor(::UndefInitializer,
-       inds::Dims) = DenseTensor(undef,inds)
-Tensor(::UndefInitializer,
-       inds::Int...) = DenseTensor(undef,inds...)
+       inds...) = DenseTensor(undef, inds...)
 
 Tensor(A::Array{<:Number,N},
        inds::Dims{N}) where {N} = tensor(Dense(vec(A)),inds)
@@ -183,7 +187,7 @@ Tensor(A::Array{<:Number,N},
 #
 
 function randomDenseTensor(::Type{ElT},
-                           inds::Dims) where {ElT}
+                           inds) where {ElT}
   return tensor(randn(Dense{ElT},dim(inds)),inds)
 end
 
@@ -192,13 +196,13 @@ function randomDenseTensor(::Type{ElT},
   return randomDenseTensor(ElT, inds)
 end
 
-randomDenseTensor(inds::Dims) = randomDenseTensor(Float64, inds)
+randomDenseTensor(inds) = randomDenseTensor(Float64, inds)
 
 randomDenseTensor(inds::Int...) = randomDenseTensor(Float64, inds)
 
 function randomTensor(::Type{ElT},
-                      inds::Dims) where {ElT}
-  return randomDenseTensor(ElT,inds)
+                      inds) where {ElT}
+  return randomDenseTensor(ElT, inds)
 end
 
 function randomTensor(::Type{ElT},
@@ -206,7 +210,7 @@ function randomTensor(::Type{ElT},
   return randomDenseTensor(ElT, inds...)
 end
 
-randomTensor(inds::Dims) = randomDenseTensor(Float64, inds)
+randomTensor(inds) = randomDenseTensor(Float64, inds)
 
 randomTensor(inds::Int...) = randomDenseTensor(Float64, inds)
 
