@@ -1,11 +1,11 @@
 
 """
-ValLength(::Type{NTuple{N}}) = Val{N}
+    ValLength(::Type{NTuple{N}}) = Val{N}
 """
 ValLength(::Type{NTuple{N,T}}) where {N,T} = Val{N}
 
 """
-ValLength(::NTuple{N}) = Val(N)
+    ValLength(::NTuple{N}) = Val(N)
 """
 ValLength(::NTuple{N}) where {N} = Val(N)
 
@@ -32,7 +32,7 @@ end
 sim(s::NTuple) = s
 
 """
-getperm(col1,col2)
+    getperm(col1,col2)
 
 Get the permutation that takes collection 2 to collection 1,
 such that col2[p].==col1
@@ -42,7 +42,7 @@ function getperm(s1, s2)
 end
 
 """
-getperm(col1,col2,col3)
+    getperm(col1,col2,col3)
 
 Get the permutations that takes collections 2 and 3 to collection 1.
 """
@@ -77,8 +77,9 @@ function invperm(perm)
 end
 
 """
-Determine if P is a trivial permutation. Errors if P is not a valid
-permutation.
+    is_trivial_permutation(P)
+
+Determine if P is a trivial permutation.
 """
 function is_trivial_permutation(P)
   #isperm(P) || error("Input is not a permutation")
@@ -164,7 +165,7 @@ function _insertat(t,pos,n_insert,val,i)
 end
 
 """
-insertat
+    insertat
 
 Remove the value at pos and insert the elements in val
 """
@@ -188,7 +189,7 @@ function _insertafter(t,pos,n_insert,val,i)
 end
 
 """
-insertafter
+    insertafter(t, val, pos)
 
 Insert the elements in val after the position pos
 """
@@ -203,6 +204,8 @@ function insertafter(t::NTuple{N}, val, pos::Integer) where {N}
 end
 
 """
+    isdisjoint(s1, s2)
+
 Determine if s1 and s2 have no overlapping elements.
 """
 function isdisjoint(s1,s2)
@@ -213,6 +216,15 @@ function isdisjoint(s1,s2)
   end
   return true
 end
+
+"""
+    diff(t::Tuple)
+
+For a tuple of length N, return a tuple of length N-1
+where element i is t[i+1] - t[i].
+"""
+diff(t::NTuple{N}) where {N} =
+  ntuple(i -> t[i+1] - t[i], Val(N-1))
 
 function count_unique(labelsT1,labelsT2)
   count = 0
