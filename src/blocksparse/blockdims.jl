@@ -11,6 +11,9 @@ An index for a BlockSparseTensor.
 """
 const BlockDim = Vector{Int}
 
+# Makes for generic code
+dim(d::BlockDim) = sum(d)
+
 """
 BlockDims{N}
 

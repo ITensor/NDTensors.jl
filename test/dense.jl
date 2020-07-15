@@ -112,4 +112,37 @@ end
   @test norm(Tc) ≉ 0
 end
 
+@testset "Custom inds types" begin
+  struct MyInd
+    dim::Int
+  end
+  NDTensors.dim(i::MyInd) = i.dim
+
+  T = Tensor((MyInd(2), MyInd(3), MyInd(4)))
+  @test store(T) isa Dense
+  @test eltype(T) == Float64
+  @test norm(T) == 0
+  @test dims(T) == (2, 3, 4)
+  @test ndims(T) == 3
+  @test inds(T) == (MyInd(2), MyInd(3), MyInd(4))
+
+  T = randomTensor(ComplexF64, (MyInd(4), MyInd(3)))
+  @test store(T) isa Dense
+  @test eltype(T) == ComplexF64
+  @test norm(T) > 0
+  @test dims(T) == (4, 3)
+  @test ndims(T) == 2
+  @test inds(T) == (MyInd(4), MyInd(3))
+
+  T2 = 2 * T
+  @test eltype(T2) == ComplexF64
+  @test store(T2) isa Dense
+  @test norm(T2) > 0
+  @test norm(T2) / norm(T) ≈ 2
+  @test dims(T2) == (4, 3)
+  @test ndims(T2) == 2
+  @test inds(T2) == (MyInd(4), MyInd(3))
+
+end
+
 nothing

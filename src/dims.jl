@@ -8,6 +8,12 @@ export dense,
 # base Dims here
 dims(ds::Dims) = ds
 
+# Generic dims function
+dims(inds) = ntuple(i -> dim(inds[i]), Val(length(inds)))
+
+# Generic dim function
+dim(inds) = prod(dims(inds))
+
 dims(::Tuple{}) = ()
 
 dim(::Tuple{}) = 1
