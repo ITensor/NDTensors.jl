@@ -125,6 +125,9 @@ end
   @test dims(T) == (2, 3, 4)
   @test ndims(T) == 3
   @test inds(T) == (MyInd(2), MyInd(3), MyInd(4))
+  T[2, 1, 2] = 1.21
+  @test T[2, 1, 2] == 1.21
+  @test norm(T) == 1.21
 
   T = randomTensor(ComplexF64, (MyInd(4), MyInd(3)))
   @test store(T) isa Dense
