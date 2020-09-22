@@ -296,11 +296,11 @@ that is a view to the data in that block (to avoid block lookup if the position
 is known already).
 """
 function blockview(T::BlockSparseTensor,
-                   pos::Union{Int,Nothing})
+                   pos::Union{Int, Nothing})
   # TODO: don't allow nothing input
   isnothing(pos) && error("Block must be structurally non-zero to get a view")
-  blockT,offsetT = blockoffsets(T)[pos]
-  return blockview(T,BlockOffset(blockT,offsetT))
+  blockT, offsetT = blockoffsets(T)[pos]
+  return blockview(T, BlockOffset(blockT, offsetT))
 end
 
 function blockview(T::BlockSparseTensor,
@@ -665,33 +665,60 @@ function Base.copyto!(R::BlockSparseTensor,
   return R
 end
 
-# TODO: handle case where:
-# f(zero(ElR),zero(ElT)) != promote_type(ElR,ElT)
-function permutedims!!(R::BlockSparseTensor{ElR,N},
-                       T::BlockSparseTensor{ElT,N},
-                       perm::NTuple{N,Int},
-                       f::Function=(r,t)->t) where {ElR,ElT,N}
+function Base.map(f::Function,
+                  Ts::Union{BlockSparseTensor{ElT, N},
+                            PermutedDims{<: BlockSparseTensor{ElT,N}}}...)  where {ElR, ElT, N}
   # TODO: write a custom function for merging two sorted
   # lists with no repeated elements
-  nzblocksRR = unique!(sort(vcat(nzblocks(R),permutedims(nzblocks(T),perm));lt=isblockless))
-  RR = BlockSparseTensor(promote_type(ElR,ElT),nzblocksRR,inds(R))
-  copyto!(RR,R)
-  permutedims!(RR,T,perm,f)
-  return RR
+  nzblocksRR_unsorted = vcat(nzblocks(R), nzblocks.(Ts)...)
+  nzblocksRR = unique!(sort(nzblocksRR_unsorted; lt = isblockless))
+  R = BlockSparseTensor(promote_type(ElR, ElT), nzblocksRR, inds(R))
+  R = map!!(f, R, Ts...)
+  return R
 end
 
-function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
-                           T::BlockSparseTensor{<:Number,N},
-                           perm::NTuple{N,Int},
-                           f::Function=(r,t)->t) where {N}
-  for (blockT,_) in blockoffsets(T)
-    # Loop over non-zero blocks of T/R
-    Tblock = blockview(T,blockT)
-    Rblock = blockview(R,permute(blockT,perm))
-    permutedims!(Rblock,Tblock,perm,f)
+function Base.map!(f::Function,
+                   R::BlockSparseTensor{<: Number, N},
+                   Ts::PermutedDims{<: BlockSparseTensor{<: Number, N}}...)  where {ElR, ElT, N}
+  for T in Ts
+    for (blockT, _) in blockoffsets(T.parent)
+      # Loop over non-zero blocks of T/R
+      Tblock = blockview(T.parent, blockT)
+      Rblock = blockview(R, permute(blockT, T.perm))
+      map!(f, Rblock, PermutedDims(Tblock, T.perm))
+    end
   end
   return R
 end
+
+# TODO: handle case where:
+# f(zero(ElR),zero(ElT)) != promote_type(ElR,ElT)
+function permutedims!!(R::BlockSparseTensor{ElR, N},
+                       T::BlockSparseTensor{ElT, N},
+                       perm::NTuple{N, Int}) where {ElR, ElT, N}
+  map!(identity, R, PermutedDims(T, perm))
+  return R
+  # TODO: write a custom function for merging two sorted
+  # lists with no repeated elements
+  #nzblocksRR = unique!(sort(vcat(nzblocks(R),permutedims(nzblocks(T),perm));lt=isblockless))
+  #RR = BlockSparseTensor(promote_type(ElR,ElT),nzblocksRR,inds(R))
+  #copyto!(RR,R)
+  #permutedims!(RR,T,perm,f)
+  #return RR
+end
+
+#function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
+#                           T::BlockSparseTensor{<:Number,N},
+#                           perm::NTuple{N,Int},
+#                           f::Function=(r,t)->t) where {N}
+#  for (blockT,_) in blockoffsets(T)
+#    # Loop over non-zero blocks of T/R
+#    Tblock = blockview(T,blockT)
+#    Rblock = blockview(R,permute(blockT,perm))
+#    permutedims!(Rblock,Tblock,perm,f)
+#  end
+#  return R
+#end
 
 #function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
 #                           T::BlockSparseTensor{<:Number,N},

@@ -1,15 +1,3 @@
-export Dense,
-       DenseTensor,
-       array,
-       matrix,
-       vector,
-       contract,
-       outer,
-       read,
-       permutedims!!,
-       write,
-       ⊗
-
 #
 # Dense storage
 #
@@ -388,47 +376,84 @@ end
 # Version that may overwrite the result or promote
 # and return the result
 # TODO: move to tensor.jl?
-function permutedims!!(R::Tensor,
-                       T::Tensor,
-                       perm::NTuple{N,Int},
-                       f::Function=(r,t)->t) where {N}
-  RA = array(R)
-  TA = array(T)
-  if !is_trivial_permutation(perm)
-    @strided RA .= f.(RA, permutedims(TA, perm))
-  else
-    @strided RA .= f.(RA, TA)
-  end
+#function permutedims!!(R::Tensor,
+#                       T::Tensor,
+#                       perm::NTuple{N,Int},
+#                       f::Function=(r,t)->t) where {N}
+#  RA = array(R)
+#  TA = array(T)
+#  if !is_trivial_permutation(perm)
+#    @strided RA .= f.(RA, permutedims(TA, perm))
+#  else
+#    @strided RA .= f.(RA, TA)
+#  end
+#  return R
+#end
+
+Strided.StridedView(T::DenseTensor) = StridedView(array(T))
+
+Strided.StridedView(T::PermutedDims{<: DenseTensor}) =
+  permutedims(StridedView(T.parent), T.perm)
+
+function Base.map!(f::Function,
+                   R::DenseTensor,
+                   Ts::Union{DenseTensor,
+                             PermutedDims{<: DenseTensor}}...)
+  RS = StridedView(R)
+  TSs = StridedView.(Ts)
+  RS .= f.(TSs...)
   return R
 end
 
+# TODO: this needs to reallocate R if the storage
+# is too narrow.
+function map!!(f::Function,
+               R::DenseTensor,
+               Ts::Union{DenseTensor,
+                         PermutedDims{<: DenseTensor}}...)
+  map!(f, R, Ts...)
+  return R
+end
+
+Base.permutedims!(R::Tensor,
+                  T::Tensor,
+                  perm::Tuple{Vararg{Int}}) =
+  map!(identity, R, PermutedDims(T, perm))
+
+permutedims!!(R::Tensor,
+              T::Tensor,
+              perm::Tuple{Vararg{Int}}) =
+  map!!(identity, R, PermutedDims(T, perm))
+
 # TODO: move to tensor.jl?
-function Base.permutedims(T::Tensor{<:Number,N},
-                          perm::NTuple{N,Int}) where {N}
-  Tp = similar(T,permute(inds(T),perm))
-  Tp = permutedims!!(Tp, T, perm)
+function Base.permutedims(T::Tensor{<:Number, N},
+                          perm::NTuple{N, Int}) where {N}
+  Tp = similar(T, permute(inds(T), perm))
+  Tp = map!!(identity, Tp, PermutedDims(T, perm))
   return Tp
 end
 
 Base.permutedims(T::Tensor,
-                 perm::Tuple{Vararg{Int}}) = error("Permutation size must match tensor order")
+                 perm::Tuple{Vararg{Int}}) =
+  error("Permutation size must match tensor order")
 
 # TODO: move to tensor.jl?
 function Base.:*(x::Number,
                  T::Tensor)
   return tensor(x*store(T),inds(T))
 end
+
 Base.:*(T::Tensor, x::Number) = x*T
 
-function Base.permutedims!(R::DenseTensor{<:Number,N},
-                           T::DenseTensor{<:Number,N},
-                           perm,
-                           f::Function) where {N}
-  RA = array(R)
-  TA = array(T)
-  @strided RA .= f.(RA, permutedims(TA, perm))
-  return R
-end
+#function Base.permutedims!(R::DenseTensor{<:Number,N},
+#                           T::DenseTensor{<:Number,N},
+#                           perm,
+#                           f::Function) where {N}
+#  RA = array(R)
+#  TA = array(T)
+#  @strided RA .= f.(RA, permutedims(TA, perm))
+#  return R
+#end
 
 function outer!(R::DenseTensor{ElR},
                 T1::DenseTensor{ElT1},

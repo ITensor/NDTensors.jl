@@ -6,11 +6,25 @@ export addblock!!,
        randomBlockSparseTensor,
 
 # dense.jl
-       randomTensor,
+       Dense,
+       DenseTensor,
+       ⊗,
+       array,
+       contract,
+       matrix,
+       outer,
+       permutedims!!,
        randomDenseTensor,
+       randomTensor,
+       read,
+       vector,
+       write,
 
 # empty.jl
        Empty,
        EmptyTensor,
-       EmptyBlockSparseTensor
+       EmptyBlockSparseTensor,
+
+# permuteddims.jl
+       PermutedDims
 

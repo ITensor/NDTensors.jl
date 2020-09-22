@@ -186,7 +186,7 @@ using LinearAlgebra
     B = BlockSparseTensor(locsB,indsB...)
     randn!(B)
 
-    R = permutedims!!(B,A,perm)
+    R = permutedims!!(B, A, perm)
 
     @test nnz(R) == nnz(A)
     for I in eachindex(A)
