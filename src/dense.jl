@@ -565,12 +565,14 @@ function contract!!(R::Tensor{<:Number,NR},
     # TODO: replace with an add! function?
     # What about doing `R .= T1[] .* PermutedDimsArray(T2,perm)`?
     perm = getperm(labelsR,labelsT2)
-    R = permutedims!!(R,T2,perm,(r,t2)->T1[]*t2)
+    #R = permutedims!!(R,T2,perm,(r,t2)->T1[]*t2)
+    R = map!!(t2 -> T1[] * t2, R, PermutedDims(T2, perm))
   elseif N2==0
     (α ≠ 1 || β ≠ 0) &&
       error("contract!! not yet implemented for scalar ITensor with non-trivial α and β")
     perm = getperm(labelsR,labelsT1)
-    R = permutedims!!(R,T1,perm,(r,t1)->T2[]*t1)
+    #R = permutedims!!(R,T1,perm,(r,t1)->T2[]*t1)
+    R = permutedims!!(t1 -> T2[] * t1, R, PermutedDims(T1, perm))
   elseif N1+N2==NR
     (α ≠ 1 || β ≠ 0) &&
       error("contract!! not yet implemented for outer product tensor contraction with non-trivial α and β")

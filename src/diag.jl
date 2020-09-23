@@ -327,6 +327,13 @@ function Base.permutedims(T::UniformDiagTensor{ElT,N},
   return R
 end
 
+function map!!(f::Function,
+               R::NonuniformDiagTensor{<:Number,N},
+               T::PermutedDims{<: NonuniformDiagTensor{<:Number,N}}) where {N}
+  map!(f, R, T) 
+  return R
+end
+
 # Version that may overwrite in-place or may return the result
 function permutedims!!(R::NonuniformDiagTensor{<:Number,N},
                        T::NonuniformDiagTensor{<:Number,N},

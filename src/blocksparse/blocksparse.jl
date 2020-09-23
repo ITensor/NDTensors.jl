@@ -198,7 +198,7 @@ function blockview(T::BlockSparse,
   return Dense(dataTslice)
 end
 
-function Base.:+(D1::BlockSparse, D2::BlockSparse)
+function Base.:+(D1::BlockSparse,D2::BlockSparse)
   # This could be of order nnzblocks, avoid?
   if blockoffsets(D1) == blockoffsets(D2)
     return BlockSparse(data(D1)+data(D2),blockoffsets(D1))
