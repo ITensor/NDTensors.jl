@@ -307,7 +307,7 @@ using LinearAlgebra
       blockview(Ah,n) .= b + b'
     end
     expTh = exp(Hermitian(Ah))
-    @test isapprox(norm(array(expTh) - exp(Hermitian(array(Ah)))), 0.0; atol=1e-13)
+    @test array(expTh) ≈ exp(Hermitian(array(Ah))) rtol = 1e-13
 
     A = BlockSparseTensor([(2,1),(1,2)],[2,2],[2,2])
     @test_throws ErrorException exp(A)
