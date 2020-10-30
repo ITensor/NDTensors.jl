@@ -665,6 +665,7 @@ function Base.copyto!(R::BlockSparseTensor,
   return R
 end
 
+
 # TODO: handle case where:
 # f(zero(ElR),zero(ElT)) != promote_type(ElR,ElT)
 function permutedims!!(R::BlockSparseTensor{ElR,N},
@@ -680,6 +681,21 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
   return RR
 end
 
+# <fermions>
+permfactor(perm,block::NTuple{N,Int},inds) where {N} = 1.0
+
+function scale_by_permfactor!(T::BlockSparseTensor{<:Number,N},
+                              perm::NTuple{N,Int},
+                              inds) where {N}
+  for (blockT,_) in blockoffsets(T)
+    Tblock = blockview(T,blockT)
+    pfac = permfactor(perm,blockT,inds)
+    if pfac != 1.0
+      scale!(Tblock,pfac)
+    end
+  end
+end
+
 function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
                            T::BlockSparseTensor{<:Number,N},
                            perm::NTuple{N,Int},
@@ -688,7 +704,11 @@ function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
     # Loop over non-zero blocks of T/R
     Tblock = blockview(T,blockT)
     Rblock = blockview(R,permute(blockT,perm))
-    permutedims!(Rblock,Tblock,perm,f)
+
+    # <fermions>
+    pfac = permfactor(perm,blockT,inds(R))
+    fac_f = (r,t)->f(r,pfac*t)
+    permutedims!(Rblock,Tblock,perm,fac_f)
   end
   return R
 end
@@ -852,6 +872,11 @@ function contract(T1::BlockSparseTensor{<:Any,N1},
   return R
 end
 
+# <fermions>
+compute_alpha(labelsR,blockR,indsR,
+              labelsT1,blockT1,indsT1,
+              labelsT2,blockT2,indsT2)::Float64 = 1.0
+
 function contract!(R::BlockSparseTensor{<:Number,NR},
                    labelsR,
                    T1::BlockSparseTensor{<:Number,N1},
@@ -861,20 +886,20 @@ function contract!(R::BlockSparseTensor{<:Number,NR},
                    contraction_plan) where {N1,N2,NR}
   already_written_to = fill(false,nnzblocks(R))
   # In R .= α .* (T1 * T2) .+ β .* R
-  α = 1
   for (pos1,pos2,posR) in contraction_plan
-    blockT1 = blockview(T1,pos1)
-    blockT2 = blockview(T2,pos2)
-    blockR = blockview(R,posR)
+    bT1 = blockview(T1,pos1)
+    bT2 = blockview(T2,pos2)
+    bR = blockview(R,posR)
+    α = compute_alpha(labelsR,bR,inds(R),labelsT1,bT1,inds(T1),labelsT2,bT2,inds(T2))
     β = 1
     if !already_written_to[posR]
       already_written_to[posR] = true
       # Overwrite the block of R
       β = 0
     end
-    contract!(blockR,labelsR,
-              blockT1,labelsT1,
-              blockT2,labelsT2,
+    contract!(bR,labelsR,
+              bT1,labelsT1,
+              bT2,labelsT2,
               α,β)
   end
   return R
