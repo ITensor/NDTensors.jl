@@ -892,19 +892,22 @@ function contract!(R::BlockSparseTensor{<:Number,NR},
   already_written_to = fill(false,nnzblocks(R))
   # In R .= α .* (T1 * T2) .+ β .* R
   for (pos1,pos2,posR) in contraction_plan
-    bT1 = blockview(T1,pos1)
-    bT2 = blockview(T2,pos2)
-    bR = blockview(R,posR)
+    bT1 = block(blockoffsets(T1)[pos1])
+    bT2 = block(blockoffsets(T2)[pos2])
+    bR = block(blockoffsets(R)[posR])
     α = compute_alpha(labelsR,bR,inds(R),labelsT1,bT1,inds(T1),labelsT2,bT2,inds(T2))
+    blockT1 = blockview(T1,pos1)
+    blockT2 = blockview(T2,pos2)
+    blockR = blockview(R,posR)
     β = 1
     if !already_written_to[posR]
       already_written_to[posR] = true
       # Overwrite the block of R
       β = 0
     end
-    contract!(bR,labelsR,
-              bT1,labelsT1,
-              bT2,labelsT2,
+    contract!(blockR,labelsR,
+              blockT1,labelsT1,
+              blockT2,labelsT2,
               α,β)
   end
   return R
