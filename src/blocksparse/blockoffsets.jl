@@ -24,11 +24,16 @@ const BlockOffsets{N} = Vector{BlockOffset{N}}
 BlockOffset(block::Block{N},
             offset::Int) where {N} = BlockOffset{N}(block, offset)
 
+block(bof::BlockOffset) = first(bof)
+
 nzblock(bof::BlockOffset) = first(bof)
 
 offset(bof::BlockOffset) = last(bof)
 
+block(block::Block) = block
+
 nzblock(block::Block) = block
+
 
 # Get the offset if the nth block in the block-offsets
 # list
