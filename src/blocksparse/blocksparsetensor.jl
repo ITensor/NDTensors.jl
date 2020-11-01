@@ -709,6 +709,7 @@ function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
     # <fermions>
     pfac = permfactor(perm,blockT,inds(R))
     fac_f = (r,t)->f(r,pfac*t)
+
     permutedims!(Rblock,Tblock,perm,fac_f)
   end
   return R
@@ -874,9 +875,12 @@ function contract(T1::BlockSparseTensor{<:Any,N1},
 end
 
 # <fermions>
-compute_alpha(labelsR,blockR,indsR,
+function compute_alpha(labelsR,blockR,indsR,
               labelsT1,blockT1,indsT1,
-              labelsT2,blockT2,indsT2)::Float64 = 1.0
+              labelsT2,blockT2,indsT2)
+  #println("Default compute_alpha")
+  return 1.0
+end
 
 function contract!(R::BlockSparseTensor{<:Number,NR},
                    labelsR,
