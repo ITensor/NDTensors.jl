@@ -681,21 +681,21 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
   return RR
 end
 
-# <fermions>
-permfactor(perm,block::NTuple{N,Int},inds) where {N} = 1
 
 # <fermions>
-function scale_by_permfactor!(T::BlockSparseTensor{<:Number,N},
-                              perm::NTuple{N,Int},
-                              inds) where {N}
+function scale_blocks!(T::BlockSparseTensor{<:Number,N},
+                       compute_fac::Function=(b)->1) where {N}
   for (blockT,_) in blockoffsets(T)
-    Tblock = blockview(T,blockT)
-    pfac = permfactor(perm,blockT,inds)
-    if pfac != 1
-      scale!(Tblock,pfac)
+    fac = compute_fac(blockT)
+    if fac != 1
+      Tblock = blockview(T,blockT)
+      scale!(Tblock,fac)
     end
   end
 end
+
+# <fermions>
+permfactor(perm,block::NTuple{N,Int},inds) where {N} = 1
 
 function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
                            T::BlockSparseTensor{<:Number,N},
