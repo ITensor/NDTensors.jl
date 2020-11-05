@@ -707,7 +707,7 @@ function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
     Rblock = blockview(R,permute(blockT,perm))
 
     # <fermions>
-    pfac = permfactor(perm,blockT,inds(R))
+    pfac = permfactor(perm,blockT,inds(T))
     fac_f = (r,t)->f(r,pfac*t)
 
     permutedims!(Rblock,Tblock,perm,fac_f)
