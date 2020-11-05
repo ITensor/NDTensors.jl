@@ -681,6 +681,10 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
   return RR
 end
 
+function scale_blocks!(T,
+                       compute_fac::Function=(b)->1) where {N}
+  # intentionally left blank
+end
 
 # <fermions>
 function scale_blocks!(T::BlockSparseTensor{<:Number,N},
