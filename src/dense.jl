@@ -455,8 +455,41 @@ function outer!(R::DenseTensor{ElR},
   RM = reshape(R, length(v1), length(v2))
   #RM .= v1 .* transpose(v2)
   #mul!(RM, v1, transpose(v2))
-  BLAS.gemm!('N', 'T', one(ElR), v1, v2, zero(ElR), RM)
+  _gemm!('N', 'T', one(ElR), v1, v2, zero(ElR), RM)
   return R
+end
+
+# BLAS matmul
+function _gemm!(tA, tB, alpha,
+                A::AbstractVecOrMat{LinearAlgebra.BlasFloat}, B::AbstractVecOrMat{LinearAlgebra.BlasFloat},
+                beta, C::AbstractVecOrMat{LinearAlgebra.BlasFloat})
+    BLAS.gemm!(tA, tB, alpha, A, B, beta, C)
+end
+
+# generic matmul
+function _gemm!(tA, tB, alpha::AT,
+                A::AbstractVecOrMat, B::AbstractVecOrMat,
+                beta::BT, C::AbstractVecOrMat) where {AT, BT}
+    if tA == 'T'
+        A = transpose(A)
+    end
+    if tB == 'T'
+        B = transpose(B)
+    end
+    if beta == zero(BT)
+        if alpha == one(AT)
+            C .= A * B
+        else
+            C .= alpha .* (A * B)
+        end
+    else
+        if alpha == one(AT)
+            C .= (A * B) .+ beta .* C
+        else
+            C .= alpha .* (A * B) .+ beta .* C
+        end
+    end
+    return C
 end
 
 function outer!!(R::Tensor,
@@ -696,7 +729,7 @@ function _contract!(CT::DenseTensor{El, NC},
     end
   end
 
-  BLAS.gemm!(tA, tB, El(α), AM, BM, El(β), CM)
+  _gemm!(tA, tB, El(α), AM, BM, El(β), CM)
 
   if props.permuteC
     pC = NTuple{NC, Int}(props.PC)
