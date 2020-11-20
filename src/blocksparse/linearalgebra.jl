@@ -32,7 +32,7 @@ computed from the dense svds of seperate blocks.
 """
 function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
                            kwargs...) where {ElT}
-  alg::String = get(kwargs, :alg, "recursive")
+  alg::String = get(kwargs, :alg, "divide_and_conquer")
 
   truncate = haskey(kwargs, :maxdim) || haskey(kwargs, :cutoff)
 
