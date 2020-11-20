@@ -148,4 +148,25 @@ end
 
 end
 
+@testset "generic contraction" begin
+    # correctness of _gemm!
+    for alpha in [0.0, 1.0, 2.0]
+        for beta in [0.0, 1.0, 2.0]
+            for tA in ['N', 'T']
+                for tB in ['N', 'T']
+                    A = randn(4, 4)
+                    B = randn(4, 4)
+                    C = randn(4, 4)
+                    A = BigFloat.(A)
+                    B = BigFloat.(B)
+                    C2 = BigFloat.(C)
+                    NDTensors._gemm!(tA, tB, alpha, A, B, beta, C)
+                    NDTensors._gemm!(tA, tB, alpha, A, B, beta, C2)
+                    @test C ≈ C2
+                end
+            end
+        end
+    end
+end
+
 nothing
