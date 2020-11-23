@@ -7,15 +7,19 @@ export Combiner
 struct Combiner <: TensorStorage{Number}
   perm::Vector{Int}
   comb::Vector{Int}
-  Combiner(perm::Vector{Int},comb::Vector{Int}) = new(perm,comb)
+  cind::Vector{Int}
+  Combiner(perm::Vector{Int},comb::Vector{Int},cind::Vector{Int}) = new(perm,comb,cind)
 end
 
-Combiner() = Combiner(Int[],Int[])
+Combiner(perm::Vector{Int},comb::Vector{Int}) = Combiner(perm,comb,Int[1])
+
+Combiner() = Combiner(Int[],Int[],Int[1])
 
 data(::Combiner) = error("Combiner storage has no data")
 
 blockperm(C::Combiner) = C.perm
 blockcomb(C::Combiner) = C.comb
+cinds(C::Combiner) = C.cind
 
 Base.eltype(::Type{<:Combiner}) = Number
 
