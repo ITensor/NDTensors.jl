@@ -484,6 +484,9 @@ function permutedims_combine(T::BlockSparseTensor{ElT,N},
   for bof in blockoffsets(T)
     Tb = blockview(T,bof)
     b = nzblock(bof)
+    # <fermions>: good place to include combiner perm factor?
+    # @show permfactor(perm,bof[1],inds(T))
+    # maybe pass permfactor to permute below
     b_perm = permute(b,perm)
     b_perm_comb = combine_dims(b_perm,inds_perm,combdims_perm)
     b_perm_comb = perm_block(b_perm_comb,comb_ind_loc,blockperm)
