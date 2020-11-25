@@ -350,9 +350,9 @@ end
 Base.BroadcastStyle(::Type{T}) where {T<:Tensor} = Broadcast.ArrayStyle{T}()
 
 function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{T}},
-                      ::Type{<:Any}) where {T<:Tensor}
+                      ::Type{ElT}) where {T<:Tensor, ElT}
   A = find_tensor(bc)
-  return similar(A)
+  return similar(A, ElT)
 end
 
 "`A = find_tensor(As)` returns the first Tensor among the arguments."
