@@ -5,6 +5,7 @@ using Random
 using LinearAlgebra
 using StaticArrays
 using HDF5
+using Requires
 using Strided
 
 #####################################
@@ -43,5 +44,12 @@ include("blocksparse/linearalgebra.jl")
 # Empty
 #
 include("empty.jl")
+
+#####################################
+# Optional TBLIS contraction backend
+#
+function __init__()
+  @require TBLIS="48530278-0828-4a49-9772-0f3830dfa1e9" include("tblis.jl")
+end
 
 end # module NDTensors
