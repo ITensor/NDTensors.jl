@@ -1,16 +1,21 @@
-export addblock!!,
-       setindex,
-       setindex!!,
+export 
+# NDTensors.jl
+  disable_tblis!,
+  enable_tblis!,
+
+  addblock!!,
+  setindex,
+  setindex!!,
 
 # blocksparse/blocksparsetensor.jl
-       randomBlockSparseTensor,
+  randomBlockSparseTensor,
 
 # dense.jl
-       randomTensor,
-       randomDenseTensor,
+  randomTensor,
+  randomDenseTensor,
 
 # empty.jl
-       Empty,
-       EmptyTensor,
-       EmptyBlockSparseTensor
+  Empty,
+  EmptyTensor,
+  EmptyBlockSparseTensor
 
