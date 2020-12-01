@@ -626,14 +626,19 @@ function _contract!!(R::Tensor, labelsR,
   return R
 end
 
-function contract!(R::DenseTensor{<:Number,NR},
+function contract!(R::DenseTensor{ElR, NR},
                    labelsR,
-                   T1::DenseTensor{ElT1,N1},
+                   T1::DenseTensor{ElT1, N1},
                    labelsT1,
-                   T2::DenseTensor{ElT2,N2},
+                   T2::DenseTensor{ElT2, N2},
                    labelsT2,
-                   α::Number=1,
-                   β::Number=0) where {ElT1,ElT2,N1,N2,NR}
+                   α::Elα = one(ElR),
+                   β::Elβ = zero(ElR)) where {Elα, Elβ, ElR, ElT1, ElT2, NR, N1, N2}
+  if use_tblis() && ElR <: LinearAlgebra.BlasReal && (ElR == ElT1 == ElT2 == Elα == Elβ)
+    contract!(Val(:TBLIS), R, labelsR, T1, labelsT1, T2, labelsT2, α, β)
+    return R
+  end
+
   if N1+N2==NR
     outer!(R,T1,T2)
     labelsRp = (labelsT1..., labelsT2...)
@@ -654,16 +659,16 @@ function contract!(R::DenseTensor{<:Number,NR},
     # TODO: use promote instead
     # T1, T2 = promote(T1, T2)
 
-    ElR = promote_type(ElT1, ElT2)
+    ElT1T2 = promote_type(ElT1, ElT2)
     if ElT1 != ElR
       # TODO: get this working
       # T1 = ElR.(T1)
-      T1 = one(ElR) * T1
+      T1 = one(ElT1T2) * T1
     end
     if ElT2 != ElR
       # TODO: get this working
       # T2 = ElR.(T2)
-      T2 = one(ElR) * T2
+      T2 = one(ElT1T2) * T2
     end
   end
 

@@ -1,12 +1,13 @@
 
-function contract!(R::DenseTensor{ElT},
+function contract!(::Val{:TBLIS},
+                   R::DenseTensor{ElT},
                    labelsR,
                    T1::DenseTensor{ElT},
                    labelsT1,
                    T2::DenseTensor{ElT},
                    labelsT2,
-                   α::ElT = one(ElT),
-                   β::ElT = zero(ElT)) where {ElT <: LinearAlgebra.BlasReal}
+                   α::ElT,
+                   β::ElT) where {ElT <: LinearAlgebra.BlasReal}
   # TBLIS Tensors
   R_tblis = TBLIS.TTensor{ElT}(array(R), β)
   T1_tblis = TBLIS.TTensor{ElT}(array(T1), α)

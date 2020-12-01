@@ -48,8 +48,25 @@ include("empty.jl")
 #####################################
 # Optional TBLIS contraction backend
 #
+const _use_tblis = Ref(false)
+
+use_tblis() = _use_tblis[]
+
+function enable_tblis!()
+  _use_tblis[] = true
+  return nothing
+end
+
+function disable_tblis!()
+  _use_tblis[] = false
+  return nothing
+end
+
 function __init__()
-  @require TBLIS="48530278-0828-4a49-9772-0f3830dfa1e9" include("tblis.jl")
+  @require TBLIS="48530278-0828-4a49-9772-0f3830dfa1e9" begin
+    enable_tblis!()
+    include("tblis.jl")
+  end
 end
 
 end # module NDTensors
