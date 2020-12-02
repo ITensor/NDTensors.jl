@@ -46,7 +46,11 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
   for n in 1:nnzblocks(T)
     b = nzblock(T, n)
     blockT = blockview(T, n)
-    Ub, Sb, Vb = svd(blockT; alg = alg)
+    USVb = svd(blockT; alg = alg)
+    if isnothing(USVb)
+      return nothing
+    end
+    Ub, Sb, Vb = USVb
     Us[n] = Ub
     Ss[n] = Sb
     Vs[n] = Vb

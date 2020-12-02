@@ -852,25 +852,26 @@ function contract(T1::BlockSparseTensor{<:Any,N1},
   return R
 end
 
-function contract!(R::BlockSparseTensor{<:Number,NR},
+function contract!(R::BlockSparseTensor{ElR, NR},
                    labelsR,
-                   T1::BlockSparseTensor{<:Number,N1},
+                   T1::BlockSparseTensor{ElT1, N1},
                    labelsT1,
-                   T2::BlockSparseTensor{<:Number,N2},
+                   T2::BlockSparseTensor{ElT2, N2},
                    labelsT2,
-                   contraction_plan) where {N1,N2,NR}
+                   contraction_plan) where {ElR, ElT1, ElT2,
+                                            N1, N2, NR}
   already_written_to = fill(false,nnzblocks(R))
   # In R .= α .* (T1 * T2) .+ β .* R
-  α = 1
+  α = one(ElR)
   for (pos1,pos2,posR) in contraction_plan
     blockT1 = blockview(T1,pos1)
     blockT2 = blockview(T2,pos2)
     blockR = blockview(R,posR)
-    β = 1
+    β = one(ElR)
     if !already_written_to[posR]
       already_written_to[posR] = true
       # Overwrite the block of R
-      β = 0
+      β = zero(ElR)
     end
     contract!(blockR,labelsR,
               blockT1,labelsT1,

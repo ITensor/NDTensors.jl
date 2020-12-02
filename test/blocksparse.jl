@@ -288,7 +288,7 @@ using LinearAlgebra
       A = BlockSparseTensor([(1,2),(2,3)],[5,6],[2,3,4])
       randn!(A)
       U,S,V = svd(A)
-      @test isapprox(norm(array(U)*array(S)*array(V)'-array(A)),0.0; atol=1e-14)
+      @test isapprox(norm(array(U)*array(S)*array(V)'-array(A)),0.0; atol=1e-13)
     end
   end
 
