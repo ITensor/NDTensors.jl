@@ -308,7 +308,7 @@ end
 # Some generic getindex and setindex! functionality
 #
 
-setindex!!(T::Tensor, x::Number, I...) = setindex!(T, x, I...)
+setindex!!(T::Tensor, x, I...) = setindex!(T, x, I...)
 
 addblock!!(T::Tensor, block) = addblock!(T, block)
 

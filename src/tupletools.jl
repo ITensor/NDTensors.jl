@@ -9,6 +9,10 @@ ValLength(::Type{NTuple{N,T}}) where {N,T} = Val{N}
 """
 ValLength(::NTuple{N}) where {N} = Val(N)
 
+ValLength(::Tuple{Vararg{<:Any, N}}) where {N} = Val(N)
+
+ValLength(::Type{<:Tuple{Vararg{<:Any, N}}}) where {N} = Val{N}
+
 ValLength(::CartesianIndex{N}) where {N} = Val(N)
 ValLength(::Type{CartesianIndex{N}}) where {N} = Val{N}
 
@@ -25,8 +29,18 @@ popfirst(s::NTuple{N}) where {N} = ntuple(i -> s[i+1],
 # Permute some other type by perm
 # (for example, tuple, MVector, etc.)
 # as long as the constructor accepts a tuple
-function permute(s::T,perm) where {T}
-  return T(ntuple(i->s[perm[i]], ValLength(T)()))
+function _permute(s::T, perm) where {T}
+  return ntuple(i->s[perm[i]], ValLength(T)())
+end
+
+permute(s::Tuple, perm) = _permute(s, perm)
+
+function permute(s::T, perm) where {T <: NTuple}
+  return T(_permute(s, perm))
+end
+
+function permute(s::T, perm) where {T}
+  return T(_permute(s, perm))
 end
 
 sim(s::NTuple) = s
