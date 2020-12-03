@@ -502,10 +502,15 @@ function permutedims_combine(T::BlockSparseTensor{ElT,N},
     dimsRb_tot = dims(Rb_total)
     subind = ntuple(i->i==comb_ind_loc ? range(1+offset,stop=offset+blockdim(ind_comb,b_in_combined_dim)) : range(1,stop=dimsRb_tot[i]),N-NC+1)
     Rb = @view array(Rb_total)[subind...]
-    #Rb = reshape(Rb,permute(dims(Tb),perm))
-    #permutedims!(Rb,Tb,perm)
-    Tb_perm = permutedims(Tb,perm)
-    copyto!(Rb,Tb_perm)
+
+    # XXX Are these equivalent?
+    #Tb_perm = permutedims(Tb,perm)
+    #copyto!(Rb,Tb_perm)
+
+    # XXX Not sure what this was for
+    Rb = reshape(Rb,permute(dims(Tb),perm))
+    Tbₐ = convert(Array, Tb)
+    @strided Rb .= permutedims(Tbₐ, perm)
   end
 
   return R
@@ -637,7 +642,12 @@ function uncombine(T::BlockSparseTensor{<:Number,NT},
 
       Tb = @view array(Tb_tot)[subind...]
 
-      copyto!(Rb,Tb)
+      # Alternative (but maybe slower):
+      #copyto!(Rb,Tb)
+ 
+      Rbₐ = convert(Array, Rb)
+      Rbₐ = reshape(Rbₐ, size(Tb))
+      @strided Rbₐ .= Tb
     end
   end
   return R
