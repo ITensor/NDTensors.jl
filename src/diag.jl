@@ -400,9 +400,10 @@ end
 
 function contract!(C::DenseTensor{ElC,NC},Clabels,
                    A::DiagTensor{ElA,NA},Alabels,
-                   B::DenseTensor{ElB,NB},Blabels) where {ElA,NA,
-                                                          ElB,NB,
-                                                          ElC,NC}
+                   B::DenseTensor{ElB,NB},Blabels;
+                   convert_to_dense::Bool = true) where {ElA,NA,
+                                                         ElB,NB,
+                                                         ElC,NC}
   if all(i -> i < 0, Blabels)
     # If all of B is contracted
     # TODO: can also check NC+NB==NA
@@ -422,71 +423,75 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
       end
     end
   else
-    astarts = zeros(Int,length(Alabels))
-    bstart = 0
-    cstart = 0
-    b_cstride = 0
-    nbu = 0
-    for ib = 1:length(Blabels)
-      ia = findfirst(==(Blabels[ib]),Alabels)
-      if !isnothing(ia)
-        b_cstride += Base.stride(B,ib)
-        bstart += astarts[ia]*Base.stride(B,ib)
-      else
-        nbu += 1
+    if convert_to_dense
+      contract!(C, Clabels, dense(A), Alabels, B, Blabels)
+    else
+      astarts = zeros(Int,length(Alabels))
+      bstart = 0
+      cstart = 0
+      b_cstride = 0
+      nbu = 0
+      for ib = 1:length(Blabels)
+        ia = findfirst(==(Blabels[ib]),Alabels)
+        if !isnothing(ia)
+          b_cstride += Base.stride(B,ib)
+          bstart += astarts[ia]*Base.stride(B,ib)
+        else
+          nbu += 1
+        end
       end
-    end
 
-    c_cstride = 0
-    for ic = 1:length(Clabels)
-      ia = findfirst(==(Clabels[ic]),Alabels)
-      if !isnothing(ia)
-        c_cstride += Base.stride(C,ic)
-        cstart += astarts[ia]*Base.stride(C,ic)
+      c_cstride = 0
+      for ic = 1:length(Clabels)
+        ia = findfirst(==(Clabels[ic]),Alabels)
+        if !isnothing(ia)
+          c_cstride += Base.stride(C,ic)
+          cstart += astarts[ia]*Base.stride(C,ic)
+        end
       end
-    end
 
-    # strides of the uncontracted dimensions of
-    # B
-    bustride = zeros(Int,nbu)
-    custride = zeros(Int,nbu)
-    # size of the uncontracted dimensions of
-    # B, to be used in CartesianIndices
-    busize = zeros(Int,nbu)
-    n = 1
-    for ib = 1:length(Blabels)
-      if Blabels[ib] > 0
-        bustride[n] = Base.stride(B,ib)
-        busize[n] = size(B,ib)
-        ic = findfirst(==(Blabels[ib]),Clabels)
-        custride[n] = Base.stride(C,ic)
-        n += 1
+      # strides of the uncontracted dimensions of
+      # B
+      bustride = zeros(Int,nbu)
+      custride = zeros(Int,nbu)
+      # size of the uncontracted dimensions of
+      # B, to be used in CartesianIndices
+      busize = zeros(Int,nbu)
+      n = 1
+      for ib = 1:length(Blabels)
+        if Blabels[ib] > 0
+          bustride[n] = Base.stride(B,ib)
+          busize[n] = size(B,ib)
+          ic = findfirst(==(Blabels[ib]),Clabels)
+          custride[n] = Base.stride(C,ic)
+          n += 1
+        end
       end
-    end
 
-    boffset_orig = 1-sum(Base.strides(B))
-    coffset_orig = 1-sum(Base.strides(C))
-    cartesian_inds = CartesianIndices(Tuple(busize))
-    for inds in cartesian_inds
-      boffset = boffset_orig
-      coffset = coffset_orig
-      for i in 1:nbu
-        ii = inds[i]
-        boffset += ii*bustride[i]
-        coffset += ii*custride[i]
-      end
-      for j in 1:diaglength(A)
-        C[cstart+j*c_cstride+coffset] += getdiagindex(A,j)*
-                                         B[bstart+j*b_cstride+boffset]
+      boffset_orig = 1-sum(Base.strides(B))
+      coffset_orig = 1-sum(Base.strides(C))
+      cartesian_inds = CartesianIndices(Tuple(busize))
+      for inds in cartesian_inds
+        boffset = boffset_orig
+        coffset = coffset_orig
+        for i in 1:nbu
+          ii = inds[i]
+          boffset += ii*bustride[i]
+          coffset += ii*custride[i]
+        end
+        for j in 1:diaglength(A)
+          C[cstart+j*c_cstride+coffset] += getdiagindex(A,j)*
+                                           B[bstart+j*b_cstride+boffset]
+        end
       end
     end
   end
 end
+
 contract!(C::DenseTensor,Clabels,
           A::DenseTensor,Alabels,
-          B::DiagTensor,Blabels) = contract!(C,Clabels,
-                                             B,Blabels,
-                                             A,Alabels)
+          B::DiagTensor,Blabels) =
+  contract!(C, Clabels, B, Blabels, A, Alabels)
 
 function Base.show(io::IO,
                    mime::MIME"text/plain",

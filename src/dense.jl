@@ -366,6 +366,14 @@ function Base.Array(T::DenseTensor{ElT,N}) where {ElT,N}
   return Array{ElT,N}(T)
 end
 
+function Base.copyto!(R::DenseTensor{<:Number, N},
+                      T::DenseTensor{<:Number, N}) where {N}
+  RA = array(R)
+  TA = array(T)
+  @strided RA .= TA
+  return R
+end
+
 # TODO: call permutedims!(R,T,perm,(r,t)->t)?
 function Base.permutedims!(R::DenseTensor{<:Number,N},
                            T::DenseTensor{<:Number,N},
