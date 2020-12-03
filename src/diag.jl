@@ -134,6 +134,9 @@ function Base.convert(::Type{<:DenseTensor{ElT,N}}, T::DiagTensor{ElT,N}) where 
   return dense(T)
 end
 
+Base.convert(::Type{Diagonal}, D::DiagTensor{<:Number, 2}) =
+  Diagonal(data(D))
+
 # These are rules for determining the output of a pairwise contraction of NDTensors
 # (given the indices of the output tensors)
 function contraction_output_type(TensorT1::Type{<:DiagTensor},

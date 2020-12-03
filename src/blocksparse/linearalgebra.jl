@@ -163,6 +163,14 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
     blockS = nzblocksS[n]
     blockV = nzblocksV[n]
 
+    if VERSION < v"1.5"
+      # In v1.3 and v1.4 of Julia, Ub has
+      # a very complicated view wrapper that
+      # can't be handled efficiently
+      Ub = copy(Ub)
+      Vb = copy(Vb)
+    end
+
     blockview(U, blockU) .= Ub
     blockviewS = blockview(S, blockS)
     for i in 1:diaglength(Sb)
