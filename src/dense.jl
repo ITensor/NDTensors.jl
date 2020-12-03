@@ -461,8 +461,9 @@ end
 
 # BLAS matmul
 function _gemm!(tA, tB, alpha,
-                A::AbstractVecOrMat{LinearAlgebra.BlasFloat}, B::AbstractVecOrMat{LinearAlgebra.BlasFloat},
-                beta, C::AbstractVecOrMat{LinearAlgebra.BlasFloat})
+                A::AbstractVecOrMat{<:LinearAlgebra.BlasFloat},
+                B::AbstractVecOrMat{<:LinearAlgebra.BlasFloat},
+                beta, C::AbstractVecOrMat{<:LinearAlgebra.BlasFloat})
     BLAS.gemm!(tA, tB, alpha, A, B, beta, C)
 end
 
