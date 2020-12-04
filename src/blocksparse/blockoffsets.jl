@@ -21,10 +21,6 @@ nzblock(block::Block) = block
 offset(bofs::BlockOffsets, n::Int) =
   offset(bofs[n])
 
-# TODO: rename nzblock?
-nzblock(bofs::BlockOffsets,
-        n::Int) = nzblock(bofs[n])
-
 nnzblocks(bofs::BlockOffsets) = length(bofs)
 nnzblocks(bs::Blocks) = length(bs)
 
