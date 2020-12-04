@@ -436,6 +436,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     BtoC = props.BtoC
     ai = props.ai
     bi = props.bi
+    ci = props.ci
     Bcstart = props.Bcstart
     Bustart = props.Bustart
 
@@ -509,24 +510,34 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
   end
 
   if props.permuteA || props.permuteB
+    AtoC = props.AtoC
+    BtoC = props.BtoC
+    PC = props.PC
+
     #Recompute props.PC
     c = 1
     #TODO: check this is correct for 1-indexing
     for i = 1:NA
-      if !contractedA(props,i)
-        props.PC[props.AtoC[i]] = c
+      AtoC_i = AtoC[i]
+      if !(AtoC_i < 1)
+        #props.PC[props.AtoC[i]] = c
+        PC = Base.setindex(PC, c, AtoC_i)
         c += 1
       end
     end
     #TODO: check this is correct for 1-indexing
     for j = 1:NB
-      if !contractedB(props,j)
-        props.PC[props.BtoC[j]] = c
+      BtoC_j = BtoC[j]
+      if !(BtoC_j < 1)
+        #props.PC[props.BtoC[j]] = c
+        PC = Base.setindex(PC, c, BtoC_j)
         c += 1
       end
     end
+    props.PC = PC
+
     props.ctrans = false
-    if(is_trivial_permutation(props.PC))
+    if(is_trivial_permutation(PC))
       props.permuteC = false
     else
       props.permuteC = true
@@ -544,10 +555,12 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
   if props.permuteC
     Rb = MVector{NC,Int}(undef) #Int[]
     k = 1
+    AtoC = props.AtoC
+    BtoC = props.BtoC
     if !props.permuteA
       #TODO: check this is correct for 1-indexing
       for i = 1:NA
-        if !contractedA(props,i)
+        if !(AtoC[i] < 1)
           #push!(Rb,size(A,i))
           Rb[k] = size(A, i)
           k = k + 1
@@ -556,7 +569,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     else
       #TODO: check this is correct for 1-indexing
       for i = 1:NA
-        if !contractedA(props,i)
+        if !(AtoC[i] < 1)
           #push!(Rb,size(props.newArange,i))
           Rb[k] = props.newArange[i]
           k = k + 1
@@ -566,7 +579,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     if !props.permuteB
       #TODO: check this is correct for 1-indexing
       for j = 1:NB
-        if !contractedB(props,j)
+        if !(BtoC[j] < 1)
           #push!(Rb,size(B,j))
           Rb[k] = size(B, j)
           k = k + 1
@@ -575,7 +588,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     else
       #TODO: check this is correct for 1-indexing
       for j = 1:NB
-        if !contractedB(props,j)
+        if !(BtoC[j] < 1)
           #push!(Rb,size(props.newBrange,j))
           Rb[k] = props.newBrange[j]
           k = k + 1
