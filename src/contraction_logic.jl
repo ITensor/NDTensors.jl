@@ -368,30 +368,42 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     #props.PA = fill(0,ra)
     #Permute contracted indices to the front,
     #in the same order as on B
+
+    AtoC = props.AtoC
+    BtoC = props.BtoC
+    ai = props.ai
+    bi = props.bi
+    PA = props.PA
+
     newi = 0
-    #TODO: check this is correct for 1-indexing
     bind = props.Bcstart
     for i = 1:props.ncont
-      while !contractedB(props,bind) bind += 1 end
-      j = findfirst(==(props.bi[bind]),props.ai)
-      props.PA[newi + 1] = j
+      while !(BtoC[bind] < 1) bind += 1 end
+      j = findfirst(==(bi[bind]), ai)
+      #props.PA[newi + 1] = j
+      PA = Base.setindex(PA, j, newi + 1)
       bind += 1
       newi += 1
     end
     #Reset p.AtoC:
-    fill!(props.AtoC,0)
+    #fill!(props.AtoC,0)
+    AtoC = ntuple(_ -> 0, Val(NA))
     #Permute uncontracted indices to
     #appear in same order as on C
     #TODO: check this is correct for 1-indexing
     for k = 1:NC
       j = findfirst(==(props.ci[k]),props.ai)
       if !isnothing(j)
-        props.AtoC[newi+1] = k
-        props.PA[newi+1] = j
+        #props.AtoC[newi+1] = k
+        AtoC = Base.setindex(AtoC, k, newi+1)
+        #props.PA[newi+1] = j
+        PA = Base.setindex(PA, j, newi+1)
         newi += 1
       end
       newi==NA && break
     end
+    props.PA = PA
+    props.AtoC = AtoC
   end
 
   ##Also update props.Austart,props.Acstart
@@ -419,61 +431,81 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
   props.newArange = newArange
 
   if(props.permuteB)
+    PB = props.PB
+    AtoC = props.AtoC
+    BtoC = props.BtoC
+    ai = props.ai
+    bi = props.bi
+    Bcstart = props.Bcstart
+    Bustart = props.Bustart
+
     #props.PB = fill(0,rb)
     #TODO: check this is correct for 1-indexing
     newi = 0 #1
+
     if(props.permuteA)
       #A's contracted indices already set to
       #be in same order as B above, so just
       #permute contracted indices to the front
       #keeping relative order
-      #TODO: how to translate this for loop?
-      #for(int i = props.Bcstart; newi < props.ncont; ++newi)
+
       i = props.Bcstart
-      #TODO: check this is correct for 1-indexing
       while newi < props.ncont
-        while !contractedB(props,i) i += 1 end
-        props.PB[newi+1] = i
+        while !(BtoC[i] < 1) i += 1 end
+        #props.PB[newi+1] = i
+        PB = Base.setindex(PB, i, newi+1)
         i += 1
         newi += 1
       end
     else
       #Permute contracted indices to the
       #front and in same order as on A
+
       aind = props.Acstart
       for i = 0:(props.ncont-1)
-        while !contractedA(props,aind) aind += 1 end
-        j = findfirst(==(props.ai[aind]),props.bi)
-        props.PB[newi + 1] = j
+        while !(AtoC[aind] < 1) aind += 1 end
+        j = findfirst(==(ai[aind]), bi)
+        #props.PB[newi + 1] = j
+        PB = Base.setindex(PB, j, newi + 1)
         aind += 1
         newi += 1
       end
     end
+
     #Reset p.BtoC:
-    fill!(props.BtoC,0)
+    #fill!(props.BtoC,0)
+    BtoC = ntuple(_ -> 0, Val(NB))
+
     #Permute uncontracted indices to
     #appear in same order as on C
     for k = 1:NC
-      j = findfirst(==(props.ci[k]),props.bi)
+      j = findfirst(==(ci[k]), bi)
       if !isnothing(j)
-        props.BtoC[newi + 1] = k
-        props.PB[newi + 1] = j
+        #props.BtoC[newi + 1] = k
+        BtoC = Base.setindex(BtoC, k, newi + 1)
+        #props.PB[newi + 1] = j
+        PB = Base.setindex(PB, j, newi + 1)
         newi += 1
       end
-      newi==NB && break
+      newi == NB && break
     end
-    props.Bcstart = NB
-    props.Bustart = NB
+    Bcstart = NB
+    Bustart = NB
     for i = 1:NB
-      if(contractedB(props,i))
-          props.Bcstart = min(i,props.Bcstart)
+      if BtoC[i] < 1
+        Bcstart = min(i, Bcstart)
       else
-          props.Bustart = min(i,props.Bustart)
+        Bustart = min(i, Bustart)
       end
     end
     #props.newBrange = permute_extents([size(B)...],props.PB)
     #props.newBrange = [size(B)...][props.PB]
-    props.newBrange = permute(size(B), props.PB)
+    props.newBrange = permute(size(B), PB)
+ 
+    props.BtoC = BtoC
+    props.PB = PB
+    props.Bcstart = Bcstart
+    props.Bustart = Bustart
   end
 
   if props.permuteA || props.permuteB
