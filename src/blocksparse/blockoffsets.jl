@@ -28,7 +28,10 @@ nzblock(bofs::BlockOffsets,
 nnzblocks(bofs::BlockOffsets) = length(bofs)
 nnzblocks(bs::Blocks) = length(bs)
 
-nzblocks(bofs::BlockOffsets) = keys(bofs)
+eachnzblock(bofs::BlockOffsets) = keys(bofs)
+
+nzblocks(bofs::BlockOffsets) = collect(eachnzblock(bofs))
+
 
 # define block ordering with reverse lexographical order
 function isblockless(b1::Block{N},
@@ -56,26 +59,10 @@ offset(bofs::BlockOffsets{N}, block::Block{N}) where {N} = get(bofs, block, noth
 function nnz(bofs::BlockOffsets, inds)
   _nnz = 0
   nnzblocks(bofs) == 0 && return _nnz
-  for block in nzblocks(bofs)
+  for block in eachnzblock(bofs)
     _nnz += blockdim(inds, block)
   end
   return _nnz
-end
-
-"""
-new_block_pos(::BlockOffsets,::Block)
-
-Output the index where the specified block should go in
-the block-offsets list.
-Searches assuming the blocks are sorted.
-If the block already exists, throw an error.
-"""
-function new_block_pos(bofs::BlockOffsets{N},
-                       block::Block{N}) where {N}
-  r = searchsorted(bofs,block;lt=isblockless)
-  length(r)>1 && error("In new_block_pos, more than one block found")
-  length(r)==1 && error("In new_block_pos, block already found")
-  return first(r)
 end
 
 # TODO: should this be a constructor?

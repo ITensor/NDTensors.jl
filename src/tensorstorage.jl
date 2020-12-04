@@ -76,6 +76,8 @@ Return a vector of the non-zero blocks of the BlockSparse storage.
 """
 nzblocks(T::TensorStorage) = nzblocks(blockoffsets(T))
 
+eachnzblock(T::TensorStorage) = eachnzblock(blockoffsets(T))
+
 nnzblocks(S::TensorStorage) = length(blockoffsets(S))
 nnz(S::TensorStorage) = length(S)
 

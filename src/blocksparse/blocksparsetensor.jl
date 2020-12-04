@@ -18,9 +18,6 @@ function similar_type(::Type{<:Tensor{ElT,NT,<:BlockSparse{ElT,VecT},<:Any}},
   return Tensor{ElT,NR,BlockSparse{ElT,VecT,NR},IndsR}
 end
 
-new_block_pos(T::BlockSparseTensor{ElT,N},
-              block::Block{N}) where {ElT,N} = new_block_pos(blockoffsets(T),block)
-
 function BlockSparseTensor(::Type{ElT},
                            ::UndefInitializer,
                            boffs::BlockOffsets{N},
@@ -245,23 +242,12 @@ end
 # Insert it such that the blocks remain ordered.
 # Defaults to adding zeros.
 # Returns the offset of the new block added.
+# XXX rename to insertblock!, no need to return offset
 function addblock_offset!(T::BlockSparseTensor{ElT, N},
                           newblock::Block{N}) where {ElT, N}
   newdim = blockdim(T,newblock)
-  newpos = new_block_pos(T,newblock)
-  newoffset = 0
-  if newpos!=1
-    newoffset = offset(T,newpos-1)+blockdim(T,newpos-1)
-  end
-  # Insert new block into blockoffsets list
-  insert!(blockoffsets(T),newpos,BlockOffset{N}(newblock,newoffset))
-  # Insert new block into data
-  splice!(data(store(T)),newoffset+1:newoffset,zeros(ElT,newdim))
-  # Shift the offsets of the block after the inserted one
-  for i in newpos+1:nnzblocks(T)
-    block_i,offset_i = blockoffsets(T)[i]
-    blockoffsets(T)[i] = BlockOffset{N}(block_i,offset_i+newdim)
-  end
+  newoffset = nnz(T)
+  blockoffsets(T)[newblock] = newoffset
   return newoffset
 end
 
@@ -938,7 +924,7 @@ end
 
 function Base.reshape(boffsT::BlockOffsets{NT},
                       blocksR::Vector{Block{NR}}) where {NR,NT}
-  boffsR = BlockOffsets{NR}(undef,nnzblocks(boffsT))
+  boffsR = BlockOffsets{NR}(undef, nnzblocks(boffsT))
   # TODO: check blocksR is ordered and are properly reshaped
   # versions of the blocks of boffsT
   for (i,(blockT,offsetT)) in enumerate(boffsT)
