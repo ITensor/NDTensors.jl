@@ -5,7 +5,6 @@
 const Block{N} = NTuple{N,Int}
 const Blocks{N} = Vector{Block{N}}
 const BlockOffset{N} = Pair{Block{N},Int}
-#const BlockOffsets{N} = Vector{BlockOffset{N}}
 const BlockOffsets{N} = Dict{Block{N}, Int}
 
 BlockOffset(block::Block{N}, offset::Int) where {N} =
@@ -29,14 +28,7 @@ nzblock(bofs::BlockOffsets,
 nnzblocks(bofs::BlockOffsets) = length(bofs)
 nnzblocks(bs::Blocks) = length(bs)
 
-# TODO: make an iterator eachnzblocks to avoid allocation
-function nzblocks(bofs::BlockOffsets{N}) where {N}
-  blocks = Blocks{N}(undef, nnzblocks(bofs))
-  for i in 1:nnzblocks(bofs)
-    blocks[i] = nzblock(bofs, i)
-  end
-  return blocks
-end
+nzblocks(bofs::BlockOffsets) = keys(bofs)
 
 # define block ordering with reverse lexographical order
 function isblockless(b1::Block{N},
@@ -59,12 +51,12 @@ function isblockless(b1::Block{N},
   return isblockless(b1, nzblock(bof2))
 end
 
-offset(bofs::BlockOffsets{N}, block::Block{N}) where {N} = bofs[block]
+offset(bofs::BlockOffsets{N}, block::Block{N}) where {N} = get(bofs, block, nothing)
 
 function nnz(bofs::BlockOffsets, inds)
   _nnz = 0
   nnzblocks(bofs) == 0 && return _nnz
-  for block in keys(bofs)
+  for block in nzblocks(bofs)
     _nnz += blockdim(inds, block)
   end
   return _nnz

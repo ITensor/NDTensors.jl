@@ -1,7 +1,3 @@
-export BlockSparseTensor,
-       blockview,
-       addblock!
-
 #
 # BlockSparseTensor (Tensor using BlockSparse storage)
 #

@@ -23,7 +23,13 @@ export
   isblocknz,
 
 # blocksparse/blocksparsetensor.jl
+  # Types
+  BlockSparseTensor,
+  # Methods
+  addblock!,
+  blockview,
   randomBlockSparseTensor,
+
 
 # dense.jl
   randomTensor,
