@@ -97,9 +97,9 @@ mutable struct ContractionProperties{NA,NB,NC}
   nactiveA::Int 
   nactiveB::Int 
   nactiveC::Int
-  AtoB::MVector{NA, Int}
-  AtoC::MVector{NA, Int}
-  BtoC::MVector{NB, Int}
+  AtoB::NTuple{NA, Int}
+  AtoC::NTuple{NA, Int}
+  BtoC::NTuple{NB, Int}
   permuteA::Bool
   permuteB::Bool
   permuteC::Bool
@@ -111,9 +111,9 @@ mutable struct ContractionProperties{NA,NB,NC}
   Bcstart::Int
   Austart::Int
   Bustart::Int
-  PA::MVector{NA, Int}
-  PB::MVector{NB, Int}
-  PC::MVector{NC, Int}
+  PA::NTuple{NA, Int}
+  PB::NTuple{NB, Int}
+  PC::NTuple{NC, Int}
   ctrans::Bool
   newArange::NTuple{NA, Int}
   newBrange::NTuple{NB, Int}
@@ -142,50 +142,80 @@ end
 
 function compute_perms!(props::ContractionProperties{NA,NB,NC}) where 
                                                            {NA,NB,NC}
-  #length(props.AtoB)!=0 && return
+  #leng.th(props.AtoB)!=0 && return
+
+  # Access the fields before the loop
+  # since getting fields from the mutable struct
+  # takes nontrivial time
+  ai = props.ai
+  bi = props.bi
+  ci = props.ci
+
+  ncont = props.ncont
+  AtoB = props.AtoB
+  Acstart = props.Acstart
+  Bcstart = props.Bcstart
   for i = 1:NA
     for j = 1:NB
-      if props.ai[i]==props.bi[j]
-        props.ncont += 1
+      if @inbounds ai[i] == @inbounds bi[j]
+        ncont += 1
         #TODO: check this if this should be i,j or i-1,j-1 (0-index or 1-index)
-        i<=props.Acstart && (props.Acstart = i)
-        j<=props.Bcstart && (props.Bcstart = j)
-        props.AtoB[i] = j
+        i <= Acstart && (Acstart = i)
+        j <= Bcstart && (Bcstart = j)
+        #AtoB[i] = j
+        AtoB = Base.setindex(AtoB, j, i)
         break
       end
     end
   end
+  props.ncont = ncont
+  props.AtoB = AtoB
+  props.Acstart = Acstart
+  props.Bcstart = Bcstart
 
+  Austart = props.Austart
+  AtoC = props.AtoC
   for i = 1:NA
     for k = 1:NC
-      if props.ai[i]==props.ci[k]
+      if @inbounds ai[i] == @inbounds ci[k]
         #TODO: check this if this should be i,j or i-1,j-1 (0-index or 1-index)
-        i<=props.Austart && (props.Austart = i)
-        props.AtoC[i] = k
+        i <= Austart && (Austart = i)
+        #AtoC[i] = k
+        AtoC = Base.setindex(AtoC, k, i)
         break
       end
     end
   end
+  props.Austart = Austart
+  props.AtoC = AtoC
 
+  Bustart = props.Bustart
+  BtoC = props.BtoC
   for j = 1:NB
     for k = 1:NC
-      if props.bi[j]==props.ci[k]
+      if bi[j] == ci[k]
         #TODO: check this if this should be i,j or i-1,j-1 (0-index or 1-index)
-        j<=props.Bustart && (props.Bustart = j)
-        props.BtoC[j] = k
+        j <= Bustart && (Bustart = j)
+        #BtoC[j] = k
+        BtoC = Base.setindex(BtoC, k, j)
         break
       end
     end
   end
+  props.Bustart = Bustart
+  props.BtoC = BtoC
 
+  return nothing
 end
 
 function checkACsameord(props::ContractionProperties)::Bool
+  AtoC = props.AtoC
+
   props.Austart>=length(props.ai) && return true
   aCind = props.AtoC[props.Austart]
   for i = 1:length(props.ai)
     if !contractedA(props,i)
-      props.AtoC[i]!=aCind && return false
+      AtoC[i] != aCind && return false
       aCind += 1
     end
   end
@@ -223,26 +253,42 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
 
   #props.PC = fill(0,rc)
 
-  props.dleft = 1
-  props.dmid = 1
-  props.dright = 1
+  PC = props.PC
+  AtoC = props.AtoC
+  BtoC = props.BtoC
+
+  dleft = props.dleft
+  dmid = props.dmid
+  dright = props.dright
+
+  dleft = 1
+  dmid = 1
+  dright = 1
   c = 1
   for i = 1:NA
-    if !contractedA(props,i)
-      props.dleft *= size(A,i)
-      props.PC[props.AtoC[i]] = c
+    #if !contractedA(props,i)
+    if !(AtoC[i] < 1)
+      dleft *= size(A,i)
+      #props.PC[props.AtoC[i]] = c
+      PC = Base.setindex(PC, c, AtoC[i])
       c += 1
     else
-      props.dmid *= size(A,i)
+      dmid *= size(A,i)
     end
   end
   for j = 1:NB
-    if !contractedB(props,j)
-      props.dright *= size(B,j)
-      props.PC[props.BtoC[j]] = c
+    #if !contractedB(props,j)
+    if !(BtoC[j] < 1)
+      dright *= size(B,j)
+      #props.PC[props.BtoC[j]] = c
+      PC = Base.setindex(PC, c, BtoC[j])
       c += 1
     end
   end
+  props.PC = PC
+  props.dleft = dleft
+  props.dmid = dmid
+  props.dright = dright
 
   if !is_trivial_permutation(props.PC)
     props.permuteC = true
@@ -349,18 +395,28 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
   end
 
   ##Also update props.Austart,props.Acstart
-  props.Acstart = NA+1
-  props.Austart = NA+1
+
+  Acstart = props.Acstart
+  Austart = props.Austart
+  newArange = props.newArange
+  PA = props.PA
+
+  Acstart = NA+1
+  Austart = NA+1
   #TODO: check this is correct for 1-indexing
   for i = 1:NA
-    if contractedA(props,i)
-      props.Acstart = min(i,props.Acstart)
+    #if contractedA(props,i)
+    if @inbounds AtoC[i] < 1
+      Acstart = min(i, Acstart)
     else
-      props.Austart = min(i,props.Austart)
+      Austart = min(i, Austart)
     end
     #props.newArange = permute_extents([size(A)...],props.PA)
-    props.newArange = permute(size(A), props.PA) #[size(A)...][props.PA]
+    newArange = permute(size(A), PA) #[size(A)...][props.PA]
   end
+  props.Acstart = Acstart
+  props.Austart = Austart
+  props.newArange = newArange
 
   if(props.permuteB)
     #props.PB = fill(0,rb)
