@@ -1,17 +1,3 @@
-export BlockSparse,
-       BlockSparseTensor,
-       Block,
-       nzblock,
-       BlockOffset,
-       BlockOffsets,
-       blockoffsets,
-       blockview,
-       nnzblocks,
-       nzblocks,
-       nnz,
-       findblock,
-       isblocknz
-
 #
 # BlockOffsets
 #
@@ -19,10 +5,11 @@ export BlockSparse,
 const Block{N} = NTuple{N,Int}
 const Blocks{N} = Vector{Block{N}}
 const BlockOffset{N} = Pair{Block{N},Int}
-const BlockOffsets{N} = Vector{BlockOffset{N}}
+#const BlockOffsets{N} = Vector{BlockOffset{N}}
+const BlockOffsets{N} = Dict{Block{N}, Int}
 
-BlockOffset(block::Block{N},
-            offset::Int) where {N} = BlockOffset{N}(block, offset)
+BlockOffset(block::Block{N}, offset::Int) where {N} =
+  BlockOffset{N}(block, offset)
 
 nzblock(bof::BlockOffset) = first(bof)
 
@@ -32,8 +19,8 @@ nzblock(block::Block) = block
 
 # Get the offset if the nth block in the block-offsets
 # list
-offset(bofs::BlockOffsets,
-       n::Int) = offset(bofs[n])
+offset(bofs::BlockOffsets, n::Int) =
+  offset(bofs[n])
 
 # TODO: rename nzblock?
 nzblock(bofs::BlockOffsets,
