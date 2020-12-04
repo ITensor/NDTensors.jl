@@ -8,26 +8,28 @@ export
   setindex!!,
 
 # blocksparse/blocksparse.jl
-  BlockSparse,
-  BlockSparseTensor,
+  # Types
   Block,
-  nzblock,
   BlockOffset,
   BlockOffsets,
+  BlockSparse,
+  # Methods
   blockoffsets,
   blockview,
-  nnzblocks,
-  nzblocks,
-  nnz,
+  eachnzblock,
   findblock,
   isblocknz,
+  nnzblocks,
+  nnz,
+  nzblock,
+  nzblocks,
 
 # blocksparse/blocksparsetensor.jl
   # Types
   BlockSparseTensor,
   # Methods
-  insertblock!,
   blockview,
+  insertblock!,
   randomBlockSparseTensor,
 
 

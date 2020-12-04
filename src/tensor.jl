@@ -223,6 +223,8 @@ Return a vector of the non-zero blocks of the BlockSparseTensor.
 """
 nzblocks(T::Tensor) = nzblocks(store(T))
 
+eachnzblock(T::Tensor) = eachnzblock(store(T))
+
 blockoffsets(T::Tensor) = blockoffsets(store(T))
 nnzblocks(T::Tensor) = nnzblocks(store(T))
 nnz(T::Tensor) = nnz(store(T))

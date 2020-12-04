@@ -283,8 +283,6 @@ function blockview(T::BlockSparseTensor,
   return tensor(Dense(dataTslice), blockdimsT)
 end
 
-eachnzblock(T::BlockSparseTensor) = eachnzblock(store(T))
-
 # convert to Dense
 function dense(T::TensorT) where {TensorT<:BlockSparseTensor}
   R = zeros(dense(TensorT), inds(T))
