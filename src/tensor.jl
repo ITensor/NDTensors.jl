@@ -1,8 +1,3 @@
-export Tensor,
-       tensor,
-       inds,
-       ind,
-       store
 
 """
 Tensor{StoreT,IndsT}
@@ -258,10 +253,6 @@ in the block-offset list.
 """
 blockdim(T::Tensor, pos::Int) = blockdim(store(T), pos)
 
-findblock(T::Tensor,
-          block;
-          sorted=true) = findblock(store(T), block; sorted=sorted)
-
 """
 isblocknz(T::Tensor,
           block::Block)
@@ -291,17 +282,6 @@ function blockend(T::Tensor{<:Number,N},
     end
   end
   return Tuple(end_index)
-end
-
-"""
-blockview(T::Tensor,block::Block)
-
-Given a specified block, return a Dense/Diag Tensor that is a view to the data
-in that block.
-"""
-function blockview(T::Tensor,block; sorted=true)
-  pos = findblock(T,block; sorted=sorted)
-  return blockview(T,pos)
 end
 
 #

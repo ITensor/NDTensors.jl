@@ -288,19 +288,13 @@ Base.@propagate_inbounds function Base.setindex!(T::BlockSparseTensor{ElT,N},
   return T
 end
 
-"""
-blockview(T::BlockSparseTensor,pos::Int)
-
-Given a specified position in the block-offset list, return a Dense Tensor 
-that is a view to the data in that block (to avoid block lookup if the position
-is known already).
-"""
 function blockview(T::BlockSparseTensor,
-                   pos::Union{Int,Nothing})
-  # TODO: don't allow nothing input
-  isnothing(pos) && error("Block must be structurally non-zero to get a view")
-  blockT,offsetT = blockoffsets(T)[pos]
-  return blockview(T,BlockOffset(blockT,offsetT))
+                   blockT::Block)
+  offsetT = offset(T, blockT)
+  blockdimsT = blockdims(T, blockT)
+  blockdimT = prod(blockdimsT)
+  dataTslice = @view data(store(T))[offsetT+1:offsetT+blockdimT]
+  return tensor(Dense(dataTslice),blockdimsT)
 end
 
 function blockview(T::BlockSparseTensor,
@@ -803,37 +797,21 @@ function contract_blockoffsets(boffs1::BlockOffsets{N1},inds1,labels1,
   NR = length(labelsR)
   ValNR = ValLength(labelsR)
   labels1_to_labels2,labels1_to_labelsR,labels2_to_labelsR = contract_labels(labels1,labels2,labelsR)
-  blocksR = Block{NR}[]
-  contraction_plan = Tuple{Int,Int,Int}[]
+  blockoffsetsR = BlockOffsets{NR}()
+  nnzR = 0
+  contraction_plan = Tuple{NTuple{N1, Int}, NTuple{N2, Int}, NTuple{NR, Int}}[]
   for (pos1,(block1,offset1)) in enumerate(boffs1)
     for (pos2,(block2,offset2)) in enumerate(boffs2)
       if are_blocks_contracted(block1,block2,labels1_to_labels2)
         blockR = contract_blocks(block1,labels1_to_labelsR,
                                  block2,labels2_to_labelsR,
                                  ValNR)
-        push!(contraction_plan,(pos1,pos2,0))
-        push!(blocksR,blockR)
+        push!(contraction_plan, (block1, block2, blockR))
+        blockoffsetsR[blockR] = nnzR
+        nnzR += blockdim(indsR, blockR)
       end
     end
   end
-
-  sorted_blocksR = sort(blocksR; lt=isblockless)
-  unique!(sorted_blocksR)
-  blockoffsetsR = BlockOffsets{NR}(undef,length(sorted_blocksR))
-  nnzR = 0
-  for (i,blockR) in enumerate(sorted_blocksR)
-    blockoffsetsR[i] = BlockOffset(blockR, nnzR)
-    nnzR += blockdim(indsR, blockR)
-  end
-
-  # Now get the locations of the output blocks
-  # in the sorted block-offsets list
-  for (i,blockR) in enumerate(blocksR)
-    posR = findblock(blockoffsetsR, blockR)
-    pos1,pos2,_ = contraction_plan[i]
-    contraction_plan[i] = (pos1, pos2, posR)
-  end
-
   return blockoffsetsR,contraction_plan
 end
 
@@ -873,13 +851,13 @@ function contract!(R::BlockSparseTensor{ElR, NR},
   already_written_to = fill(false,nnzblocks(R))
   # In R .= α .* (T1 * T2) .+ β .* R
   α = one(ElR)
-  for (pos1,pos2,posR) in contraction_plan
+  for (i, (pos1,pos2,posR)) in enumerate(contraction_plan)
     blockT1 = blockview(T1,pos1)
     blockT2 = blockview(T2,pos2)
     blockR = blockview(R,posR)
     β = one(ElR)
-    if !already_written_to[posR]
-      already_written_to[posR] = true
+    if !already_written_to[i]
+      already_written_to[i] = true
       # Overwrite the block of R
       β = zero(ElR)
     end

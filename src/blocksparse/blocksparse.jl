@@ -19,10 +19,7 @@ struct BlockSparse{ElT,VecT,N} <: TensorStorage{ElT}
   data::VecT
   blockoffsets::BlockOffsets{N}  # Block number-offset pairs
   function BlockSparse(data::VecT,
-                       blockoffsets::BlockOffsets{N};
-                       sorted=true) where {VecT<:AbstractVector{ElT},
-                                           N} where {ElT}
-    sorted && check_blocks_sorted(blockoffsets)
+                       blockoffsets::BlockOffsets{N}) where {VecT<:AbstractVector{ElT}, N} where {ElT}
     new{ElT,VecT,N}(data, blockoffsets)
   end
 end
@@ -165,14 +162,6 @@ function blockdim(D::BlockSparse,
   pos = findblock(D, block)
   return blockdim(D, pos)
 end
-
-findblock(D::BlockSparse{<:Number,
-                         <:AbstractVector,
-                         N},
-          block::Block{N};
-          vargs...) where {N} = findblock(blockoffsets(D),
-                                          block;
-                                          vargs...)
 
 """
 isblocknz(T::BlockSparse,

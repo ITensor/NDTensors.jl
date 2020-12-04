@@ -59,45 +59,15 @@ function isblockless(b1::Block{N},
   return isblockless(b1, nzblock(bof2))
 end
 
-function check_blocks_sorted(blockoffsets::BlockOffsets)
-  for jj in 1:length(blockoffsets)-1
-    block_jj = nzblock(blockoffsets[jj])
-    block_jj1 = nzblock(blockoffsets[jj+1])
-    if !isblockless(block_jj,block_jj1)
-      error("Blocks in BlockOffsets not ordered")
-    end
+offset(bofs::BlockOffsets{N}, block::Block{N}) where {N} = bofs[block]
+
+function nnz(bofs::BlockOffsets, inds)
+  _nnz = 0
+  nnzblocks(bofs) == 0 && return _nnz
+  for block in keys(bofs)
+    _nnz += blockdim(inds, block)
   end
-  return
-end
-
-function offset(bofs::BlockOffsets{N},
-                block::Block{N}) where {N}
-  block_pos = findblock(bofs,block)
-  isnothing(block_pos) && return nothing
-  return offset(bofs,block_pos)
-end
-
-"""
-findblock(::BlockOffsets,::Block)
-
-Output the index of the specified block in the block-offsets
-list.
-If not found, return nothing.
-Searches assuming the blocks are sorted.
-If more than one block exists, throw an error.
-"""
-function findblock(bofs::BlockOffsets{N},
-                   find_block::Block{N}; sorted=true) where {N}
-  r = sorted ? searchsorted(bofs,find_block;lt=isblockless) : findall(i->block(i)==find_block,bofs)
-  length(r)>1 && error("In findblock, more than one block found")   
-  length(r)==0 && return nothing
-  return first(r)
-end
-
-function nnz(bofs::BlockOffsets,inds)
-  nnzblocks(bofs) == 0 && return 0
-  lastblock,lastoffset = bofs[end]
-  return lastoffset + blockdim(inds,lastblock)
+  return _nnz
 end
 
 """
@@ -122,10 +92,10 @@ function blockoffsets(blocks::Blocks{N},
   if sorted
     blocks = sort(blocks;lt=isblockless)
   end
-  blockoffsets = BlockOffsets{N}(undef,length(blocks))
+  blockoffsets = BlockOffsets{N}()
   nnz = 0
-  for (i,block) in enumerate(blocks)
-    blockoffsets[i] = block=>nnz
+  for block in blocks
+    blockoffsets[block] = nnz
     current_block_dim = blockdim(inds,block)
     nnz += current_block_dim
   end

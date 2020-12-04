@@ -32,5 +32,12 @@ export
 # empty.jl
   Empty,
   EmptyTensor,
-  EmptyBlockSparseTensor
+  EmptyBlockSparseTensor,
+
+# tensors.jl
+  Tensor,
+  tensor,
+  inds,
+  ind,
+  store
 
