@@ -354,9 +354,12 @@ function Base.reshape(T::DenseTensor, dims::Int...)
   return tensor(store(T), tuple(dims...))
 end
 
+Base.convert(::Type{Array}, T::DenseTensor) =
+  reshape(data(store(T)), dims(inds(T)))
+
 # Create an Array that is a view of the Dense Tensor
 # Useful for using Base Array functions
-array(T::DenseTensor) = reshape(data(store(T)),dims(inds(T)))
+array(T::DenseTensor) = convert(Array, T)
 
 function Base.Array{ElT,N}(T::DenseTensor{ElT,N}) where {ElT,N}
   return copy(array(T))
@@ -364,6 +367,14 @@ end
 
 function Base.Array(T::DenseTensor{ElT,N}) where {ElT,N}
   return Array{ElT,N}(T)
+end
+
+function Base.copyto!(R::DenseTensor{<:Number, N},
+                      T::DenseTensor{<:Number, N}) where {N}
+  RA = array(R)
+  TA = array(T)
+  @strided RA .= TA
+  return R
 end
 
 # TODO: call permutedims!(R,T,perm,(r,t)->t)?

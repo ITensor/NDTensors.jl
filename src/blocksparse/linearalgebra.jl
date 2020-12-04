@@ -36,9 +36,9 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
 
   truncate = haskey(kwargs, :maxdim) || haskey(kwargs, :cutoff)
 
-  Us = Vector{BlockSparseMatrix{ElT}}(undef, nnzblocks(T))
-  Ss = Vector{DiagBlockSparseMatrix{real(ElT)}}(undef, nnzblocks(T))
-  Vs = Vector{BlockSparseMatrix{ElT}}(undef, nnzblocks(T))
+  Us = Vector{DenseTensor{ElT, 2}}(undef, nnzblocks(T))
+  Ss = Vector{DiagTensor{real(ElT), 2}}(undef, nnzblocks(T))
+  Vs = Vector{DenseTensor{ElT, 2}}(undef, nnzblocks(T))
 
   # Sorted eigenvalues
   d = Vector{real(ElT)}()
@@ -79,9 +79,9 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
       else
         Strunc = tensor(Diag(store(Ss[n])[1:blockdim]),
                         (blockdim,blockdim))
-        Us[n] = copy(Us[n][1:dim(Us[n],1),1:blockdim])
+        Us[n] = Us[n][1:dim(Us[n],1),1:blockdim]
         Ss[n] = Strunc
-        Vs[n] = copy(Vs[n][1:dim(Vs[n],1),1:blockdim])
+        Vs[n] = Vs[n][1:dim(Vs[n],1),1:blockdim]
       end
     end
     deleteat!(Us,dropblocks)
@@ -163,11 +163,20 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
     blockS = nzblocksS[n]
     blockV = nzblocksV[n]
 
+    if VERSION < v"1.5"
+      # In v1.3 and v1.4 of Julia, Ub has
+      # a very complicated view wrapper that
+      # can't be handled efficiently
+      Ub = copy(Ub)
+      Vb = copy(Vb)
+    end
+
     blockview(U, blockU) .= Ub
     blockviewS = blockview(S, blockS)
     for i in 1:diaglength(Sb)
       setdiagindex!(blockviewS, getdiagindex(Sb, i), i)
     end
+
     blockview(V, blockV) .= Vb
   end
 
