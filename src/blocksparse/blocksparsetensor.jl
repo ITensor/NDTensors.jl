@@ -272,22 +272,15 @@ Base.@propagate_inbounds function Base.setindex!(T::BlockSparseTensor{ElT,N},
   return T
 end
 
-function blockview(T::BlockSparseTensor,
-                   blockT::Block)
-  offsetT = offset(T, blockT)
-  blockdimsT = blockdims(T, blockT)
-  blockdimT = prod(blockdimsT)
-  dataTslice = @view data(store(T))[offsetT+1:offsetT+blockdimT]
-  return tensor(Dense(dataTslice),blockdimsT)
-end
+blockview(T::BlockSparseTensor, blockT::Block) = blockview(T, BlockOffset(blockT, offset(T, blockT)))
 
 function blockview(T::BlockSparseTensor,
                    bof::BlockOffset)
-  blockT,offsetT = bof
-  blockdimsT = blockdims(T,blockT)
+  blockT, offsetT = bof
+  blockdimsT = blockdims(T, blockT)
   blockdimT = prod(blockdimsT)
   dataTslice = @view data(store(T))[offsetT+1:offsetT+blockdimT]
-  return tensor(Dense(dataTslice),blockdimsT)
+  return tensor(Dense(dataTslice), blockdimsT)
 end
 
 eachnzblock(T::BlockSparseTensor) = eachnzblock(store(T))

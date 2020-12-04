@@ -222,17 +222,13 @@ end
 diagblockoffsets(T::DiagBlockSparseTensor) = diagblockoffsets(store(T))
 
 """
-blockview(T::DiagBlockSparseTensor,pos::Int)
+blockview(T::DiagBlockSparseTensor, block::Block)
 
-Given a specified position in the block-offset list, return a Diag Tensor
+Given a block in the block-offset list, return a Diag Tensor
 that is a view to the data in that block (to avoid block lookup if the position
 is known already).
 """
-function blockview(T::DiagBlockSparseTensor,
-                   pos::Int)
-  blockT,offsetT = diagblockoffsets(T)[pos]
-  return blockview(T,BlockOffset(blockT,offsetT))
-end
+blockview(T::DiagBlockSparseTensor, blockT::Block) = blockview(T, BlockOffset(blockT, offset(T, blockT)))
 
 function blockview(T::DiagBlockSparseTensor,
                    bof::BlockOffset)
