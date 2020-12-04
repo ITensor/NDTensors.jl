@@ -78,22 +78,23 @@ function blockoffsets(blocks::Blocks{N},
 end
 
 """
-diagblockoffsets(blocks::Blocks,inds)
+    diagblockoffsets(blocks::Blocks,inds)
 
 Get the blockoffsets only along the diagonal.
 The offsets are along the diagonal.
+
+Assumes the blocks are allong the diagonal.
 """
 function diagblockoffsets(blocks::Blocks{N},
                           inds) where {N}
-  blocks = sort(blocks;lt=isblockless)
-  blockoffsets = BlockOffsets{N}(undef,length(blocks))
+  blockoffsets = BlockOffsets{N}()
   nnzdiag = 0
   for (i,block) in enumerate(blocks)
-    blockoffsets[i] = block=>nnzdiag
+    blockoffsets[block] = nnzdiag
     current_block_diaglength = blockdiaglength(inds,block)
     nnzdiag += current_block_diaglength
   end
-  return blockoffsets,nnzdiag
+  return blockoffsets, nnzdiag
 end
 
 # Permute the blockoffsets and indices

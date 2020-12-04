@@ -7,7 +7,7 @@ export
   setindex,
   setindex!!,
 
-# blocksparse/blockoffsets.jl
+# blocksparse/blocksparse.jl
   BlockSparse,
   BlockSparseTensor,
   Block,
@@ -40,7 +40,14 @@ export
   EmptyTensor,
   EmptyBlockSparseTensor,
 
-# tensors.jl
+# tensorstorage.jl
+  data,
+  TensorStorage,
+  randn!,
+  scale!,
+  norm,
+
+# tensor.jl
   Tensor,
   tensor,
   inds,

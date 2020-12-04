@@ -1,16 +1,3 @@
-export BlockSparse,
-       BlockSparseTensor,
-       Block,
-       block,
-       BlockOffset,
-       BlockOffsets,
-       blockoffsets,
-       blockview,
-       nnzblocks,
-       nnz,
-       findblock,
-       isblocknz
-
 #
 # BlockSparse storage
 #
@@ -233,10 +220,10 @@ end
 function array_to_offsets(a,N::Int)
   asize = length(a)
   nblocks = div(asize,N+1)
-  boff = BlockOffsets{N}(undef,nblocks)
+  boff = BlockOffsets{N}()
   j = 0
   for b=1:nblocks
-    boff[b] = Pair( ntuple(i->(a[j+i]),N) , a[j+N+1] )
+    boff[ntuple(i->(a[j+i]),N)] = a[j+N+1]
     j += (N+1)
   end
   return boff

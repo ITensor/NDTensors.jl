@@ -243,16 +243,6 @@ in the block-offsets list.
 """
 offset(T::Tensor, block) = offset(store(T), block)
 
-nzblock(T::Tensor, n::Int) = nzblock(store(T), n)
-
-"""
-blockdim(T::Tensor,pos::Int)
-
-Get the block dimension of the block at position pos
-in the block-offset list.
-"""
-blockdim(T::Tensor, pos::Int) = blockdim(store(T), pos)
-
 """
 isblocknz(T::Tensor,
           block::Block)

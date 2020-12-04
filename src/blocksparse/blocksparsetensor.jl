@@ -288,20 +288,7 @@ function blockview(T::BlockSparseTensor,
   return tensor(Dense(dataTslice),blockdimsT)
 end
 
-# TODO: this is not working right now
-#struct EachBlock{ElT,N,StoreT,IndsT}
-#  T::BlockSparseTensor{ElT,N,StoreT,IndsT}
-#end
-#
-#function Base.iterate(iter::EachBlock,state=(blockview(iter.T,1),1))
-#  block,ind = state
-#  ind > nnzblocks(iter.T) && return nothing
-#  return blockview(iter.T,ind),ind+1
-#end
-#
-#function eachnzblock(T::BlockSparseTensor)
-#  return EachBlock(T)
-#end
+eachnzblock(T::BlockSparseTensor) = eachnzblock(store(T))
 
 # convert to Dense
 function dense(T::TensorT) where {TensorT<:BlockSparseTensor}
