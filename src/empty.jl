@@ -87,15 +87,15 @@ function Base.zeros(T::TensorT) where {TensorT <: EmptyTensor}
   return zeros(TensorR, inds(T))
 end
 
-function addblock(T::EmptyTensor{<: Number, N},
-                  block::Block{N}) where {N}
+function insertblock(T::EmptyTensor{<: Number, N},
+                     block::Block{N}) where {N}
   R = zeros(T)
-  addblock!(R, block)
+  insertblock!(R, block)
   return R
 end
 
-addblock!!(T::EmptyTensor{<: Number, N},
-           block::Block{N}) where {N} = addblock(T, block)
+insertblock!!(T::EmptyTensor{<: Number, N},
+              block::Block{N}) where {N} = insertblock(T, block)
 
 Base.@propagate_inbounds function Base.setindex(T::EmptyTensor{<: Number, N},
                                                 x::Number,

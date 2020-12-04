@@ -280,7 +280,7 @@ end
 
 setindex!!(T::Tensor, x, I...) = setindex!(T, x, I...)
 
-addblock!!(T::Tensor, block) = addblock!(T, block)
+insertblock!!(T::Tensor, block) = insertblock!(T, block)
 
 """
 getdiagindex

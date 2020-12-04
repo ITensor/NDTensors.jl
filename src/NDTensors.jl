@@ -46,6 +46,11 @@ include("blocksparse/linearalgebra.jl")
 include("empty.jl")
 
 #####################################
+# Deprecations
+#
+include("deprecated.jl")
+
+#####################################
 # Optional TBLIS contraction backend
 #
 const _use_tblis = Ref(false)

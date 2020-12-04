@@ -3,7 +3,7 @@ export
   disable_tblis!,
   enable_tblis!,
 
-  addblock!!,
+  insertblock!!,
   setindex,
   setindex!!,
 
@@ -26,7 +26,7 @@ export
   # Types
   BlockSparseTensor,
   # Methods
-  addblock!,
+  insertblock!,
   blockview,
   randomBlockSparseTensor,
 

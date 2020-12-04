@@ -243,8 +243,8 @@ end
 # Defaults to adding zeros.
 # Returns the offset of the new block added.
 # XXX rename to insertblock!, no need to return offset
-function addblock_offset!(T::BlockSparseTensor{ElT, N},
-                          newblock::Block{N}) where {ElT, N}
+function insertblock_offset!(T::BlockSparseTensor{ElT, N},
+                             newblock::Block{N}) where {ElT, N}
   newdim = blockdim(T,newblock)
   newoffset = nnz(T)
   blockoffsets(T)[newblock] = newoffset
@@ -253,9 +253,9 @@ function addblock_offset!(T::BlockSparseTensor{ElT, N},
   return newoffset
 end
 
-function addblock!(T::BlockSparseTensor{<: Number, N},
-                   block::Block{N}) where {N}
-  addblock_offset!(T, block)
+function insertblock!(T::BlockSparseTensor{<: Number, N},
+                      block::Block{N}) where {N}
+  insertblock_offset!(T, block)
   return T
 end
 
@@ -265,7 +265,7 @@ Base.@propagate_inbounds function Base.setindex!(T::BlockSparseTensor{ElT,N},
                                                  i::Vararg{Int,N}) where {ElT,N}
   offset,block,offset_within_block = indexoffset(T,i...)
   if isnothing(offset)
-    offset_of_block = addblock_offset!(T, block)
+    offset_of_block = insertblock_offset!(T, block)
     offset = offset_of_block+offset_within_block
   end
   store(T)[offset] = val
