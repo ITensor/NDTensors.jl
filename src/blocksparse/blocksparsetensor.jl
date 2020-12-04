@@ -248,6 +248,8 @@ function addblock_offset!(T::BlockSparseTensor{ElT, N},
   newdim = blockdim(T,newblock)
   newoffset = nnz(T)
   blockoffsets(T)[newblock] = newoffset
+  # Insert new block into data
+  splice!(data(store(T)), newoffset+1:newoffset, zeros(ElT,newdim))
   return newoffset
 end
 
