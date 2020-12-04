@@ -912,24 +912,24 @@ function Base.reshape(boffsT::BlockOffsets{NT},
                       indsT,
                       indsR) where {NT}
   NR = length(indsR)
-  boffsR = BlockOffsets{NR}(undef,nnzblocks(boffsT))
+  boffsR = BlockOffsets{NR}()
   nblocksT = nblocks(indsT)
   nblocksR = nblocks(indsR)
-  for (i,(blockT,offsetT)) in enumerate(boffsT)
+  for (blockT, offsetT) in boffsT
     blockR = Tuple(CartesianIndices(nblocksR)[LinearIndices(nblocksT)[CartesianIndex(blockT)]])
-    boffsR[i] = blockR => offsetT
+    boffsR[blockR] = offsetT
   end
   return boffsR
 end
 
 function Base.reshape(boffsT::BlockOffsets{NT},
                       blocksR::Vector{Block{NR}}) where {NR,NT}
-  boffsR = BlockOffsets{NR}(undef, nnzblocks(boffsT))
+  boffsR = BlockOffsets{NR}()
   # TODO: check blocksR is ordered and are properly reshaped
   # versions of the blocks of boffsT
   for (i,(blockT,offsetT)) in enumerate(boffsT)
     blockR = blocksR[i]
-    boffsR[i] = BlockOffset(blockR,offsetT)
+    boffsR[blockR] = offsetT
   end
   return boffsR
 end
