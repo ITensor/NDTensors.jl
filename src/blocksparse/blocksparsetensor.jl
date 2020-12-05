@@ -737,7 +737,7 @@ function contract_blocks(block1::Block{N1},
                          block2::Block{N2},
                          labels2_to_labelsR,
                          ::Val{NR}) where {N1,N2,NR}
-  blockR = MVector(ntuple(_ -> 0, Val(NR)))
+  blockR = MVector{NR, Int}(ntuple(_ -> 0, Val(NR)))
   for i1 in 1:N1
     iR = labels1_to_labelsR[i1]
     if iR > 0

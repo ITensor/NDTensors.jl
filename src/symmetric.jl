@@ -26,9 +26,6 @@ eachnzblock(H::Hermitian{<:Number,<:Tensor}) = eachnzblock(parent(H))
 
 nblocks(H::Hermitian{<:Number,<:Tensor}) = nblocks(parent(H))
 
-nzblock(H::Hermitian{<:Number,<:Tensor},
-        i::Int) = nzblock(parent(H), i)
-
-blockview(H::Hermitian{<:Number,<:Tensor},
-          i::Int) = Hermitian(blockview(parent(H), i))
+blockview(H::Hermitian{<:Number,<:Tensor}, block) =
+  Hermitian(blockview(parent(H), block))
 
