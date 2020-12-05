@@ -737,7 +737,7 @@ function contract_blocks(block1::Block{N1},
                          block2::Block{N2},
                          labels2_to_labelsR,
                          ::Val{NR}) where {N1,N2,NR}
-  blockR = @MVector zeros(Int,NR)
+  blockR = MVector(ntuple(_ -> 0, Val(NR)))
   for i1 in 1:N1
     iR = labels1_to_labelsR[i1]
     if iR > 0
@@ -769,8 +769,10 @@ function contract_blockoffsets(boffs1::BlockOffsets{N1},inds1,labels1,
                                  block2,labels2_to_labelsR,
                                  ValNR)
         push!(contraction_plan, (block1, block2, blockR))
-        blockoffsetsR[blockR] = nnzR
-        nnzR += blockdim(indsR, blockR)
+        if !haskey(blockoffsetsR, blockR)
+          blockoffsetsR[blockR] = nnzR
+          nnzR += blockdim(indsR, blockR)
+        end
       end
     end
   end
@@ -810,16 +812,17 @@ function contract!(R::BlockSparseTensor{ElR, NR},
                    labelsT2,
                    contraction_plan) where {ElR, ElT1, ElT2,
                                             N1, N2, NR}
-  already_written_to = fill(false,nnzblocks(R))
+  #already_written_to = fill(false,nnzblocks(R))
+  already_written_to = Dict{Block{NR}, Bool}()
   # In R .= α .* (T1 * T2) .+ β .* R
   α = one(ElR)
-  for (i, (pos1,pos2,posR)) in enumerate(contraction_plan)
+  for (pos1, pos2, posR) in contraction_plan
     blockT1 = blockview(T1,pos1)
     blockT2 = blockview(T2,pos2)
     blockR = blockview(R,posR)
     β = one(ElR)
-    if !already_written_to[i]
-      already_written_to[i] = true
+    if !haskey(already_written_to, posR)
+      already_written_to[posR] = true
       # Overwrite the block of R
       β = zero(ElR)
     end
