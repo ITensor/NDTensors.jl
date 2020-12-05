@@ -602,8 +602,8 @@ function uncombine(T::BlockSparseTensor{<:Number,NT},
       #copyto!(Rb,Tb)
  
       Rbₐ = convert(Array, Rb)
-      Rbₐ = reshape(Rbₐ, size(Tb))
-      @strided Rbₐ .= Tb
+      Rbₐᵣ = Base.ReshapedArray(parent(Rbₐ), size(Tb), ())
+      @strided Rbₐᵣ .= Tb
     end
   end
   return R
