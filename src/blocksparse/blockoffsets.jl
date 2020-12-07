@@ -5,7 +5,9 @@
 const Block{N} = NTuple{N,Int}
 const Blocks{N} = Vector{Block{N}}
 const BlockOffset{N} = Pair{Block{N},Int}
-const BlockOffsets{N} = Dict{Block{N}, Int}
+# Use Dictionary from Dictionaries.jl (faster
+# iteration than Base.Dict)
+const BlockOffsets{N} = Dictionary{Block{N}, Int}
 
 BlockOffset(block::Block{N}, offset::Int) where {N} =
   BlockOffset{N}(block, offset)
@@ -50,7 +52,12 @@ function isblockless(b1::Block{N},
   return isblockless(b1, nzblock(bof2))
 end
 
-offset(bofs::BlockOffsets{N}, block::Block{N}) where {N} = get(bofs, block, nothing)
+function offset(bofs::BlockOffsets{N}, block::Block{N}) where {N}
+  if !isassigned(bofs, block)
+    return nothing
+  end
+  return bofs[block]
+end
 
 function nnz(bofs::BlockOffsets, inds)
   _nnz = 0
@@ -70,7 +77,7 @@ function blockoffsets(blocks::Blocks{N},
   blockoffsets = BlockOffsets{N}()
   nnz = 0
   for block in blocks
-    blockoffsets[block] = nnz
+    insert!(blockoffsets, block, nnz)
     current_block_dim = blockdim(inds,block)
     nnz += current_block_dim
   end
@@ -90,7 +97,7 @@ function diagblockoffsets(blocks::Blocks{N},
   blockoffsets = BlockOffsets{N}()
   nnzdiag = 0
   for (i,block) in enumerate(blocks)
-    blockoffsets[block] = nnzdiag
+    insert!(blockoffsets, block, nnzdiag)
     current_block_diaglength = blockdiaglength(inds,block)
     nnzdiag += current_block_diaglength
   end
@@ -102,8 +109,8 @@ function Base.permutedims(boffs::BlockOffsets{N},
                           inds,
                           perm::NTuple{N,Int}) where {N}
   blocksR = Blocks{N}(undef,nnzblocks(boffs))
-  for (i,(block,offset)) in enumerate(boffs)
-    blocksR[i] = permute(block,perm)
+  for (i, block) in enumerate(keys(boffs))
+    blocksR[i] = permute(block, perm)
   end
   indsR = permute(inds,perm)
   blockoffsetsR,_ = blockoffsets(blocksR,indsR)

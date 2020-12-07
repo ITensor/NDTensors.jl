@@ -247,7 +247,7 @@ function insertblock_offset!(T::BlockSparseTensor{ElT, N},
                              newblock::Block{N}) where {ElT, N}
   newdim = blockdim(T,newblock)
   newoffset = nnz(T)
-  blockoffsets(T)[newblock] = newoffset
+  insert!(blockoffsets(T), newblock, newoffset)
   # Insert new block into data
   splice!(data(store(T)), newoffset+1:newoffset, zeros(ElT,newdim))
   return newoffset
@@ -286,7 +286,7 @@ end
 # convert to Dense
 function dense(T::TensorT) where {TensorT<:BlockSparseTensor}
   R = zeros(dense(TensorT), inds(T))
-  for (block,offset) in blockoffsets(T)
+  for block in keys(blockoffsets(T))
     # TODO: make sure this assignment is efficient
     R[blockindices(T,block)] = blockview(T,block)
   end
@@ -437,7 +437,7 @@ function permutedims_combine(T::BlockSparseTensor{ElT,N},
   ind_comb = ⊗(inds_to_combine...)
   ind_comb = permuteblocks(ind_comb,blockperm)
 
-  for bof in blockoffsets(T)
+  for bof in pairs(blockoffsets(T))
     Tb = blockview(T,bof)
     b = nzblock(bof)
     b_perm = permute(b,perm)
@@ -573,7 +573,7 @@ function uncombine(T::BlockSparseTensor{<:Number,NT},
   inds_uncomb = insertat(inds(T),ind_uncomb,combdim)
   inds_uncomb_perm = insertat(inds(T),ind_uncomb_perm,combdim)
 
-  for bof in blockoffsets(T)
+  for bof in pairs(blockoffsets(T))
     b = nzblock(bof)
     Tb_tot = blockview(T,bof)
     dimsTb_tot = dims(Tb_tot)
@@ -625,7 +625,7 @@ end
 
 function Base.copyto!(R::BlockSparseTensor,
                       T::BlockSparseTensor)
-  for bof in blockoffsets(T)
+  for bof in pairs(blockoffsets(T))
     copyto!(blockview(R, nzblock(bof)), blockview(T, bof))
   end
   return R
@@ -650,7 +650,7 @@ function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
                            T::BlockSparseTensor{<:Number,N},
                            perm::NTuple{N,Int},
                            f::Function=(r,t)->t) where {N}
-  for (blockT,_) in blockoffsets(T)
+  for blockT in keys(blockoffsets(T))
     # Loop over non-zero blocks of T/R
     Tblock = blockview(T,blockT)
     Rblock = blockview(R,permute(blockT,perm))
@@ -757,27 +757,38 @@ end
 # Borrowed from:
 # https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
 # This seems to have a lot of clashes
-#function Base.hash(b::Block{N}) where {N}
-#  seed = UInt(N)
-#  rand = UInt(0x9e3779b9)
-#  for i in b 
-#    seed ⊻= i + 0x9e3779b9 + (seed << 6) + (seed >> 2)
-#  end
-#  return seed
-#end
+function Base.hash(b::Block, seed::UInt)
+  h = UInt(0x9e3779b9)
+  for i in b 
+    seed ⊻= i + h + (seed << 6) + (seed >> 2)
+  end
+  return seed
+end
 
 # Borrowed from:
 # https://github.com/JuliaLang/julia/issues/37073
 # XXX: make this into a custom type Block{N} since this is
 # type piracy
-using Base.Cartesian: @nexprs
-Base.hash(x::Tuple{}, h::UInt) = h + Base.tuplehash_seed
-@generated function Base.hash(x::Block{N}, h::UInt) where N
-  quote
-    h += Base.tuplehash_seed
-    @nexprs $N i -> h = hash(x[$N-i+1], h)
-  end
-end
+#using Base.Cartesian: @nexprs
+#Base.hash(x::Tuple{}, h::UInt) = h + Base.tuplehash_seed
+#@generated function Base.hash(x::Block{N}, h::UInt) where N
+#  quote
+#    h += Base.tuplehash_seed
+#    @nexprs $N i -> h = hash(x[$N-i+1], h)
+#  end
+#end
+
+# Borrowed from:
+# http://www.docjar.com/html/api/java/util/Arrays.java.html
+# Could also consider uring the CPython tuple hash:
+# https://github.com/python/cpython/blob/0430dfac629b4eb0e899a09b899a494aa92145f6/Objects/tupleobject.c#L406
+#function Base.hash(b::Block, h::UInt)
+#  h += Base.tuplehash_seed
+#  for n in b
+#    h = 31 * h + n ⊻ (n >> 32)
+#  end
+#  return h
+#end
 
 function contract_blockoffsets(boffs1::BlockOffsets{N1},inds1,labels1,
                                boffs2::BlockOffsets{N2},inds2,labels2,
@@ -799,8 +810,8 @@ function contract_blockoffsets(boffs1::BlockOffsets{N1},inds1,labels1,
                                  block2,labels2_to_labelsR,
                                  ValNR)
         push!(contraction_plan, (block1, block2, blockR))
-        if !haskey(blockoffsetsR, blockR)
-          blockoffsetsR[blockR] = nnzR
+        if !isassigned(blockoffsetsR, blockR)
+          insert!(blockoffsetsR, blockR, nnzR)
           nnzR += blockdim(indsR, blockR)
         end
       end
@@ -928,9 +939,9 @@ function Base.reshape(boffsT::BlockOffsets{NT},
   boffsR = BlockOffsets{NR}()
   nblocksT = nblocks(indsT)
   nblocksR = nblocks(indsR)
-  for (blockT, offsetT) in boffsT
+  for (blockT, offsetT) in pairs(boffsT)
     blockR = Tuple(CartesianIndices(nblocksR)[LinearIndices(nblocksT)[CartesianIndex(blockT)]])
-    boffsR[blockR] = offsetT
+    insert!(boffsR, blockR, offsetT)
   end
   return boffsR
 end
@@ -1025,8 +1036,8 @@ end
 function Base.show(io::IO,
                    mime::MIME"text/plain",
                    T::BlockSparseTensor)
-  summary(io,T)
-  for (n, (block, _)) in enumerate(blockoffsets(T))
+  summary(io, T)
+  for (n, block) in enumerate(keys(blockoffsets(T)))
     blockdimsT = blockdims(T,block)
     println(io, "Block: ", block)
     println(io, " [", _range2string(blockstart(T,block),blockend(T,block)),"]")

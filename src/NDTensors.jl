@@ -1,6 +1,7 @@
 module NDTensors
 
 using Compat
+using Dictionaries
 using Random
 using LinearAlgebra
 using StaticArrays
