@@ -721,10 +721,10 @@ function are_blocks_contracted(block1::Block{N1},
                                block2::Block{N2},
                                labels1_to_labels2::NTuple{N1,Int}) where {N1,N2}
   for i1 in 1:N1
-    i2 = labels1_to_labels2[i1]
+    i2 = @inbounds labels1_to_labels2[i1]
     if i2 > 0
       # This dimension is contracted
-      if block1[i1] != block2[i2]
+      if @inbounds block1[i1] != @inbounds block2[i2]
         return false
       end
     end
@@ -753,6 +753,32 @@ function contract_blocks(block1::Block{N1},
   return Tuple(blockR)    
 end
 
+# Custom Tuple{N, Int} hash
+# Borrowed from:
+# https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
+# This seems to have a lot of clashes
+#function Base.hash(b::Block{N}) where {N}
+#  seed = UInt(N)
+#  rand = UInt(0x9e3779b9)
+#  for i in b 
+#    seed ⊻= i + 0x9e3779b9 + (seed << 6) + (seed >> 2)
+#  end
+#  return seed
+#end
+
+# Borrowed from:
+# https://github.com/JuliaLang/julia/issues/37073
+# XXX: make this into a custom type Block{N} since this is
+# type piracy
+using Base.Cartesian: @nexprs
+Base.hash(x::Tuple{}, h::UInt) = h + Base.tuplehash_seed
+@generated function Base.hash(x::Block{N}, h::UInt) where N
+  quote
+    h += Base.tuplehash_seed
+    @nexprs $N i -> h = hash(x[$N-i+1], h)
+  end
+end
+
 function contract_blockoffsets(boffs1::BlockOffsets{N1},inds1,labels1,
                                boffs2::BlockOffsets{N2},inds2,labels2,
                                indsR,labelsR) where {N1,N2}
@@ -762,8 +788,12 @@ function contract_blockoffsets(boffs1::BlockOffsets{N1},inds1,labels1,
   blockoffsetsR = BlockOffsets{NR}()
   nnzR = 0
   contraction_plan = Tuple{NTuple{N1, Int}, NTuple{N2, Int}, NTuple{NR, Int}}[]
-  for (pos1,(block1,offset1)) in enumerate(boffs1)
-    for (pos2,(block2,offset2)) in enumerate(boffs2)
+  # Reserve some capacity
+  # In theory the maximum is length(boffs1) * length(boffs2)
+  # but in practice that is too much
+  sizehint!(contraction_plan, max(length(boffs1), length(boffs2)))
+  for block1 in keys(boffs1)
+    for block2 in keys(boffs2)
       if are_blocks_contracted(block1,block2,labels1_to_labels2)
         blockR = contract_blocks(block1,labels1_to_labelsR,
                                  block2,labels2_to_labelsR,
