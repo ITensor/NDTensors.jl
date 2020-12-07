@@ -737,20 +737,20 @@ function contract_blocks(block1::Block{N1},
                          block2::Block{N2},
                          labels2_to_labelsR,
                          ::Val{NR}) where {N1,N2,NR}
-  blockR = MVector{NR, Int}(ntuple(_ -> 0, Val(NR)))
+  blockR = ntuple(_ -> 0, Val(NR))
   for i1 in 1:N1
-    iR = labels1_to_labelsR[i1]
+    iR = @inbounds labels1_to_labelsR[i1]
     if iR > 0
-      blockR[iR] = block1[i1]
+      blockR = @inbounds Base.setindex(blockR, block1[i1], iR)
     end
   end
   for i2 in 1:N2
-    iR = labels2_to_labelsR[i2]
+    iR = @inbounds labels2_to_labelsR[i2]
     if iR > 0
-      blockR[iR] = block2[i2]
+      blockR = @inbounds Base.setindex(blockR, block2[i2], iR)
     end
   end
-  return Tuple(blockR)    
+  return blockR
 end
 
 # Custom Tuple{N, Int} hash
