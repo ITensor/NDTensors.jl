@@ -205,7 +205,7 @@ function offsets_to_array(boff::BlockOffsets{N}) where {N}
   asize = (N+1)*nblocks
   n = 1
   a = Vector{Int}(undef,asize)
-  for bo in boff
+  for bo in pairs(boff)
     for j=1:N
       a[n] = bo[1][j]
       n += 1

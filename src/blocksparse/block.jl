@@ -20,25 +20,34 @@ end
 # Constructors
 #
 
-Block{N}(t::NTuple{N, Int}) where {N} =
-  Block{N}(convert(NTuple{N, UInt}, t))
+Block{N}(t::Tuple{Vararg{<:Any, N}}) where {N} =
+  Block{N}(UInt.(t))
 
-Block(t::NTuple{N, UInt}) where {N} = Block{N}(t)
-
-Block(t::NTuple{N, Int}) where {N} =
-  Block{N}(convert(NTuple{N, UInt}, t))
-
-Block(::Tuple{}) where {N} = Block{0}(())
-
-Block(I::CartesianIndex{N}) where {N} = Block{N}(I.I)
-
-#
-# Conversions
-#
+Block{N}(I::CartesianIndex{N}) where {N} = Block{N}(I.I)
 
 Block{N}(v::MVector{N}) where {N} = Block{N}(Tuple(v))
 
 Block{N}(v::SVector{N}) where {N} = Block{N}(Tuple(v))
+
+Block(b::Block) = b
+
+Block(I::CartesianIndex{N}) where {N} = Block{N}(I)
+
+Block(v::MVector{N}) where {N} = Block{N}(v)
+
+Block(v::SVector{N}) where {N} = Block{N}(v)
+
+Block(t::NTuple{N, UInt}) where {N} = Block{N}(t)
+
+Block(t::Tuple{Vararg{<:Any, N}}) where {N} = Block{N}(t)
+
+Block(::Tuple{}) where {N} = Block{0}(())
+
+Block(I::Integer...) = Block(I)
+
+#
+# Conversions
+#
 
 CartesianIndex(b::Block) = CartesianIndex(Tuple(b))
 
@@ -47,6 +56,10 @@ Tuple(b::Block{N}) where {N} = NTuple{N, UInt}(b.data)
 convert(::Type{Block}, I::CartesianIndex{N}) where {N} = Block{N}(I.I)
 
 convert(::Type{Block{N}}, I::CartesianIndex{N}) where {N} = Block{N}(I.I)
+
+convert(::Type{Block}, t::Tuple) where {N} = Block(t)
+
+convert(::Type{Block{N}}, t::Tuple) where {N} = Block{N}(t)
 
 #
 # Getting and setting fields
@@ -65,18 +78,19 @@ length(::Block{N}) where {N} = N
 iterate(b::Block, args...) = iterate(b.data, args...)
 
 using Base: @propagate_inbounds
-@propagate_inbounds function getindex(b::Block, i::Int)
+@propagate_inbounds function getindex(b::Block, i::Integer)
   return b.data[i]
 end
 
-@propagate_inbounds setindex(b::Block{N}, args...) where {N} =
-  Block{N}(setindex(b.data, args...))
+@propagate_inbounds setindex(b::Block{N}, val, i::Integer) where {N} =
+  Block{N}(setindex(b.data, UInt(val), i))
 
 ValLength(::Type{<:Block{N}}) where {N} = Val{N}
 
 deleteat(b::Block, pos) = Block(deleteat(Tuple(b), pos))
 
-insertafter(b::Block, val, pos) = Block(insertafter(Tuple(b), val, pos))
+insertafter(b::Block, val, pos) =
+  Block(insertafter(Tuple(b), UInt.(val), pos))
 
 getindices(b::Block, I) = getindices(Tuple(b), I)
 

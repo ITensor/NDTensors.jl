@@ -86,13 +86,6 @@ function BlockSparseTensor(::Type{ElT}, blocks::Vector{BlockT}, inds) where {ElT
   return tensor(storage,inds)
 end
 
-#function BlockSparseTensor(blocks::Vector{Block{N}},
-#                           inds) where {N}
-#  blockoffsets,nnz = blockoffsets(blocks,inds)
-#  storage = BlockSparse(blockoffsets,nnz)
-#  return tensor(storage,inds)
-#end
-
 function Base.randn(::Type{ <: BlockSparseTensor{ElT, N}},
                     blocks::Blocks{N},
                     inds) where {ElT, N}
@@ -230,6 +223,8 @@ function insertblock!(T::BlockSparseTensor{<: Number, N},
   return T
 end
 
+insertblock!(T::BlockSparseTensor, block) = insertblock!(T, Block(block))
+
 # TODO: Add a checkbounds
 Base.@propagate_inbounds function setindex!(T::BlockSparseTensor{ElT,N},
                                             val,
@@ -243,9 +238,8 @@ Base.@propagate_inbounds function setindex!(T::BlockSparseTensor{ElT,N},
   return T
 end
 
-function blockview(T::BlockSparseTensor, block::Block)
+blockview(T::BlockSparseTensor, block::Block) =
   blockview(T, BlockOffset(block, offset(T, block)))
-end
 
 blockview(T::BlockSparseTensor, block) = blockview(T, Block(block))
 
@@ -448,8 +442,8 @@ function permutedims_combine(T::BlockSparseTensor{ElT,N},
 end
 
 # TODO: optimize by avoiding findfirst
-function _number_uncombined(blockval::Int,
-                            blockcomb::Vector{Int})
+function _number_uncombined(blockval::Integer,
+                            blockcomb::Vector)
   if blockval == blockcomb[end]
     return length(blockcomb)-findfirst(==(blockval),blockcomb)+1
   end
@@ -457,8 +451,8 @@ function _number_uncombined(blockval::Int,
 end
 
 # TODO: optimize by avoiding findfirst
-function _number_uncombined_shift(blockval::Int,
-                                  blockcomb::Vector{Int})
+function _number_uncombined_shift(blockval::Integer,
+                                  blockcomb::Vector)
   if blockval == 1
     return 0
   end
@@ -522,7 +516,7 @@ function uncombine_output(T::BlockSparseTensor{ElT,N},
   return R
 end
 
-function Base.reshape(blockT::Block{NT},
+function reshape(blockT::Block{NT},
                       indsT,
                       indsR) where {NT}
   nblocksT = nblocks(indsT)
@@ -857,7 +851,7 @@ function permute_combine(boffs::BlockOffsets,
   return boffsR,indsR
 end
 
-function Base.reshape(boffsT::BlockOffsets{NT},
+function reshape(boffsT::BlockOffsets{NT},
                       indsT,
                       indsR) where {NT}
   NR = length(indsR)
@@ -865,14 +859,14 @@ function Base.reshape(boffsT::BlockOffsets{NT},
   nblocksT = nblocks(indsT)
   nblocksR = nblocks(indsR)
   for (blockT, offsetT) in pairs(boffsT)
-    blockR = Tuple(CartesianIndices(nblocksR)[LinearIndices(nblocksT)[CartesianIndex(blockT)]])
+    blockR = Block(CartesianIndices(nblocksR)[LinearIndices(nblocksT)[CartesianIndex(blockT)]])
     insert!(boffsR, blockR, offsetT)
   end
   return boffsR
 end
 
-function Base.reshape(boffsT::BlockOffsets{NT},
-                      blocksR::Vector{Block{NR}}) where {NR,NT}
+function reshape(boffsT::BlockOffsets{NT},
+                 blocksR::Vector{Block{NR}}) where {NR,NT}
   boffsR = BlockOffsets{NR}()
   # TODO: check blocksR is ordered and are properly reshaped
   # versions of the blocks of boffsT
@@ -883,20 +877,20 @@ function Base.reshape(boffsT::BlockOffsets{NT},
   return boffsR
 end
 
-function Base.reshape(T::BlockSparse,
-                      boffsR::BlockOffsets)
+function reshape(T::BlockSparse,
+                 boffsR::BlockOffsets)
   return BlockSparse(data(T),boffsR)
 end
 
-function Base.reshape(T::BlockSparseTensor,
-                      boffsR::BlockOffsets,
-                      indsR)
+function reshape(T::BlockSparseTensor,
+                 boffsR::BlockOffsets,
+                 indsR)
   storeR = reshape(store(T),boffsR)
   return tensor(storeR,indsR)
 end
 
-function Base.reshape(T::BlockSparseTensor,
-                      indsR)
+function reshape(T::BlockSparseTensor,
+                 indsR)
   # TODO: add some checks that the block dimensions
   # are consistent (e.g. nnzblocks(T) == nnzblocks(R), etc.)
   boffsR = reshape(blockoffsets(T),inds(T),indsR)

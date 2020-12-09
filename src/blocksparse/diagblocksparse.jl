@@ -186,34 +186,28 @@ const NonuniformDiagBlockSparseTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,
 const UniformDiagBlockSparseTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where 
                                                {StoreT<:UniformDiagBlockSparse}
 
-function DiagBlockSparseTensor(::Type{ElT},
-                               ::UndefInitializer,
-                               blocks::Blocks,
-                               inds) where {ElT}
+function DiagBlockSparseTensor(::Type{ElT}, ::UndefInitializer,
+                               blocks::Vector, inds) where {ElT}
   blockoffsets,nnz = diagblockoffsets(blocks, inds)
-  storage = DiagBlockSparse(ElT,undef,blockoffsets,nnz)
+  storage = DiagBlockSparse(ElT, undef, blockoffsets, nnz)
   return tensor(storage, inds)
 end
 
-DiagBlockSparseTensor(::UndefInitializer,
-                      blocks::Blocks,
-                      inds) = DiagBlockSparseTensor(Float64,undef,blocks,inds)
+DiagBlockSparseTensor(::UndefInitializer, blocks::Vector, inds) =
+  DiagBlockSparseTensor(Float64, undef, blocks, inds)
 
-function DiagBlockSparseTensor(::Type{ElT},
-                               blocks::Blocks,
+function DiagBlockSparseTensor(::Type{ElT}, blocks::Vector,
                                inds) where {ElT}
   blockoffsets,nnz = diagblockoffsets(blocks,inds)
   storage = DiagBlockSparse(ElT,blockoffsets,nnz)
   return tensor(storage,inds)
 end
 
-DiagBlockSparseTensor(blocks::Blocks,
-                      inds) = DiagBlockSparseTensor(Float64,blocks,inds)
+DiagBlockSparseTensor(blocks::Vector, inds) =
+  DiagBlockSparseTensor(Float64, blocks, inds)
 
 # Uniform case
-function DiagBlockSparseTensor(x::Number,
-                               blocks::Blocks,
-                               inds)
+function DiagBlockSparseTensor(x::Number, blocks::Vector, inds)
   blockoffsets,nnz = diagblockoffsets(blocks,inds)
   storage = DiagBlockSparse(x,blockoffsets)
   return tensor(storage,inds)

@@ -90,12 +90,12 @@ The offsets are along the diagonal.
 
 Assumes the blocks are allong the diagonal.
 """
-function diagblockoffsets(blocks::Blocks{N},
-                          inds) where {N}
+function diagblockoffsets(blocks::Vector{BlockT},
+                          inds) where {BlockT <: Union{Block{N}, Tuple{Vararg{<:Any, N}}}} where {N}
   blockoffsets = BlockOffsets{N}()
   nnzdiag = 0
-  for (i,block) in enumerate(blocks)
-    insert!(blockoffsets, block, nnzdiag)
+  for (i, block) in enumerate(blocks)
+    insert!(blockoffsets, Block(block), nnzdiag)
     current_block_diaglength = blockdiaglength(inds,block)
     nnzdiag += current_block_diaglength
   end

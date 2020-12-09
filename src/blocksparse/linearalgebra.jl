@@ -141,13 +141,13 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
   for n in 1:nnzblocksT
     blockT = nzblocksT[n]
 
-    blockU = (blockT[1],n)
+    blockU = (blockT[1], UInt(n))
     nzblocksU[n] = blockU
 
     blockS = (n,n)
     nzblocksS[n] = blockS
 
-    blockV = (blockT[2],n)
+    blockV = (blockT[2], UInt(n))
     nzblocksV[n] = blockV
   end
 
