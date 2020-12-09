@@ -2,7 +2,6 @@
 # BlockOffsets
 #
 
-const Block{N} = NTuple{N,Int}
 const Blocks{N} = Vector{Block{N}}
 const BlockOffset{N} = Pair{Block{N},Int}
 # Use Dictionary from Dictionaries.jl (faster
@@ -68,12 +67,11 @@ function nnz(bofs::BlockOffsets, inds)
   return _nnz
 end
 
+blockoffsets(blocks::Vector{<:NTuple}, inds) =
+  blockoffsets(Block.(blocks), inds)
+
 # TODO: should this be a constructor?
-function blockoffsets(blocks::Blocks{N},
-                      inds; sorted = true) where {N}
-  if sorted
-    blocks = sort(blocks;lt=isblockless)
-  end
+function blockoffsets(blocks::Vector{<:Block{N}}, inds) where {N}
   blockoffsets = BlockOffsets{N}()
   nnz = 0
   for block in blocks
@@ -105,9 +103,9 @@ function diagblockoffsets(blocks::Blocks{N},
 end
 
 # Permute the blockoffsets and indices
-function Base.permutedims(boffs::BlockOffsets{N},
-                          inds,
-                          perm::NTuple{N,Int}) where {N}
+function permutedims(boffs::BlockOffsets{N},
+                     inds,
+                     perm::NTuple{N, Int}) where {N}
   blocksR = Blocks{N}(undef,nnzblocks(boffs))
   for (i, block) in enumerate(keys(boffs))
     blocksR[i] = permute(block, perm)
@@ -117,9 +115,9 @@ function Base.permutedims(boffs::BlockOffsets{N},
   return blockoffsetsR,indsR
 end
 
-function Base.permutedims(blocks::Blocks{N},
-                          perm::NTuple{N,Int}) where {N}
-  blocks_perm = Blocks{N}(undef,nnzblocks(blocks))
+function permutedims(blocks::Vector{Block{N}},
+                     perm::NTuple{N, Int}) where {N}
+  blocks_perm = Vector{Block{N}}(undef, length(blocks))
   for (i,block) in enumerate(blocks)
     blocks_perm[i] = permute(block,perm)
   end

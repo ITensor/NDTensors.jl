@@ -2,10 +2,16 @@ export
 # NDTensors.jl
   disable_tblis!,
   enable_tblis!,
-
   insertblock!!,
   setindex,
   setindex!!,
+
+# blocksparse/blockdims.jl
+  BlockDims,
+  blockdim,
+  blockdims,
+  nblocks,
+  blockindex,
 
 # blocksparse/blocksparse.jl
   # Types
@@ -32,10 +38,14 @@ export
   insertblock!,
   randomBlockSparseTensor,
 
-
 # dense.jl
   randomTensor,
   randomDenseTensor,
+
+# diag.jl
+  # Types
+  Diag,
+  DiagTensor,
 
 # empty.jl
   Empty,

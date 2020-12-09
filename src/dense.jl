@@ -646,6 +646,12 @@ function contract!(R::DenseTensor{ElR, NR},
                    labelsT2,
                    α::Elα = one(ElR),
                    β::Elβ = zero(ElR)) where {Elα, Elβ, ElR, ElT1, ElT2, NR, N1, N2}
+  # Special case for scalar tensors
+  if nnz(R) == 1 && nnz(T1) == 1 && nnz(T2) == 1
+    R[1] = T1[1] * T2[1]
+    return R
+  end
+
   if use_tblis() && ElR <: LinearAlgebra.BlasReal && (ElR == ElT1 == ElT2 == Elα == Elβ)
     contract!(Val(:TBLIS), R, labelsR, T1, labelsT1, T2, labelsT2, α, β)
     return R

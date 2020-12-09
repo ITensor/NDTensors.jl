@@ -18,20 +18,28 @@ function similar_type(::Type{<:Tensor{ElT,NT,<:BlockSparse{ElT,VecT},<:Any}},
   return Tensor{ElT,NR,BlockSparse{ElT,VecT,NR},IndsR}
 end
 
-function BlockSparseTensor(::Type{ElT},
-                           ::UndefInitializer,
-                           boffs::BlockOffsets{N},
-                           inds) where {ElT<:Number,N}
+function BlockSparseTensor(::Type{ElT}, ::UndefInitializer,
+                           boffs::BlockOffsets, inds) where {ElT <: Number}
   nnz_tot = nnz(boffs,inds)
   storage = BlockSparse(ElT,undef,boffs,nnz_tot)
   return tensor(storage,inds)
 end
 
-function BlockSparseTensor(::UndefInitializer,
-                           blockoffsets::BlockOffsets{N},
-                           inds) where {N}
-  return BlockSparseTensor(Float64,undef,blockoffsets,inds)
+function BlockSparseTensor(::Type{ElT}, ::UndefInitializer,
+                           blocks::Vector{BlockT}, inds) where {ElT <: Number, BlockT <: Union{Block, NTuple}}
+  boffs,nnz = blockoffsets(blocks,inds)
+  storage = BlockSparse(ElT,undef,boffs,nnz)
+  return tensor(storage,inds)
 end
+
+"""
+    BlockSparseTensor(::UndefInitializer, blocks, inds)
+
+Construct a block sparse tensor with uninitialized memory
+from indices and locations of non-zero blocks.
+"""
+BlockSparseTensor(::UndefInitializer, blockoffsets, inds) =
+  BlockSparseTensor(Float64, undef, blockoffsets, inds)
 
 function BlockSparseTensor(::Type{ElT},
                            blockoffsets::BlockOffsets{N},
@@ -41,75 +49,38 @@ function BlockSparseTensor(::Type{ElT},
   return tensor(storage,inds)
 end
 
-function BlockSparseTensor(blockoffsets::BlockOffsets,
-                           inds)
-  return BlockSparseTensor(Float64,blockoffsets,inds)
-end
-
+BlockSparseTensor(blocks, inds) =
+  BlockSparseTensor(Float64, blocks, inds)
 
 """
-BlockSparseTensor(::UndefInitializer,
-                  blocks::Vector{Block{N}},
-                  inds)
-
-Construct a block sparse tensor with uninitialized memory
-from indices and locations of non-zero blocks.
-"""
-BlockSparseTensor(::UndefInitializer,
-                  blocks::Blocks,
-                  inds) = BlockSparseTensor(Float64,undef,blocks,inds)
-
-function BlockSparseTensor(::Type{ElT},
-                           ::UndefInitializer,
-                           blocks::Blocks,
-                           inds) where {ElT}
-  boffs,nnz = blockoffsets(blocks,inds)
-  storage = BlockSparse(ElT,undef,boffs,nnz)
-  return tensor(storage,inds)
-end
-
-#function BlockSparseTensor(::UndefInitializer,
-#                           blocks::Blocks{N},
-#                           inds::Vararg{DimT,N}) where {DimT,N}
-#  return BlockSparseTensor(undef,blocks,inds)
-#end
-
-"""
-BlockSparseTensor(inds)
+    BlockSparseTensor(inds)
 
 Construct a block sparse tensor with no blocks.
 """
-function BlockSparseTensor(inds)
-  return BlockSparseTensor(BlockOffsets{length(inds)}(),inds)
-end
+BlockSparseTensor(inds) =
+  BlockSparseTensor(BlockOffsets{length(inds)}(),inds)
 
-function BlockSparseTensor(::Type{ElT},
-                           inds) where {ElT<:Number,N}
-  return BlockSparseTensor(ElT,BlockOffsets{length(inds)}(),inds)
-end
+BlockSparseTensor(::Type{ElT}, inds) where {ElT<:Number,N} =
+  BlockSparseTensor(ElT,BlockOffsets{length(inds)}(),inds)
 
 """
-BlockSparseTensor(inds)
+    BlockSparseTensor(inds)
 
 Construct a block sparse tensor with no blocks.
 """
-function BlockSparseTensor(inds::Vararg{DimT,N}) where {DimT,N}
-  return BlockSparseTensor(BlockOffsets{N}(),inds)
-end
+BlockSparseTensor(inds::Vararg{DimT,N}) where {DimT,N} =
+  BlockSparseTensor(BlockOffsets{N}(),inds)
 
 """
-BlockSparseTensor(blocks::Vector{Block{N}},
-                  inds)
+    BlockSparseTensor(blocks::Vector{Block{N}}, inds)
 
 Construct a block sparse tensor with the specified blocks.
 Defaults to setting structurally non-zero blocks to zero.
 """
-BlockSparseTensor(blocks::Blocks,
-                  inds) = BlockSparseTensor(Float64,blocks,inds)
+BlockSparseTensor(blocks::Vector{BlockT}, inds) where {BlockT <: Union{Block, NTuple}} =
+  BlockSparseTensor(Float64, blocks, inds)
 
-function BlockSparseTensor(::Type{ElT},
-                           blocks::Blocks,
-                           inds) where {ElT}
+function BlockSparseTensor(::Type{ElT}, blocks::Vector{BlockT}, inds) where {ElT <: Number, BlockT <: Union{Block, NTuple}}
   boffs,nnz = blockoffsets(blocks,inds)
   storage = BlockSparse(ElT,boffs,nnz)
   return tensor(storage,inds)
@@ -272,7 +243,11 @@ Base.@propagate_inbounds function Base.setindex!(T::BlockSparseTensor{ElT,N},
   return T
 end
 
-blockview(T::BlockSparseTensor, blockT::Block) = blockview(T, BlockOffset(blockT, offset(T, blockT)))
+function blockview(T::BlockSparseTensor, block::Block)
+  blockview(T, BlockOffset(block, offset(T, block)))
+end
+
+blockview(T::BlockSparseTensor, block) = blockview(T, Block(block))
 
 function blockview(T::BlockSparseTensor,
                    bof::BlockOffset)
@@ -298,7 +273,7 @@ end
 #
 
 # TODO: extend to case with different block structures
-function Base.:+(T1::BlockSparseTensor,T2::BlockSparseTensor)
+function (T1::BlockSparseTensor + T2::BlockSparseTensor)
   inds(T1) ≠ inds(T2) && error("Cannot add block sparse tensors with different block structure")  
   return tensor(store(T1)+store(T2),inds(T1))
 end
@@ -327,13 +302,13 @@ end
 
 # Note that combdims is expected to be contiguous and ordered
 # smallest to largest
-function combine_dims(blocks::Blocks{N},
+function combine_dims(blocks::Vector{Block{N}},
                       inds,
-                      combdims::NTuple{NC,Int}) where {N,NC}
+                      combdims::NTuple{NC, Int}) where {N, NC}
   nblcks = nblocks(inds,combdims)
-  blocks_comb = Blocks{N-NC+1}(undef,nnzblocks(blocks))
-  for (i,block) in enumerate(blocks)
-    blocks_comb[i] = combine_dims(block,inds,combdims)
+  blocks_comb = Vector{Block{N-NC+1}}(undef, length(blocks))
+  for (i, block) in enumerate(blocks)
+    blocks_comb[i] = combine_dims(block, inds, combdims)
   end
   return blocks_comb
 end
@@ -637,19 +612,27 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
                        T::BlockSparseTensor{ElT,N},
                        perm::NTuple{N,Int},
                        f::Function=(r,t)->t) where {ElR,ElT,N}
-  # TODO: write a custom function for merging two sorted
-  # lists with no repeated elements
-  nzblocksRR = unique!(sort(vcat(nzblocks(R),permutedims(nzblocks(T),perm));lt=isblockless))
-  RR = BlockSparseTensor(promote_type(ElR,ElT),nzblocksRR,inds(R))
-  copyto!(RR,R)
-  permutedims!(RR,T,perm,f)
+  bofsRR = deepcopy(blockoffsets(R))
+  bofsT = blockoffsets(T)
+  new_nnz = nnz(R)
+  for (blockT, offsetT) in pairs(bofsT)
+    blockTperm = permute(blockT, perm)
+    if !isassigned(bofsRR, blockTperm)
+      insert!(bofsRR, blockTperm, new_nnz)
+      new_nnz += blockdim(T, blockT)
+    end
+  end
+  RR = BlockSparseTensor(promote_type(ElR,ElT), undef,
+                         bofsRR, inds(R))
+  copyto!(RR, R)
+  permutedims!(RR, T, perm, f)
   return RR
 end
 
-function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
-                           T::BlockSparseTensor{<:Number,N},
-                           perm::NTuple{N,Int},
-                           f::Function=(r,t)->t) where {N}
+function permutedims!(R::BlockSparseTensor{<:Number,N},
+                      T::BlockSparseTensor{<:Number,N},
+                      perm::NTuple{N,Int},
+                      f::Function=(r,t)->t) where {N}
   for blockT in keys(blockoffsets(T))
     # Loop over non-zero blocks of T/R
     Tblock = blockview(T,blockT)
@@ -658,19 +641,6 @@ function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
   end
   return R
 end
-
-#function Base.permutedims!(R::BlockSparseTensor{<:Number,N},
-#                           T::BlockSparseTensor{<:Number,N},
-#                           perm::NTuple{N,Int},
-#                           f::Function) where {N}
-#  for (blockT,_) in blockoffsets(T)
-#    # Loop over non-zero blocks of T/R
-#    Tblock = blockview(T,blockT)
-#    Rblock = blockview(R,permute(blockT,perm))
-#    permutedims!(Rblock,Tblock,perm,f)
-#  end
-#  return R
-#end
 
 #
 # Contraction
@@ -720,11 +690,13 @@ end
 function are_blocks_contracted(block1::Block{N1},
                                block2::Block{N2},
                                labels1_to_labels2::NTuple{N1,Int}) where {N1,N2}
+  t1 = Tuple(block1)
+  t2 = Tuple(block2)
   for i1 in 1:N1
     i2 = @inbounds labels1_to_labels2[i1]
     if i2 > 0
       # This dimension is contracted
-      if @inbounds block1[i1] != @inbounds block2[i2]
+      if @inbounds t1[i1] != @inbounds t2[i2]
         return false
       end
     end
@@ -737,58 +709,23 @@ function contract_blocks(block1::Block{N1},
                          block2::Block{N2},
                          labels2_to_labelsR,
                          ::Val{NR}) where {N1,N2,NR}
-  blockR = ntuple(_ -> 0, Val(NR))
+  blockR = ntuple(_ -> UInt(0), Val(NR))
+  t1 = Tuple(block1)
+  t2 = Tuple(block2)
   for i1 in 1:N1
     iR = @inbounds labels1_to_labelsR[i1]
     if iR > 0
-      blockR = @inbounds Base.setindex(blockR, block1[i1], iR)
+      blockR = @inbounds setindex(blockR, t1[i1], iR)
     end
   end
   for i2 in 1:N2
     iR = @inbounds labels2_to_labelsR[i2]
     if iR > 0
-      blockR = @inbounds Base.setindex(blockR, block2[i2], iR)
+      blockR = @inbounds setindex(blockR, t2[i2], iR)
     end
   end
-  return blockR
+  return Block{NR}(blockR)
 end
-
-# Custom Tuple{N, Int} hash
-# Borrowed from:
-# https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
-# This seems to have a lot of clashes
-function Base.hash(b::Block, seed::UInt)
-  h = UInt(0x9e3779b9)
-  for i in b 
-    seed ⊻= i + h + (seed << 6) + (seed >> 2)
-  end
-  return seed
-end
-
-# Borrowed from:
-# https://github.com/JuliaLang/julia/issues/37073
-# XXX: make this into a custom type Block{N} since this is
-# type piracy
-#using Base.Cartesian: @nexprs
-#Base.hash(x::Tuple{}, h::UInt) = h + Base.tuplehash_seed
-#@generated function Base.hash(x::Block{N}, h::UInt) where N
-#  quote
-#    h += Base.tuplehash_seed
-#    @nexprs $N i -> h = hash(x[$N-i+1], h)
-#  end
-#end
-
-# Borrowed from:
-# http://www.docjar.com/html/api/java/util/Arrays.java.html
-# Could also consider uring the CPython tuple hash:
-# https://github.com/python/cpython/blob/0430dfac629b4eb0e899a09b899a494aa92145f6/Objects/tupleobject.c#L406
-#function Base.hash(b::Block, h::UInt)
-#  h += Base.tuplehash_seed
-#  for n in b
-#    h = 31 * h + n ⊻ (n >> 32)
-#  end
-#  return h
-#end
 
 function contract_blockoffsets(boffs1::BlockOffsets{N1},inds1,labels1,
                                boffs2::BlockOffsets{N2},inds2,labels2,
@@ -798,7 +735,7 @@ function contract_blockoffsets(boffs1::BlockOffsets{N1},inds1,labels1,
   labels1_to_labels2,labels1_to_labelsR,labels2_to_labelsR = contract_labels(labels1,labels2,labelsR)
   blockoffsetsR = BlockOffsets{NR}()
   nnzR = 0
-  contraction_plan = Tuple{NTuple{N1, Int}, NTuple{N2, Int}, NTuple{NR, Int}}[]
+  contraction_plan = Tuple{Block{N1}, Block{N2}, Block{NR}}[]
   # Reserve some capacity
   # In theory the maximum is length(boffs1) * length(boffs2)
   # but in practice that is too much
