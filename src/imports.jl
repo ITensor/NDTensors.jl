@@ -7,6 +7,7 @@ import Base:
   Tuple,
   # Symbols
   +,
+  *,
   # Methods
   complex,
   convert,
