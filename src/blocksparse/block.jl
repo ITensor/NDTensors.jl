@@ -6,9 +6,13 @@
 struct Block{N}
   data::NTuple{N, UInt}
   hash::UInt
-  function Block{N}(data::NTuple{N, UInt}) where {N, H}
+  function Block{N}(data::NTuple{N, UInt}) where {N}
     h = _hash(data)
     return new{N}(data, h)
+  end
+  function Block{0}(::Tuple{})
+    h = _hash(())
+    return new{0}((), h)
   end
 end
 
@@ -23,6 +27,8 @@ Block(t::NTuple{N, UInt}) where {N} = Block{N}(t)
 
 Block(t::NTuple{N, Int}) where {N} =
   Block{N}(convert(NTuple{N, UInt}, t))
+
+Block(::Tuple{}) where {N} = Block{0}(())
 
 Block(I::CartesianIndex{N}) where {N} = Block{N}(I.I)
 
@@ -70,7 +76,7 @@ ValLength(::Type{<:Block{N}}) where {N} = Val{N}
 
 deleteat(b::Block, pos) = Block(deleteat(Tuple(b), pos))
 
-insertafter(b::Block, val, pos) = Block(insertat(Tuple(b), val, pos))
+insertafter(b::Block, val, pos) = Block(insertafter(Tuple(b), val, pos))
 
 getindices(b::Block, I) = getindices(Tuple(b), I)
 
