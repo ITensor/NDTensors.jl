@@ -223,7 +223,7 @@ function array_to_offsets(a,N::Int)
   boff = BlockOffsets{N}()
   j = 0
   for b=1:nblocks
-    insert!(boff, ntuple(i->(a[j+i]),N), a[j+N+1])
+    insert!(boff, Block(ntuple(i->(a[j+i]),N), a[j+N+1]))
     j += (N+1)
   end
   return boff
