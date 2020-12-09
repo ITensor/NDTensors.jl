@@ -124,36 +124,36 @@ function BlockSparseTensor(blocks::Blocks{N},
   return BlockSparseTensor(blocks,inds)
 end
 
-function Base.similar(::BlockSparseTensor{ElT,N},
+function similar(::BlockSparseTensor{ElT,N},
                       blockoffsets::BlockOffsets{N},
                       inds) where {ElT,N}
   return BlockSparseTensor(ElT,undef,blockoffsets,inds)
 end
 
-function Base.similar(::Type{<:BlockSparseTensor{ElT,N}},
+function similar(::Type{<:BlockSparseTensor{ElT,N}},
                       blockoffsets::BlockOffsets{N},
                       inds) where {ElT,N}
   return BlockSparseTensor(ElT,undef,blockoffsets,inds)
 end
 
-function Base.zeros(::BlockSparseTensor{ElT,N},
+function zeros(::BlockSparseTensor{ElT,N},
                     blockoffsets::BlockOffsets{N},
                     inds) where {ElT,N}
   return BlockSparseTensor(ElT,blockoffsets,inds)
 end
 
-function Base.zeros(::Type{<:BlockSparseTensor{ElT,N}},
+function zeros(::Type{<:BlockSparseTensor{ElT,N}},
                     blockoffsets::BlockOffsets{N},
                     inds) where {ElT,N}
   return BlockSparseTensor(ElT,blockoffsets,inds)
 end
 
-function Base.zeros(::BlockSparseTensor{ElT, N},
+function zeros(::BlockSparseTensor{ElT, N},
                     inds) where {ElT, N}
   return BlockSparseTensor(ElT, inds)
 end
 
-function Base.zeros(::Type{<: BlockSparseTensor{ElT, N}},
+function zeros(::Type{<: BlockSparseTensor{ElT, N}},
                     inds) where {ElT, N}
   return BlockSparseTensor(ElT, inds)
 end
@@ -231,9 +231,9 @@ function insertblock!(T::BlockSparseTensor{<: Number, N},
 end
 
 # TODO: Add a checkbounds
-Base.@propagate_inbounds function Base.setindex!(T::BlockSparseTensor{ElT,N},
-                                                 val,
-                                                 i::Vararg{Int,N}) where {ElT,N}
+Base.@propagate_inbounds function setindex!(T::BlockSparseTensor{ElT,N},
+                                            val,
+                                            i::Vararg{Int,N}) where {ElT,N}
   offset,block,offset_within_block = indexoffset(T,i...)
   if isnothing(offset)
     offset_of_block = insertblock_offset!(T, block)
@@ -278,8 +278,8 @@ function (T1::BlockSparseTensor + T2::BlockSparseTensor)
   return tensor(store(T1)+store(T2),inds(T1))
 end
 
-function Base.permutedims(T::BlockSparseTensor{<:Number,N},
-                          perm::NTuple{N,Int}) where {N}
+function permutedims(T::BlockSparseTensor{<:Number,N},
+                     perm::NTuple{N,Int}) where {N}
   blockoffsetsR,indsR = permutedims(blockoffsets(T),inds(T),perm)
   R = similar(T,blockoffsetsR,indsR)
   permutedims!(R,T,perm)
@@ -584,22 +584,8 @@ function uncombine(T::BlockSparseTensor{<:Number,NT},
   return R
 end
 
-# TODO: handle case with different element types in R and T
-#function permutedims!!(R::BlockSparseTensor{<:Number,N},
-#                       T::BlockSparseTensor{<:Number,N},
-#                       perm::NTuple{N,Int}) where {N}
-#  blockoffsetsTp,indsTp = permute(blockoffsets(T),inds(T),perm)
-#  if blockoffsetsTp == blockoffsets(R)
-#    R = permutedims!(R,T,perm)
-#    return R
-#  end
-#  R = similar(T,blockoffsetsTp,indsTp)
-#  permutedims!(R,T,perm)
-#  return R
-#end
-
-function Base.copyto!(R::BlockSparseTensor,
-                      T::BlockSparseTensor)
+function copyto!(R::BlockSparseTensor,
+                 T::BlockSparseTensor)
   for bof in pairs(blockoffsets(T))
     copyto!(blockview(R, nzblock(bof)), blockview(T, bof))
   end
@@ -612,7 +598,7 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
                        T::BlockSparseTensor{ElT,N},
                        perm::NTuple{N,Int},
                        f::Function=(r,t)->t) where {ElR,ElT,N}
-  bofsRR = deepcopy(blockoffsets(R))
+  bofsRR = blockoffsets(R)
   bofsT = blockoffsets(T)
   new_nnz = nnz(R)
   for (blockT, offsetT) in pairs(bofsT)
@@ -624,7 +610,9 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
   end
   RR = BlockSparseTensor(promote_type(ElR,ElT), undef,
                          bofsRR, inds(R))
-  copyto!(RR, R)
+  # Directly copy the data since it is the same blocks
+  # and offsets
+  copyto!(data(RR), data(R))
   permutedims!(RR, T, perm, f)
   return RR
 end

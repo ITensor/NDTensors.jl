@@ -39,8 +39,22 @@ export
   randomBlockSparseTensor,
 
 # dense.jl
+  # Types
+  Dense,
+  DenseTensor,
+  # Symbols
+  ⊗,
+  # Methods
   randomTensor,
   randomDenseTensor,
+  array,
+  contract,
+  matrix,
+  outer,
+  permutedims!!,
+  read,
+  vector,
+  write,
 
 # diag.jl
   # Types

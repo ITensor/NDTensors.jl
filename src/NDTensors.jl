@@ -11,6 +11,10 @@ using Strided
 using TimerOutputs
 using TupleTools
 
+using Base:
+  @propagate_inbounds,
+  ReshapedArray
+
 #####################################
 # Imports and exports
 #
