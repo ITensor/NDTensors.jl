@@ -186,34 +186,28 @@ const NonuniformDiagBlockSparseTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,
 const UniformDiagBlockSparseTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where 
                                                {StoreT<:UniformDiagBlockSparse}
 
-function DiagBlockSparseTensor(::Type{ElT},
-                               ::UndefInitializer,
-                               blocks::Blocks,
-                               inds) where {ElT}
+function DiagBlockSparseTensor(::Type{ElT}, ::UndefInitializer,
+                               blocks::Vector, inds) where {ElT}
   blockoffsets,nnz = diagblockoffsets(blocks, inds)
-  storage = DiagBlockSparse(ElT,undef,blockoffsets,nnz)
+  storage = DiagBlockSparse(ElT, undef, blockoffsets, nnz)
   return tensor(storage, inds)
 end
 
-DiagBlockSparseTensor(::UndefInitializer,
-                      blocks::Blocks,
-                      inds) = DiagBlockSparseTensor(Float64,undef,blocks,inds)
+DiagBlockSparseTensor(::UndefInitializer, blocks::Vector, inds) =
+  DiagBlockSparseTensor(Float64, undef, blocks, inds)
 
-function DiagBlockSparseTensor(::Type{ElT},
-                               blocks::Blocks,
+function DiagBlockSparseTensor(::Type{ElT}, blocks::Vector,
                                inds) where {ElT}
   blockoffsets,nnz = diagblockoffsets(blocks,inds)
   storage = DiagBlockSparse(ElT,blockoffsets,nnz)
   return tensor(storage,inds)
 end
 
-DiagBlockSparseTensor(blocks::Blocks,
-                      inds) = DiagBlockSparseTensor(Float64,blocks,inds)
+DiagBlockSparseTensor(blocks::Vector, inds) =
+  DiagBlockSparseTensor(Float64, blocks, inds)
 
 # Uniform case
-function DiagBlockSparseTensor(x::Number,
-                               blocks::Blocks,
-                               inds)
+function DiagBlockSparseTensor(x::Number, blocks::Vector, inds)
   blockoffsets,nnz = diagblockoffsets(blocks,inds)
   storage = DiagBlockSparse(x,blockoffsets)
   return tensor(storage,inds)
@@ -222,17 +216,13 @@ end
 diagblockoffsets(T::DiagBlockSparseTensor) = diagblockoffsets(store(T))
 
 """
-blockview(T::DiagBlockSparseTensor,pos::Int)
+blockview(T::DiagBlockSparseTensor, block::Block)
 
-Given a specified position in the block-offset list, return a Diag Tensor
+Given a block in the block-offset list, return a Diag Tensor
 that is a view to the data in that block (to avoid block lookup if the position
 is known already).
 """
-function blockview(T::DiagBlockSparseTensor,
-                   pos::Int)
-  blockT,offsetT = diagblockoffsets(T)[pos]
-  return blockview(T,BlockOffset(blockT,offsetT))
-end
+blockview(T::DiagBlockSparseTensor, blockT::Block) = blockview(T, BlockOffset(blockT, offset(T, blockT)))
 
 function blockview(T::DiagBlockSparseTensor,
                    bof::BlockOffset)

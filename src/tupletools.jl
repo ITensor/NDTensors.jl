@@ -90,6 +90,18 @@ function invperm(perm)
   return permres
 end
 
+# Override TupleTools.isperm to speed up
+# Strided.permutedims a bit (see:
+# https://github.com/Jutho/Strided.jl/issues/15)
+function isperm(p::NTuple{N}) where {N}
+  N < 6 && return Base.isperm(p)
+  used = @MVector zeros(Bool, N)
+  for a in p
+    (0 < a <= N) && (used[a] ⊻= true) || return false
+  end
+  true
+end
+
 """
     is_trivial_permutation(P)
 
@@ -130,8 +142,7 @@ deleteat_sorted(t::Tuple,pos::NTuple{N,Int}) where {N} = deleteat_sorted(deletea
 
 # Make a slice of the block on the specified dimensions
 # Make this a generic tupletools function (TupleTools.jl calls it getindices)
-function getindices(t::Tuple,
-                    I::NTuple{N,Int}) where {N}
+function getindices(t::Tuple, I::NTuple{N,Int}) where {N}
   return ntuple(i->t[I[i]],Val(N))
 end
 

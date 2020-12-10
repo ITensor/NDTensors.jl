@@ -1,9 +1,3 @@
-export BlockDims,
-       blockdim,
-       blockdims,
-       nblocks,
-       blockindex
-
 """
 BlockDim
 
@@ -107,34 +101,30 @@ function blockdim(ind::BlockDim,
 end
 
 """
-blockdim(::BlockDims,block,::Integer)
+    blockdim(::BlockDims,block,::Integer)
 
 The size of the specified block in the specified
 dimension.
 """
-function blockdim(inds,
-                  block,
-                  i::Integer)
+function blockdim(inds, block, i::Integer)
   return blockdim(inds[i],block[i])
 end
 
 """
-blockdims(::BlockDims,block)
+    blockdims(::BlockDims,block)
 
 The size of the specified block.
 """
-function blockdims(inds,
-                   block)
+function blockdims(inds, block)
   return ntuple(i->blockdim(inds,block,i),ValLength(inds))
 end
 
 """
-blockdim(::BlockDims,block)
+    blockdim(::BlockDims,block)
 
 The total size of the specified block.
 """
-function blockdim(inds,
-                  block)
+function blockdim(inds, block)
   return prod(blockdims(inds,block))
 end
 
@@ -164,8 +154,7 @@ end
 
 # Given a CartesianIndex in the range dims(T), get the block it is in
 # and the index within that block
-function blockindex(T,
-                    i::Vararg{Int,N}) where {ElT,N}
+function blockindex(T, i::Vararg{Int,N}) where {ElT,N}
   # Start in the (1,1,...,1) block
   current_block_loc = @MVector ones(Int,N)
   current_block_dims = blockdims(T,Tuple(current_block_loc))
@@ -177,7 +166,7 @@ function blockindex(T,
       current_block_dims = blockdims(T,Tuple(current_block_loc))
     end
   end
-  return Tuple(block_index),Block{N}(current_block_loc)
+  return Tuple(block_index), Block{N}(current_block_loc)
 end
 
 blockindex(T) = (),Block{0}()

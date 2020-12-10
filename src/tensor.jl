@@ -1,8 +1,3 @@
-export Tensor,
-       tensor,
-       inds,
-       ind,
-       store
 
 """
 Tensor{StoreT,IndsT}
@@ -228,6 +223,8 @@ Return a vector of the non-zero blocks of the BlockSparseTensor.
 """
 nzblocks(T::Tensor) = nzblocks(store(T))
 
+eachnzblock(T::Tensor) = eachnzblock(store(T))
+
 blockoffsets(T::Tensor) = blockoffsets(store(T))
 nnzblocks(T::Tensor) = nnzblocks(store(T))
 nnz(T::Tensor) = nnz(store(T))
@@ -247,20 +244,6 @@ Get the offset of the block at position pos
 in the block-offsets list.
 """
 offset(T::Tensor, block) = offset(store(T), block)
-
-nzblock(T::Tensor, n::Int) = nzblock(store(T), n)
-
-"""
-blockdim(T::Tensor,pos::Int)
-
-Get the block dimension of the block at position pos
-in the block-offset list.
-"""
-blockdim(T::Tensor, pos::Int) = blockdim(store(T), pos)
-
-findblock(T::Tensor,
-          block;
-          sorted=true) = findblock(store(T), block; sorted=sorted)
 
 """
 isblocknz(T::Tensor,
@@ -293,24 +276,13 @@ function blockend(T::Tensor{<:Number,N},
   return Tuple(end_index)
 end
 
-"""
-blockview(T::Tensor,block::Block)
-
-Given a specified block, return a Dense/Diag Tensor that is a view to the data
-in that block.
-"""
-function blockview(T::Tensor,block; sorted=true)
-  pos = findblock(T,block; sorted=sorted)
-  return blockview(T,pos)
-end
-
 #
 # Some generic getindex and setindex! functionality
 #
 
 setindex!!(T::Tensor, x, I...) = setindex!(T, x, I...)
 
-addblock!!(T::Tensor, block) = addblock!(T, block)
+insertblock!!(T::Tensor, block) = insertblock!(T, block)
 
 """
 getdiagindex
