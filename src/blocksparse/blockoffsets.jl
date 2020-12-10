@@ -1,28 +1,15 @@
-export BlockSparse,
-       BlockSparseTensor,
-       Block,
-       nzblock,
-       BlockOffset,
-       BlockOffsets,
-       blockoffsets,
-       blockview,
-       nnzblocks,
-       nzblocks,
-       nnz,
-       findblock,
-       isblocknz
-
 #
 # BlockOffsets
 #
 
-const Block{N} = NTuple{N,Int}
 const Blocks{N} = Vector{Block{N}}
 const BlockOffset{N} = Pair{Block{N},Int}
-const BlockOffsets{N} = Vector{BlockOffset{N}}
+# Use Dictionary from Dictionaries.jl (faster
+# iteration than Base.Dict)
+const BlockOffsets{N} = Dictionary{Block{N}, Int}
 
-BlockOffset(block::Block{N},
-            offset::Int) where {N} = BlockOffset{N}(block, offset)
+BlockOffset(block::Block{N}, offset::Int) where {N} =
+  BlockOffset{N}(block, offset)
 
 nzblock(bof::BlockOffset) = first(bof)
 
@@ -32,24 +19,16 @@ nzblock(block::Block) = block
 
 # Get the offset if the nth block in the block-offsets
 # list
-offset(bofs::BlockOffsets,
-       n::Int) = offset(bofs[n])
-
-# TODO: rename nzblock?
-nzblock(bofs::BlockOffsets,
-        n::Int) = nzblock(bofs[n])
+offset(bofs::BlockOffsets, n::Int) =
+  offset(bofs[n])
 
 nnzblocks(bofs::BlockOffsets) = length(bofs)
 nnzblocks(bs::Blocks) = length(bs)
 
-# TODO: make an iterator eachnzblocks to avoid allocation
-function nzblocks(bofs::BlockOffsets{N}) where {N}
-  blocks = Blocks{N}(undef, nnzblocks(bofs))
-  for i in 1:nnzblocks(bofs)
-    blocks[i] = nzblock(bofs, i)
-  end
-  return blocks
-end
+eachnzblock(bofs::BlockOffsets) = keys(bofs)
+
+nzblocks(bofs::BlockOffsets) = collect(eachnzblock(bofs))
+
 
 # define block ordering with reverse lexographical order
 function isblockless(b1::Block{N},
@@ -72,73 +51,31 @@ function isblockless(b1::Block{N},
   return isblockless(b1, nzblock(bof2))
 end
 
-function check_blocks_sorted(blockoffsets::BlockOffsets)
-  for jj in 1:length(blockoffsets)-1
-    block_jj = nzblock(blockoffsets[jj])
-    block_jj1 = nzblock(blockoffsets[jj+1])
-    if !isblockless(block_jj,block_jj1)
-      error("Blocks in BlockOffsets not ordered")
-    end
+function offset(bofs::BlockOffsets{N}, block::Block{N}) where {N}
+  if !isassigned(bofs, block)
+    return nothing
   end
-  return
+  return bofs[block]
 end
 
-function offset(bofs::BlockOffsets{N},
-                block::Block{N}) where {N}
-  block_pos = findblock(bofs,block)
-  isnothing(block_pos) && return nothing
-  return offset(bofs,block_pos)
+function nnz(bofs::BlockOffsets, inds)
+  _nnz = 0
+  nnzblocks(bofs) == 0 && return _nnz
+  for block in eachnzblock(bofs)
+    _nnz += blockdim(inds, block)
+  end
+  return _nnz
 end
 
-"""
-findblock(::BlockOffsets,::Block)
-
-Output the index of the specified block in the block-offsets
-list.
-If not found, return nothing.
-Searches assuming the blocks are sorted.
-If more than one block exists, throw an error.
-"""
-function findblock(bofs::BlockOffsets{N},
-                   find_block::Block{N}; sorted=true) where {N}
-  r = sorted ? searchsorted(bofs,find_block;lt=isblockless) : findall(i->block(i)==find_block,bofs)
-  length(r)>1 && error("In findblock, more than one block found")   
-  length(r)==0 && return nothing
-  return first(r)
-end
-
-function nnz(bofs::BlockOffsets,inds)
-  nnzblocks(bofs) == 0 && return 0
-  lastblock,lastoffset = bofs[end]
-  return lastoffset + blockdim(inds,lastblock)
-end
-
-"""
-new_block_pos(::BlockOffsets,::Block)
-
-Output the index where the specified block should go in
-the block-offsets list.
-Searches assuming the blocks are sorted.
-If the block already exists, throw an error.
-"""
-function new_block_pos(bofs::BlockOffsets{N},
-                       block::Block{N}) where {N}
-  r = searchsorted(bofs,block;lt=isblockless)
-  length(r)>1 && error("In new_block_pos, more than one block found")
-  length(r)==1 && error("In new_block_pos, block already found")
-  return first(r)
-end
+blockoffsets(blocks::Vector{<:NTuple}, inds) =
+  blockoffsets(Block.(blocks), inds)
 
 # TODO: should this be a constructor?
-function blockoffsets(blocks::Blocks{N},
-                      inds; sorted = true) where {N}
-  if sorted
-    blocks = sort(blocks;lt=isblockless)
-  end
-  blockoffsets = BlockOffsets{N}(undef,length(blocks))
+function blockoffsets(blocks::Vector{<:Block{N}}, inds) where {N}
+  blockoffsets = BlockOffsets{N}()
   nnz = 0
-  for (i,block) in enumerate(blocks)
-    blockoffsets[i] = block=>nnz
+  for block in blocks
+    insert!(blockoffsets, block, nnz)
     current_block_dim = blockdim(inds,block)
     nnz += current_block_dim
   end
@@ -146,40 +83,41 @@ function blockoffsets(blocks::Blocks{N},
 end
 
 """
-diagblockoffsets(blocks::Blocks,inds)
+    diagblockoffsets(blocks::Blocks,inds)
 
 Get the blockoffsets only along the diagonal.
 The offsets are along the diagonal.
+
+Assumes the blocks are allong the diagonal.
 """
-function diagblockoffsets(blocks::Blocks{N},
-                          inds) where {N}
-  blocks = sort(blocks;lt=isblockless)
-  blockoffsets = BlockOffsets{N}(undef,length(blocks))
+function diagblockoffsets(blocks::Vector{BlockT},
+                          inds) where {BlockT <: Union{Block{N}, Tuple{Vararg{<:Any, N}}}} where {N}
+  blockoffsets = BlockOffsets{N}()
   nnzdiag = 0
-  for (i,block) in enumerate(blocks)
-    blockoffsets[i] = block=>nnzdiag
+  for (i, block) in enumerate(blocks)
+    insert!(blockoffsets, Block(block), nnzdiag)
     current_block_diaglength = blockdiaglength(inds,block)
     nnzdiag += current_block_diaglength
   end
-  return blockoffsets,nnzdiag
+  return blockoffsets, nnzdiag
 end
 
 # Permute the blockoffsets and indices
-function Base.permutedims(boffs::BlockOffsets{N},
-                          inds,
-                          perm::NTuple{N,Int}) where {N}
+function permutedims(boffs::BlockOffsets{N},
+                     inds,
+                     perm::NTuple{N, Int}) where {N}
   blocksR = Blocks{N}(undef,nnzblocks(boffs))
-  for (i,(block,offset)) in enumerate(boffs)
-    blocksR[i] = permute(block,perm)
+  for (i, block) in enumerate(keys(boffs))
+    blocksR[i] = permute(block, perm)
   end
   indsR = permute(inds,perm)
   blockoffsetsR,_ = blockoffsets(blocksR,indsR)
   return blockoffsetsR,indsR
 end
 
-function Base.permutedims(blocks::Blocks{N},
-                          perm::NTuple{N,Int}) where {N}
-  blocks_perm = Blocks{N}(undef,nnzblocks(blocks))
+function permutedims(blocks::Vector{Block{N}},
+                     perm::NTuple{N, Int}) where {N}
+  blocks_perm = Vector{Block{N}}(undef, length(blocks))
   for (i,block) in enumerate(blocks)
     blocks_perm[i] = permute(block,perm)
   end

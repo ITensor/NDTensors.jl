@@ -1,5 +1,3 @@
-export Diag,
-       DiagTensor
 
 # Diag can have either Vector storage, in which case
 # it is a general Diag tensor, or scalar storage,
@@ -42,7 +40,7 @@ Base.complex(::Type{Diag{ElT,Vector{ElT}}}) where {ElT} = Diag{complex(ElT),Vect
 Base.complex(::Type{Diag{ElT,ElT}}) where {ElT} = Diag{complex(ElT),complex(ElT)}
 
 # Deal with uniform Diag conversion
-Base.convert(::Type{<:Diag{ElT,VecT}},D::Diag) where {ElT,VecT} = Diag(convert(VecT,data(D)))
+convert(::Type{<:Diag{ElT,VecT}},D::Diag) where {ElT,VecT} = Diag(convert(VecT,data(D)))
 
 # TODO: write in terms of ::Int, not inds
 Base.similar(D::NonuniformDiag) = Diag(similar(data(D)))
@@ -130,11 +128,11 @@ Base.IndexStyle(::Type{<:DiagTensor}) = IndexCartesian()
 
 # TODO: this needs to be better (promote element type, check order compatibility,
 # etc.
-function Base.convert(::Type{<:DenseTensor{ElT,N}}, T::DiagTensor{ElT,N}) where {ElT<:Number,N}
+function convert(::Type{<:DenseTensor{ElT,N}}, T::DiagTensor{ElT,N}) where {ElT<:Number,N}
   return dense(T)
 end
 
-Base.convert(::Type{Diagonal}, D::DiagTensor{<:Number, 2}) =
+convert(::Type{Diagonal}, D::DiagTensor{<:Number, 2}) =
   Diagonal(data(D))
 
 # These are rules for determining the output of a pairwise contraction of NDTensors

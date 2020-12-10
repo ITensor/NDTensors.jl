@@ -43,9 +43,8 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
   # Sorted eigenvalues
   d = Vector{real(ElT)}()
 
-  for n in 1:nnzblocks(T)
-    b = nzblock(T, n)
-    blockT = blockview(T, n)
+  for (n, b) in enumerate(eachnzblock(T))
+    blockT = blockview(T, b)
     USVb = svd(blockT; alg = alg)
     if isnothing(USVb)
       return nothing
@@ -142,13 +141,13 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
   for n in 1:nnzblocksT
     blockT = nzblocksT[n]
 
-    blockU = (blockT[1],n)
+    blockU = (blockT[1], UInt(n))
     nzblocksU[n] = blockU
 
     blockS = (n,n)
     nzblocksS[n] = blockS
 
-    blockV = (blockT[2],n)
+    blockV = (blockT[2], UInt(n))
     nzblocksV[n] = blockV
   end
 
@@ -197,17 +196,19 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
   # Sorted eigenvalues
   d = Vector{real(ElT)}()
 
-  b = nzblock(T, 1)
-  all(==(b[1]), b) || error("Eigen currently only supports block diagonal matrices.")
-  blockT = blockview(T, 1)
+  for b in eachnzblock(T)
+    all(==(b[1]), b) || error("Eigen currently only supports block diagonal matrices.")
+  end
+
+  b = first(eachnzblock(T))
+  blockT = blockview(T, b)
   Db, Vb = eigen(blockT)
   Ds = [Db]
   Vs = [Vb]
   append!(d, abs.(vector(diag(Db))))
-  for n in 2:nnzblocks(T)
-    b = nzblock(T, n)
-    all(==(b[1]), b) || error("Eigen currently only supports block diagonal matrices.")
-    blockT = blockview(T, n)
+  for (n, b) in enumerate(eachnzblock(T))
+    n == 1 && continue
+    blockT = blockview(T, b)
     Db, Vb = eigen(blockT)
     push!(Ds, Db)
     push!(Vs, Vb)
@@ -304,11 +305,10 @@ function LinearAlgebra.exp(T::Union{BlockSparseMatrix{ElT},
                                     Hermitian{ElT, <:BlockSparseMatrix{ElT}}}) where {ElT<: Union{Real,
                                                                                                   Complex}}
   expT = BlockSparseTensor(ElT, undef, nzblocks(T), inds(T))
-  for n in 1:nnzblocks(T)
-    b = nzblock(T,n)
+  for b in eachnzblock(T)
     all(==(b[1]),b) || error("exp currently supports only block-diagonal matrices")
-    blockT = blockview(T,n)
-    blockview(expT,n) .= exp(blockT)
+    blockT = blockview(T, b)
+    blockview(expT, b) .= exp(blockT)
   end
   return expT
 end

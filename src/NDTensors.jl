@@ -1,17 +1,25 @@
 module NDTensors
 
 using Compat
+using Dictionaries
 using Random
 using LinearAlgebra
 using StaticArrays
 using HDF5
 using Requires
 using Strided
+using TimerOutputs
+using TupleTools
+
+using Base:
+  @propagate_inbounds,
+  ReshapedArray
 
 #####################################
-# Exports
+# Imports and exports
 #
 include("exports.jl")
+include("imports.jl")
 
 #####################################
 # DenseTensor and DiagTensor
@@ -33,6 +41,7 @@ include("svd.jl")
 # BlockSparseTensor
 #
 include("blocksparse/blockdims.jl")
+include("blocksparse/block.jl")
 include("blocksparse/blockoffsets.jl")
 include("blocksparse/blocksparse.jl")
 include("blocksparse/blocksparsetensor.jl")
@@ -44,6 +53,17 @@ include("blocksparse/linearalgebra.jl")
 # Empty
 #
 include("empty.jl")
+
+#####################################
+# Deprecations
+#
+include("deprecated.jl")
+
+#####################################
+# A global timer used with TimerOutputs.jl
+#
+
+const GLOBAL_TIMER = TimerOutput()
 
 #####################################
 # Optional TBLIS contraction backend

@@ -1,8 +1,3 @@
-export data,
-       TensorStorage,
-       randn!,
-       scale!,
-       norm
 
 abstract type TensorStorage{ElT} <: AbstractVector{ElT} end
 
@@ -76,12 +71,11 @@ Return a vector of the non-zero blocks of the BlockSparse storage.
 """
 nzblocks(T::TensorStorage) = nzblocks(blockoffsets(T))
 
+eachnzblock(T::TensorStorage) = eachnzblock(blockoffsets(T))
+
 nnzblocks(S::TensorStorage) = length(blockoffsets(S))
 nnz(S::TensorStorage) = length(S)
 
 offset(S::TensorStorage,
        block) = offset(blockoffsets(S), block)
-
-nzblock(S::TensorStorage,
-        n::Int) = nzblock(blockoffsets(S), n)
 

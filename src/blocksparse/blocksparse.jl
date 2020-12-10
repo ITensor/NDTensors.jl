@@ -1,16 +1,3 @@
-export BlockSparse,
-       BlockSparseTensor,
-       Block,
-       block,
-       BlockOffset,
-       BlockOffsets,
-       blockoffsets,
-       blockview,
-       nnzblocks,
-       nnz,
-       findblock,
-       isblocknz
-
 #
 # BlockSparse storage
 #
@@ -19,10 +6,7 @@ struct BlockSparse{ElT,VecT,N} <: TensorStorage{ElT}
   data::VecT
   blockoffsets::BlockOffsets{N}  # Block number-offset pairs
   function BlockSparse(data::VecT,
-                       blockoffsets::BlockOffsets{N};
-                       sorted=true) where {VecT<:AbstractVector{ElT},
-                                           N} where {ElT}
-    sorted && check_blocks_sorted(blockoffsets)
+                       blockoffsets::BlockOffsets{N}) where {VecT<:AbstractVector{ElT}, N} where {ElT}
     new{ElT,VecT,N}(data, blockoffsets)
   end
 end
@@ -166,14 +150,6 @@ function blockdim(D::BlockSparse,
   return blockdim(D, pos)
 end
 
-findblock(D::BlockSparse{<:Number,
-                         <:AbstractVector,
-                         N},
-          block::Block{N};
-          vargs...) where {N} = findblock(blockoffsets(D),
-                                          block;
-                                          vargs...)
-
 """
 isblocknz(T::BlockSparse,
           block::Block)
@@ -229,7 +205,7 @@ function offsets_to_array(boff::BlockOffsets{N}) where {N}
   asize = (N+1)*nblocks
   n = 1
   a = Vector{Int}(undef,asize)
-  for bo in boff
+  for bo in pairs(boff)
     for j=1:N
       a[n] = bo[1][j]
       n += 1
@@ -244,10 +220,10 @@ end
 function array_to_offsets(a,N::Int)
   asize = length(a)
   nblocks = div(asize,N+1)
-  boff = BlockOffsets{N}(undef,nblocks)
+  boff = BlockOffsets{N}()
   j = 0
   for b=1:nblocks
-    boff[b] = Pair( ntuple(i->(a[j+i]),N) , a[j+N+1] )
+    insert!(boff, Block(ntuple(i->(a[j+i]),N)), a[j+N+1])
     j += (N+1)
   end
   return boff
