@@ -86,9 +86,9 @@ function BlockSparseTensor(::Type{ElT}, blocks::Vector{BlockT}, inds) where {ElT
   return tensor(storage,inds)
 end
 
-function Base.randn(::Type{ <: BlockSparseTensor{ElT, N}},
-                    blocks::Blocks{N},
-                    inds) where {ElT, N}
+function randn(::Type{ <: BlockSparseTensor{ElT, N}},
+               blocks::Blocks{N},
+               inds) where {ElT, N}
   boffs, nnz = blockoffsets(blocks, inds)
   storage = randn(BlockSparse{ElT}, boffs, nnz)
   return tensor(storage, inds)
@@ -152,7 +152,7 @@ function zeros(::Type{<: BlockSparseTensor{ElT, N}},
 end
 
 # Basic functionality for AbstractArray interface
-Base.IndexStyle(::Type{<:BlockSparseTensor}) = IndexCartesian()
+IndexStyle(::Type{<:BlockSparseTensor}) = IndexCartesian()
 
 # Get the CartesianIndices for the range of indices
 # of the specified
@@ -185,22 +185,22 @@ end
 #       Could write: 
 #       block,index_within_block = blockindex(T,i...)
 #       return blockview(T,block)[index_within_block]
-Base.@propagate_inbounds function Base.getindex(T::BlockSparseTensor{ElT,N},
-                                                i::Vararg{Int,N}) where {ElT,N}
+@propagate_inbounds function getindex(T::BlockSparseTensor{ElT,N},
+                                      i::Vararg{Int,N}) where {ElT,N}
   offset,_ = indexoffset(T,i...)
   isnothing(offset) && return zero(ElT)
   return store(T)[offset]
 end
 
-Base.@propagate_inbounds function Base.getindex(T::BlockSparseTensor{ElT,0}) where {ElT}
+@propagate_inbounds function getindex(T::BlockSparseTensor{ElT,0}) where {ElT}
   nnzblocks(T) == 0 && return zero(ElT)
   return store(T)[]
 end
 
 # These may not be valid if the Tensor has no blocks
-#Base.@propagate_inbounds Base.getindex(T::BlockSparseTensor{<:Number,1},ind::Int) = store(T)[ind]
+#@propagate_inbounds getindex(T::BlockSparseTensor{<:Number,1},ind::Int) = store(T)[ind]
 
-#Base.@propagate_inbounds Base.getindex(T::BlockSparseTensor{<:Number,0}) = store(T)[1]
+#@propagate_inbounds getindex(T::BlockSparseTensor{<:Number,0}) = store(T)[1]
 
 # Add the specified block to the BlockSparseTensor
 # Insert it such that the blocks remain ordered.
@@ -226,9 +226,9 @@ end
 insertblock!(T::BlockSparseTensor, block) = insertblock!(T, Block(block))
 
 # TODO: Add a checkbounds
-Base.@propagate_inbounds function setindex!(T::BlockSparseTensor{ElT,N},
-                                            val,
-                                            i::Vararg{Int,N}) where {ElT,N}
+@propagate_inbounds function setindex!(T::BlockSparseTensor{ElT,N},
+                                       val,
+                                       i::Vararg{Int,N}) where {ElT,N}
   offset,block,offset_within_block = indexoffset(T,i...)
   if isnothing(offset)
     offset_of_block = insertblock_offset!(T, block)
@@ -541,45 +541,43 @@ function uncombine(T::BlockSparseTensor{<:Number,NT},
   # Same as inds(T) but with the blocks uncombined
   inds_uncomb = insertat(inds(T),ind_uncomb,combdim)
   inds_uncomb_perm = insertat(inds(T),ind_uncomb_perm,combdim)
-
   for bof in pairs(blockoffsets(T))
     b = nzblock(bof)
     Tb_tot = blockview(T,bof)
     dimsTb_tot = dims(Tb_tot)
-
     bs_uncomb = uncombine_block(b,combdim,blockcomb)
-
     offset = 0
     for i in 1:length(bs_uncomb)
       b_uncomb = bs_uncomb[i]
       b_uncomb_perm = perm_block(b_uncomb,combdim,invblockperm)
       b_uncomb_perm_reshape = reshape(b_uncomb_perm,inds_uncomb_perm,is)
-
-      Rb = blockview(R,b_uncomb_perm_reshape)
-
+      Rb = blockview(R, b_uncomb_perm_reshape)
       b_uncomb_in_combined_dim = b_uncomb_perm[combdim]
-
       start = offset+1
       stop = offset+blockdim(ind_uncomb_perm,b_uncomb_in_combined_dim)
       subind = ntuple(i->i==combdim ? range(start,stop=stop) : range(1,stop=dimsTb_tot[i]),NT)
-
       offset = stop
-
       Tb = @view array(Tb_tot)[subind...]
 
       # Alternative (but maybe slower):
       #copyto!(Rb,Tb)
  
-      Rbₐ = convert(Array, Rb)
-      Rbₐᵣ = Base.ReshapedArray(parent(Rbₐ), size(Tb), ())
-      @strided Rbₐᵣ .= Tb
+      if length(Tb) == 1
+        Rb[1] = Tb[1]
+      else
+        # XXX: this used to be:
+        # Rbₐᵣ = ReshapedArray(parent(Rbₐ), size(Tb), ())
+        # however that doesn't work with subarrays
+        Rbₐ = convert(Array, Rb)
+        Rbₐᵣ = ReshapedArray(Rbₐ, size(Tb), ())
+        @strided Rbₐᵣ .= Tb
+      end
     end
   end
   return R
 end
 
-function copyto!(R::BlockSparseTensor,
-                 T::BlockSparseTensor)
+function copyto!(R::BlockSparseTensor, T::BlockSparseTensor)
   for bof in pairs(blockoffsets(T))
     copyto!(blockview(R, nzblock(bof)), blockview(T, bof))
   end
@@ -594,23 +592,40 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
                        f::Function=(r,t)->t) where {ElR,ElT,N}
   bofsRR = blockoffsets(R)
   bofsT = blockoffsets(T)
+
+  # Determine if bofsRR has been copied
+  copy_bofsRR = false
+
   new_nnz = nnz(R)
   for (blockT, offsetT) in pairs(bofsT)
     blockTperm = permute(blockT, perm)
     if !isassigned(bofsRR, blockTperm)
+      if !copy_bofsRR
+        bofsRR = deepcopy(bofsRR)
+        copy_bofsRR = true
+      end
       insert!(bofsRR, blockTperm, new_nnz)
       new_nnz += blockdim(T, blockT)
     end
   end
-  RR = BlockSparseTensor(promote_type(ElR,ElT), undef,
-                         bofsRR, inds(R))
-  # Directly copy the data since it is the same blocks
-  # and offsets
-  copyto!(data(RR), data(R))
-  permutedims!(RR, T, perm, f)
-  return RR
+
+  ## RR = BlockSparseTensor(promote_type(ElR,ElT), undef,
+  ##                        bofsRR, inds(R))
+  ## # Directly copy the data since it is the same blocks
+  ## # and offsets
+  ## copyto!(data(RR), data(R))
+
+  if new_nnz > nnz(R)
+    dataRR = append!(data(R), zeros(new_nnz - nnz(R)))
+    R = Tensor(BlockSparse(dataRR, bofsRR), inds(R))
+  end
+
+  permutedims!(R, T, perm, f)
+  return R
 end
 
+# Version where it is known that R has the same blocks
+# as T
 function permutedims!(R::BlockSparseTensor{<:Number,N},
                       T::BlockSparseTensor{<:Number,N},
                       perm::NTuple{N,Int},
@@ -777,19 +792,17 @@ function contract!(R::BlockSparseTensor{ElR, NR},
   # In R .= α .* (T1 * T2) .+ β .* R
   α = one(ElR)
   for (pos1, pos2, posR) in contraction_plan
-    blockT1 = blockview(T1,pos1)
-    blockT2 = blockview(T2,pos2)
-    blockR = blockview(R,posR)
+    blockT1 = blockview(T1, pos1)
+    blockT2 = blockview(T2, pos2)
+    blockR = blockview(R, posR)
     β = one(ElR)
     if !haskey(already_written_to, posR)
       already_written_to[posR] = true
       # Overwrite the block of R
       β = zero(ElR)
     end
-    contract!(blockR,labelsR,
-              blockT1,labelsT1,
-              blockT2,labelsT2,
-              α,β)
+    contract!(blockR, labelsR, blockT1, labelsT1,
+              blockT2, labelsT2, α, β)
   end
   return R
 end
@@ -921,8 +934,8 @@ end
 # Print block sparse tensors
 #
 
-#function Base.summary(io::IO,
-#                      T::BlockSparseTensor{ElT,N}) where {ElT,N}
+#function summary(io::IO,
+#                 T::BlockSparseTensor{ElT,N}) where {ElT,N}
 #  println(io,Base.dims2string(dims(T))," ",typeof(T))
 #  for (dim,ind) in enumerate(inds(T))
 #    println(io,"Dim $dim: ",ind)
@@ -930,8 +943,8 @@ end
 #  println(io,"Number of nonzero blocks: ",nnzblocks(T))
 #end
 
-#function Base.summary(io::IO,
-#                      T::BlockSparseTensor{ElT,N}) where {ElT,N}
+#function summary(io::IO,
+#                 T::BlockSparseTensor{ElT,N}) where {ElT,N}
 #  println(io,typeof(T))
 #  println(io,Base.dims2string(dims(T))," ",typeof(T))
 #  for (dim,ind) in enumerate(inds(T))
@@ -952,9 +965,9 @@ function _range2string(rangestart::NTuple{N,Int},
   return s
 end
 
-function Base.show(io::IO,
-                   mime::MIME"text/plain",
-                   T::BlockSparseTensor)
+function show(io::IO,
+              mime::MIME"text/plain",
+              T::BlockSparseTensor)
   summary(io, T)
   for (n, block) in enumerate(keys(blockoffsets(T)))
     blockdimsT = blockdims(T,block)
@@ -965,5 +978,5 @@ function Base.show(io::IO,
   end
 end
 
-Base.show(io::IO, T::BlockSparseTensor) = show(io,MIME("text/plain"),T)
+show(io::IO, T::BlockSparseTensor) = show(io,MIME("text/plain"),T)
 

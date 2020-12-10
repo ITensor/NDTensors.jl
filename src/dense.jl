@@ -636,7 +636,13 @@ function contract!(R::DenseTensor{ElR, NR},
                    β::Elβ = zero(ElR)) where {Elα, Elβ, ElR, ElT1, ElT2, NR, N1, N2}
   # Special case for scalar tensors
   if nnz(R) == 1 && nnz(T1) == 1 && nnz(T2) == 1
-    R[1] = T1[1] * T2[1]
+    if β == zero(Elβ)
+      R[1] = α * T1[1] * T2[1]
+    elseif α == zero(Elα)
+      R[1] = β * R[1]
+    else
+      R[1] = α * T1[1] * T2[1] + β * R[1]
+    end
     return R
   end
 
