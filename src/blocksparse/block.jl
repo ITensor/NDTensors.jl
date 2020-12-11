@@ -158,3 +158,11 @@ hash(b::Block, h::UInt) = h + hash(b)
 #  return h
 #end
 
+#
+# Printing for Block type
+#
+
+show(io::IO, mime::MIME"text/plain", b::Block) = print(io, "Block$(Int.(Tuple(b)))")
+
+show(io::IO, b::Block) = show(io, MIME("text/plain"), b)
+

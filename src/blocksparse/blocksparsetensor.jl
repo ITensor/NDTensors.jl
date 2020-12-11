@@ -987,7 +987,7 @@ function show(io::IO,
   summary(io, T)
   for (n, block) in enumerate(keys(blockoffsets(T)))
     blockdimsT = blockdims(T,block)
-    println(io, "Block: ", block)
+    println(io, block)
     println(io, " [", _range2string(blockstart(T,block),blockend(T,block)),"]")
     print_tensor(io, blockview(T,block))
     n < nnzblocks(T) && print(io, "\n\n")
