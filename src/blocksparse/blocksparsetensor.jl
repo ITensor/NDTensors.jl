@@ -238,6 +238,21 @@ insertblock!(T::BlockSparseTensor, block) = insertblock!(T, Block(block))
   return T
 end
 
+hasblock(T::Tensor, block::Block) = isassigned(blockoffsets(T), block)
+
+@propagate_inbounds function setindex!(T::BlockSparseTensor{ElT,N},
+                                       val,
+                                       b::Block{N}) where {ElT,N}
+  if !hasblock(T, b)
+    insertblock!(T, b)
+  end
+  Tb = T[b]
+  Tb .= val
+  return T
+end
+
+getindex(T::BlockSparseTensor, block::Block) = blockview(T, block)
+
 blockview(T::BlockSparseTensor, block::Block) =
   blockview(T, BlockOffset(block, offset(T, block)))
 

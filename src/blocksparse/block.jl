@@ -95,6 +95,13 @@ insertafter(b::Block, val, pos) =
 getindices(b::Block, I) = getindices(Tuple(b), I)
 
 #
+# checkbounds
+#
+
+# XXX: define this properly
+Base.checkbounds(::Tensor, ::Block) = nothing
+
+#
 # Hashing
 #
 
