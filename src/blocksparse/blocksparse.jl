@@ -124,31 +124,10 @@ function Base.convert(::Type{<:BlockSparse{ElR,VecR,N}},
                      blockoffsets(D))
 end
 
-function Base.:*(D::BlockSparse,x::Number)
+function (D::BlockSparse * x::Number)
   return BlockSparse(x*data(D),blockoffsets(D))
 end
-Base.:*(x::Number,D::BlockSparse) = D*x
-
-"""
-blockdim(T::BlockSparse,pos::Int)
-
-Get the block dimension of the block at position pos.
-"""
-blockdim(D::BlockSparse,
-         pos::Int) = blockdim(blockoffsets(D),
-                              nnz(D),
-                              pos)
-
-"""
-blockdim(T::BlockSparse,block::Block)
-
-Get the block dimension of the block.
-"""
-function blockdim(D::BlockSparse,
-                  block::Block)
-  pos = findblock(D, block)
-  return blockdim(D, pos)
-end
+(x::Number * D::BlockSparse) = D * x
 
 """
 isblocknz(T::BlockSparse,
@@ -158,9 +137,11 @@ Check if the specified block is non-zero.
 """
 function isblocknz(T::BlockSparse{ElT,VecT,N},
                    block::Block{N}) where {ElT,VecT,N}
-  isnothing(findblock(T,block)) && return false
-  return true
+  return isassigned(blockoffsets(T), block)
 end
+
+# If block is input as Tuple
+isblocknz(T::BlockSparse, block) = isblocknz(T, Block(block))
 
 # Given a specified block, return a Dense storage that is a view to the data
 # in that block. Return nothing if the block is structurally zero
@@ -174,29 +155,30 @@ function blockview(T::BlockSparse,
   return Dense(dataTslice)
 end
 
-function Base.:+(D1::BlockSparse,D2::BlockSparse)
-  # This could be of order nnzblocks, avoid?
-  if blockoffsets(D1) == blockoffsets(D2)
-    return BlockSparse(data(D1)+data(D2),blockoffsets(D1))
-  end
-  blockoffsetsR,nnzR = union(blockoffsets(D1),nnz(D1),
-                             blockoffsets(D2),nnz(D2))
-  R = BlockSparse(undef,blockoffsetsR,nnzR)
-  for (blockR,offsetR) in blockoffsets(R)
-    blockview1 = blockview(D1,blockR)
-    blockview2 = blockview(D2,blockR)
-    blockviewR = blockview(R,blockR)
-    if isnothing(blockview1)
-      copyto!(blockviewR,blockview2)
-    elseif isnothing(blockview2)
-      copyto!(blockviewR,blockview1)
-    else
-      # TODO: is this fast?
-      blockviewR .= blockview1 .+ blockview2
-    end
-  end
-  return R
-end
+# XXX this is not well defined with new Dictionary design
+#function (D1::BlockSparse + D2::BlockSparse)
+#  # This could be of order nnzblocks, avoid?
+#  if blockoffsets(D1) == blockoffsets(D2)
+#    return BlockSparse(data(D1)+data(D2),blockoffsets(D1))
+#  end
+#  blockoffsetsR,nnzR = union(blockoffsets(D1),nnz(D1),
+#                             blockoffsets(D2),nnz(D2))
+#  R = BlockSparse(undef,blockoffsetsR,nnzR)
+#  for (blockR,offsetR) in blockoffsets(R)
+#    blockview1 = blockview(D1,blockR)
+#    blockview2 = blockview(D2,blockR)
+#    blockviewR = blockview(R,blockR)
+#    if isnothing(blockview1)
+#      copyto!(blockviewR,blockview2)
+#    elseif isnothing(blockview2)
+#      copyto!(blockviewR,blockview1)
+#    else
+#      # TODO: is this fast?
+#      blockviewR .= blockview1 .+ blockview2
+#    end
+#  end
+#  return R
+#end
 
 
 # Helper function for HDF5 write/read of BlockSparse
