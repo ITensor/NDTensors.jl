@@ -76,6 +76,5 @@ eachnzblock(T::TensorStorage) = eachnzblock(blockoffsets(T))
 nnzblocks(S::TensorStorage) = length(blockoffsets(S))
 nnz(S::TensorStorage) = length(S)
 
-offset(S::TensorStorage,
-       block) = offset(blockoffsets(S), block)
+offset(S::TensorStorage, block) = offset(blockoffsets(S), block)
 

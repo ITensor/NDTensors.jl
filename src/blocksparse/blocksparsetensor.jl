@@ -49,8 +49,8 @@ function BlockSparseTensor(::Type{ElT},
   return tensor(storage,inds)
 end
 
-BlockSparseTensor(blocks, inds) =
-  BlockSparseTensor(Float64, blocks, inds)
+BlockSparseTensor(blockoffsets::BlockOffsets, inds) =
+  BlockSparseTensor(Float64, blockoffsets, inds)
 
 """
     BlockSparseTensor(inds)
@@ -68,7 +68,7 @@ BlockSparseTensor(::Type{ElT}, inds) where {ElT<:Number,N} =
 
 Construct a block sparse tensor with no blocks.
 """
-BlockSparseTensor(inds::Vararg{DimT,N}) where {DimT,N} =
+BlockSparseTensor(inds::Vararg{DimT, N}) where {DimT, N} =
   BlockSparseTensor(BlockOffsets{N}(),inds)
 
 """
@@ -87,23 +87,21 @@ function BlockSparseTensor(::Type{ElT}, blocks::Vector{BlockT}, inds) where {ElT
 end
 
 function randn(::Type{ <: BlockSparseTensor{ElT, N}},
-               blocks::Blocks{N},
-               inds) where {ElT, N}
+               blocks::Vector{<:BlockT},
+               inds) where {ElT, BlockT <: Union{Block{N}, NTuple{N, <: Integer}}} where {N}
   boffs, nnz = blockoffsets(blocks, inds)
   storage = randn(BlockSparse{ElT}, boffs, nnz)
   return tensor(storage, inds)
 end
 
-function randomBlockSparseTensor(::Type{ElT},
-                                 blocks::Blocks{N},
-                                 inds) where {ElT, N}
-  return randn(BlockSparseTensor{ElT, N}, blocks, inds)
-end
+# XXX: use the syntax:
+# BlockSparseTensor(randn, ElT, blocks, inds)
+randomBlockSparseTensor(::Type{ElT}, blocks::Vector{<:BlockT},
+                        inds) where {ElT, BlockT <: Union{Block{N}, NTuple{N, <: Integer}}} where {N} = 
+  randn(BlockSparseTensor{ElT, N}, blocks, inds)
 
-function randomBlockSparseTensor(blocks::Blocks,
-                                 inds)
-  return randomBlockSparseTensor(Float64, blocks, inds)
-end
+randomBlockSparseTensor(blocks::Vector, inds) =
+  randomBlockSparseTensor(Float64, blocks, inds)
 
 """
 BlockSparseTensor(blocks::Vector{Block{N}},
@@ -112,9 +110,9 @@ BlockSparseTensor(blocks::Vector{Block{N}},
 Construct a block sparse tensor with the specified blocks.
 Defaults to setting structurally non-zero blocks to zero.
 """
-function BlockSparseTensor(blocks::Blocks{N},
-                           inds::Vararg{BlockDim,N}) where {DimT,N}
-  return BlockSparseTensor(blocks,inds)
+function BlockSparseTensor(blocks::Vector{BlockT},
+                           inds::Vararg{BlockDim,N}) where {BlockT <: Union{Block{N}, NTuple{N, <:Integer}}} where {N}
+  return BlockSparseTensor(blocks, inds)
 end
 
 function similar(::BlockSparseTensor{ElT,N},
@@ -238,6 +236,21 @@ insertblock!(T::BlockSparseTensor, block) = insertblock!(T, Block(block))
   return T
 end
 
+hasblock(T::Tensor, block::Block) = isassigned(blockoffsets(T), block)
+
+@propagate_inbounds function setindex!(T::BlockSparseTensor{ElT,N},
+                                       val,
+                                       b::Block{N}) where {ElT,N}
+  if !hasblock(T, b)
+    insertblock!(T, b)
+  end
+  Tb = T[b]
+  Tb .= val
+  return T
+end
+
+getindex(T::BlockSparseTensor, block::Block) = blockview(T, block)
+
 blockview(T::BlockSparseTensor, block::Block) =
   blockview(T, BlockOffset(block, offset(T, block)))
 
@@ -267,9 +280,12 @@ end
 #
 
 # TODO: extend to case with different block structures
-function (T1::BlockSparseTensor + T2::BlockSparseTensor)
+function +(T1::BlockSparseTensor{<:Number, N},
+           T2::BlockSparseTensor{<:Number, N}) where {N}
   inds(T1) ≠ inds(T2) && error("Cannot add block sparse tensors with different block structure")  
-  return tensor(store(T1)+store(T2),inds(T1))
+  R = copy(T1)
+  R = permutedims!!(R, T2, ntuple(identity, Val(N)), +)
+  return R
 end
 
 function permutedims(T::BlockSparseTensor{<:Number,N},
@@ -971,7 +987,7 @@ function show(io::IO,
   summary(io, T)
   for (n, block) in enumerate(keys(blockoffsets(T)))
     blockdimsT = blockdims(T,block)
-    println(io, "Block: ", block)
+    println(io, block)
     println(io, " [", _range2string(blockstart(T,block),blockend(T,block)),"]")
     print_tensor(io, blockview(T,block))
     n < nnzblocks(T) && print(io, "\n\n")

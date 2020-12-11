@@ -22,10 +22,6 @@ using LinearAlgebra
   @test isblocknz(A,(1,2))
   @test !isblocknz(A,(1,1))
   @test !isblocknz(A,(2,2))
-  @test findblock(A,(2,1))==1
-  @test findblock(A,(1,2))==2
-  @test isnothing(findblock(A,(1,1)))
-  @test isnothing(findblock(A,(2,2)))
 
   # Test different ways of getting nnz
   @test nnz(blockoffsets(A),inds(A)) == nnz(A)
@@ -217,20 +213,20 @@ using LinearAlgebra
   end
 
   @testset "reshape" begin
-    indsA = ([2,3],[4,5])
-    locsA = [(2,1),(1,2)]
-    A = BlockSparseTensor(locsA,indsA...)
+    indsA = ([2,3], [4,5])
+    locsA = [(2,1), (1,2)]
+    A = BlockSparseTensor(locsA, indsA...)
     randn!(A)
 
     indsB = ([8,12,10,15],)
-    B = reshape(A,indsB)
+    B = reshape(A, indsB)
 
-    @test nnzblocks(A)==nnzblocks(B)
-    @test nnz(A)==nnz(B)
-    for i in 1:nnzblocks(B)
-      blockA = blockview(A,i)
-      blockB = blockview(B,i)
-      @test reshape(blockA,size(blockB))==blockB
+    @test nnzblocks(A) == nnzblocks(B)
+    @test nnz(A) == nnz(B)
+    for (bA, bB) in zip(eachnzblock(A), eachnzblock(B))
+      blockA = blockview(A, bA)
+      blockB = blockview(B, bB)
+      @test reshape(blockA, size(blockB)) == blockB
     end
   end
 
@@ -247,9 +243,9 @@ using LinearAlgebra
 		
     Ap = permutedims(A,(3,2,1))
 
-    for i in 1:nnzblocks(A)
-      blockAp = blockview(Ap,i)
-      blockB = blockview(B,i)
+    for (bAp, bB) in zip(eachnzblock(Ap), eachnzblock(B))
+      blockAp = blockview(Ap, bAp)
+      blockB = blockview(B, bB)
       @test reshape(blockAp,size(blockB))==blockB
     end
   end
@@ -302,9 +298,9 @@ using LinearAlgebra
     A = BlockSparseTensor(ComplexF64,[(1,1),(2,2)],([2,2],[2,2]))
     randn!(A)
     Ah = BlockSparseTensor(ComplexF64,undef,[(1,1),(2,2)],([2,2],[2,2]))
-    for n in 1:nnzblocks(A)
-      b= blockview(A,n)
-      blockview(Ah,n) .= b + b'
+    for bA in eachnzblock(A)
+      b = blockview(A, bA)
+      blockview(Ah, bA) .= b + b'
     end
     expTh = exp(Hermitian(Ah))
     @test array(expTh) ≈ exp(Hermitian(array(Ah))) rtol = 1e-13

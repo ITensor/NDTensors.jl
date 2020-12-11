@@ -19,8 +19,7 @@ nzblock(block::Block) = block
 
 # Get the offset if the nth block in the block-offsets
 # list
-offset(bofs::BlockOffsets, n::Int) =
-  offset(bofs[n])
+offset(bofs::BlockOffsets, n) = offset(bofs[n])
 
 nnzblocks(bofs::BlockOffsets) = length(bofs)
 nnzblocks(bs::Blocks) = length(bs)

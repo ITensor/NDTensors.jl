@@ -95,6 +95,13 @@ insertafter(b::Block, val, pos) =
 getindices(b::Block, I) = getindices(Tuple(b), I)
 
 #
+# checkbounds
+#
+
+# XXX: define this properly
+Base.checkbounds(::Tensor, ::Block) = nothing
+
+#
 # Hashing
 #
 
@@ -150,4 +157,12 @@ hash(b::Block, h::UInt) = h + hash(b)
 #  end
 #  return h
 #end
+
+#
+# Printing for Block type
+#
+
+show(io::IO, mime::MIME"text/plain", b::Block) = print(io, "Block$(Int.(Tuple(b)))")
+
+show(io::IO, b::Block) = show(io, MIME("text/plain"), b)
 

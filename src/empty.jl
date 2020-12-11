@@ -96,23 +96,14 @@ end
 insertblock!!(T::EmptyTensor{<: Number, N}, block) where {N} =
   insertblock(T, block)
 
-Base.@propagate_inbounds function Base.setindex(T::EmptyTensor{<: Number, N},
-                                                x::Number,
-                                                I::Vararg{Int, N}) where {N}
+@propagate_inbounds function setindex(T::EmptyTensor{<: Number, N},
+                                      x, I...) where {N}
   R = zeros(T)
   R[I...] = x
   return R
 end
 
-function Base.setindex(T::EmptyTensor{<: Number, Any},
-                                      x::Number,
-                                      I::Int...)
-  error("Setting element of EmptyTensor with Any number of dimensions not defined")
-end
-
-setindex!!(T::EmptyTensor,
-           x::Number,
-           I::Int...) = setindex(T, x, I...)
+setindex!!(T::EmptyTensor, x, I...) = setindex(T, x, I...)
 
 function Base.show(io::IO,
                    mime::MIME"text/plain",
