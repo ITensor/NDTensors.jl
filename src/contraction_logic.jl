@@ -163,7 +163,7 @@ function compute_perms!(props::ContractionProperties{NA,NB,NC}) where
         i <= Acstart && (Acstart = i)
         j <= Bcstart && (Bcstart = j)
         #AtoB[i] = j
-        AtoB = Base.setindex(AtoB, j, i)
+        AtoB = setindex(AtoB, j, i)
         break
       end
     end
@@ -181,7 +181,7 @@ function compute_perms!(props::ContractionProperties{NA,NB,NC}) where
         #TODO: check this if this should be i,j or i-1,j-1 (0-index or 1-index)
         i <= Austart && (Austart = i)
         #AtoC[i] = k
-        AtoC = Base.setindex(AtoC, k, i)
+        AtoC = setindex(AtoC, k, i)
         break
       end
     end
@@ -197,7 +197,7 @@ function compute_perms!(props::ContractionProperties{NA,NB,NC}) where
         #TODO: check this if this should be i,j or i-1,j-1 (0-index or 1-index)
         j <= Bustart && (Bustart = j)
         #BtoC[j] = k
-        BtoC = Base.setindex(BtoC, k, j)
+        BtoC = setindex(BtoC, k, j)
         break
       end
     end
@@ -270,7 +270,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     if !(AtoC[i] < 1)
       dleft *= size(A,i)
       #props.PC[props.AtoC[i]] = c
-      PC = Base.setindex(PC, c, AtoC[i])
+      PC = setindex(PC, c, AtoC[i])
       c += 1
     else
       dmid *= size(A,i)
@@ -281,7 +281,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
     if !(BtoC[j] < 1)
       dright *= size(B,j)
       #props.PC[props.BtoC[j]] = c
-      PC = Base.setindex(PC, c, BtoC[j])
+      PC = setindex(PC, c, BtoC[j])
       c += 1
     end
   end
@@ -381,7 +381,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       while !(BtoC[bind] < 1) bind += 1 end
       j = findfirst(==(bi[bind]), ai)
       #props.PA[newi + 1] = j
-      PA = Base.setindex(PA, j, newi + 1)
+      PA = setindex(PA, j, newi + 1)
       bind += 1
       newi += 1
     end
@@ -395,9 +395,9 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       j = findfirst(==(props.ci[k]),props.ai)
       if !isnothing(j)
         #props.AtoC[newi+1] = k
-        AtoC = Base.setindex(AtoC, k, newi+1)
+        AtoC = setindex(AtoC, k, newi+1)
         #props.PA[newi+1] = j
-        PA = Base.setindex(PA, j, newi+1)
+        PA = setindex(PA, j, newi+1)
         newi += 1
       end
       newi==NA && break
@@ -454,7 +454,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       while newi < props.ncont
         while !(BtoC[i] < 1) i += 1 end
         #props.PB[newi+1] = i
-        PB = Base.setindex(PB, i, newi+1)
+        PB = setindex(PB, i, newi+1)
         i += 1
         newi += 1
       end
@@ -467,7 +467,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
         while !(AtoC[aind] < 1) aind += 1 end
         j = findfirst(==(ai[aind]), bi)
         #props.PB[newi + 1] = j
-        PB = Base.setindex(PB, j, newi + 1)
+        PB = setindex(PB, j, newi + 1)
         aind += 1
         newi += 1
       end
@@ -483,9 +483,9 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       j = findfirst(==(ci[k]), bi)
       if !isnothing(j)
         #props.BtoC[newi + 1] = k
-        BtoC = Base.setindex(BtoC, k, newi + 1)
+        BtoC = setindex(BtoC, k, newi + 1)
         #props.PB[newi + 1] = j
-        PB = Base.setindex(PB, j, newi + 1)
+        PB = setindex(PB, j, newi + 1)
         newi += 1
       end
       newi == NB && break
@@ -521,7 +521,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       AtoC_i = AtoC[i]
       if !(AtoC_i < 1)
         #props.PC[props.AtoC[i]] = c
-        PC = Base.setindex(PC, c, AtoC_i)
+        PC = setindex(PC, c, AtoC_i)
         c += 1
       end
     end
@@ -530,7 +530,7 @@ function compute_contraction_properties!(props::ContractionProperties{NA,NB,NC},
       BtoC_j = BtoC[j]
       if !(BtoC_j < 1)
         #props.PC[props.BtoC[j]] = c
-        PC = Base.setindex(PC, c, BtoC_j)
+        PC = setindex(PC, c, BtoC_j)
         c += 1
       end
     end

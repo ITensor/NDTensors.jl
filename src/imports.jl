@@ -9,14 +9,22 @@ import Base:
   +,
   *,
   # Methods
+  checkbounds,
   complex,
   convert,
+  conj,
   copy,
   copyto!,
+  eachindex,
+  eltype,
+  fill,
+  fill!,
   getindex,
   hash,
+  isempty,
   iterate,
   length,
+  ndims,
   permutedims,
   permutedims!,
   promote_rule,
@@ -25,8 +33,19 @@ import Base:
   setindex,
   setindex!,
   show,
+  size,
   similar,
+  stride,
+  strides,
+  summary,
+  to_indices,
+  unsafe_convert,
+  view,
   zeros
+
+import Base.Broadcast:
+  Broadcasted,
+  BroadcastStyle
 
 import TupleTools:
   isperm

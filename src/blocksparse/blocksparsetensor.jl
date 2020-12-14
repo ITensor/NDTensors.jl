@@ -251,6 +251,9 @@ end
 
 getindex(T::BlockSparseTensor, block::Block) = blockview(T, block)
 
+to_indices(T::Tensor{<:Any, N}, b::Tuple{Block{N}}) where {N} =
+  blockindices(T, b...)
+
 blockview(T::BlockSparseTensor, block::Block) =
   blockview(T, BlockOffset(block, offset(T, block)))
 
@@ -264,6 +267,8 @@ function blockview(T::BlockSparseTensor,
   dataTslice = @view data(store(T))[offsetT+1:offsetT+blockdimT]
   return tensor(Dense(dataTslice), blockdimsT)
 end
+
+view(T::BlockSparseTensor, b::Block) = blockview(T, b)
 
 # convert to Dense
 function dense(T::TensorT) where {TensorT<:BlockSparseTensor}

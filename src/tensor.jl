@@ -73,11 +73,11 @@ inds(T::Tensor) = T.inds
 
 ind(T::Tensor, j::Integer) = inds(T)[j]
 
-Base.eachindex(T::Tensor) = CartesianIndices(dims(inds(T)))
+eachindex(T::Tensor) = CartesianIndices(dims(inds(T)))
 
-Base.eltype(::Tensor{ElT}) where {ElT} = ElT
+eltype(::Tensor{ElT}) where {ElT} = ElT
 
-Base.strides(T::Tensor) = strides(inds(T))
+strides(T::Tensor) = dim_to_strides(inds(T))
 
 #
 # Generic Tensor functions
@@ -89,21 +89,21 @@ dim(T::Tensor) = dim(inds(T))
 dim(T::Tensor,i::Int) = dim(inds(T),i)
 mindim(T::Tensor) = mindim(inds(T))
 diaglength(T::Tensor) = mindim(T)
-Base.size(T::Tensor) = dims(T)
-Base.size(T::Tensor,i::Int) = dim(T,i)
+size(T::Tensor) = dims(T)
+size(T::Tensor,i::Int) = dim(T,i)
 
 # Needed for passing Tensor{T,2} to BLAS/LAPACK
 # TODO: maybe this should only be for DenseTensor?
-function Base.unsafe_convert(::Type{Ptr{ElT}},
+function unsafe_convert(::Type{Ptr{ElT}},
                              T::Tensor{ElT}) where {ElT}
-  return Base.unsafe_convert(Ptr{ElT},store(T))
+  return unsafe_convert(Ptr{ElT},store(T))
 end
 
-Base.copy(T::Tensor) = tensor(copy(store(T)), inds(T))
+copy(T::Tensor) = tensor(copy(store(T)), inds(T))
 
-Base.copyto!(R::Tensor,T::Tensor) = (copyto!(store(R), store(T)); R)
+copyto!(R::Tensor,T::Tensor) = (copyto!(store(R), store(T)); R)
 
-Base.complex(T::Tensor) = tensor(complex(store(T)), inds(T))
+complex(T::Tensor) = tensor(complex(store(T)), inds(T))
 
 #
 # Necessary to overload since the generic fallbacks are
@@ -112,7 +112,7 @@ Base.complex(T::Tensor) = tensor(complex(store(T)), inds(T))
 
 LinearAlgebra.norm(T::Tensor) = norm(store(T))
 
-Base.conj(T::Tensor;
+conj(T::Tensor;
           kwargs...) = tensor(conj(store(T); kwargs...), inds(T))
 
 Random.randn!(T::Tensor) = (randn!(store(T)); T)
@@ -120,35 +120,35 @@ Random.randn!(T::Tensor) = (randn!(store(T)); T)
 LinearAlgebra.rmul!(T::Tensor,α::Number) = (rmul!(store(T),α); T)
 scale!(T::Tensor,α::Number) = rmul!(store(T),α)
 
-Base.fill!(T::Tensor,α::Number) = (fill!(store(T),α); T)
+fill!(T::Tensor,α::Number) = (fill!(store(T),α); T)
 
-#function Base.similar(::Type{<:Tensor{ElT,N,StoreT}},dims) where {ElT,N,StoreT}
+#function similar(::Type{<:Tensor{ElT,N,StoreT}},dims) where {ElT,N,StoreT}
 #  return tensor(similar(StoreT,dim(dims)),dims)
 #end
 
 # TODO: make sure these are implemented correctly
-#Base.similar(T::Type{<:Tensor},::Type{S}) where {S} = tensor(similar(store(T),S),inds(T))
-#Base.similar(T::Type{<:Tensor},::Type{S},dims) where {S} = tensor(similar(store(T),S),dims)
+#similar(T::Type{<:Tensor},::Type{S}) where {S} = tensor(similar(store(T),S),inds(T))
+#similar(T::Type{<:Tensor},::Type{S},dims) where {S} = tensor(similar(store(T),S),dims)
 
-Base.similar(T::Tensor) = tensor(similar(store(T)), inds(T))
+similar(T::Tensor) = tensor(similar(store(T)), inds(T))
 
 # TODO: for BlockSparse, this needs to include the offsets
 # TODO: for Diag, the storage is not just the total dimension
-#Base.similar(T::Tensor,dims) = _similar_from_dims(T,dims)
+#similar(T::Tensor,dims) = _similar_from_dims(T,dims)
 
 # To handle method ambiguity with AbstractArray
-#Base.similar(T::Tensor,dims::Dims) = _similar_from_dims(T,dims)
+#similar(T::Tensor,dims::Dims) = _similar_from_dims(T,dims)
 
-Base.similar(T::Tensor,
+similar(T::Tensor,
              ::Type{S}) where {S} = tensor(similar(store(T),S),
                                            inds(T))
 
-Base.similar(T::Tensor,
+similar(T::Tensor,
              ::Type{S},
              dims) where {S<:Number} = _similar_from_dims(T, S, dims)
 
 # To handle method ambiguity with AbstractArray
-Base.similar(T::Tensor,
+similar(T::Tensor,
              ::Type{S},
              dims::Dims) where {S<:Number} = _similar_from_dims(T, S, dims)
 
@@ -159,17 +159,17 @@ function _similar_from_dims(T::Tensor,::Type{S},dims) where {S<:Number}
   return tensor(similar(store(T),S,dim(dims)),dims)
 end
 
-function Base.convert(::Type{<:Tensor{<:Number,N,StoreR,Inds}},
+function convert(::Type{<:Tensor{<:Number,N,StoreR,Inds}},
                       T::Tensor{<:Number,N,<:Any,Inds}) where {N,Inds,StoreR}
   return tensor(convert(StoreR,store(T)),inds(T))
 end
 
-function Base.zeros(TensorT::Type{<:Tensor{ElT,N,StoreT}},
+function zeros(TensorT::Type{<:Tensor{ElT,N,StoreT}},
                     inds) where {ElT,N,StoreT}
   error("zeros(::Type{$TensorT}, inds) not implemented yet")
 end
 
-function Base.promote_rule(::Type{<:Tensor{ElT1,N1,StoreT1,IndsT1}},
+function promote_rule(::Type{<:Tensor{ElT1,N1,StoreT1,IndsT1}},
                            ::Type{<:Tensor{ElT2,N2,StoreT2,IndsT2}}) where {ElT1,ElT2,
                                                                             N1,N2,
                                                                             StoreT1,StoreT2,
@@ -179,7 +179,7 @@ function Base.promote_rule(::Type{<:Tensor{ElT1,N1,StoreT1,IndsT1}},
   return Tensor{ElR,N3,StoreR,IndsR} where {N3,IndsR}
 end
 
-function Base.promote_rule(::Type{<:Tensor{ElT1,N,StoreT1,Inds}},
+function promote_rule(::Type{<:Tensor{ElT1,N,StoreT1,Inds}},
                            ::Type{<:Tensor{ElT2,N,StoreT2,Inds}}) where {ElT1,ElT2,N,
                                                                          StoreT1,StoreT2,Inds}
   StoreR = promote_type(StoreT1,StoreT2)
@@ -210,7 +210,7 @@ array(T::Tensor) = array(dense(T))
 matrix(T::Tensor{<:Number,2}) = array(T)
 vector(T::Tensor{<:Number,1}) = array(T)
 
-Base.isempty(T::Tensor) = isempty(store(T))
+isempty(T::Tensor) = isempty(store(T))
 
 #
 # Helper functions for BlockSparse-type storage
@@ -319,22 +319,22 @@ end
 # Broadcasting
 #
 
-Base.BroadcastStyle(::Type{T}) where {T<:Tensor} = Broadcast.ArrayStyle{T}()
+BroadcastStyle(::Type{T}) where {T<:Tensor} = Broadcast.ArrayStyle{T}()
 
-function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{T}},
+function similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{T}},
                       ::Type{ElT}) where {T<:Tensor, ElT}
   A = find_tensor(bc)
   return similar(A, ElT)
 end
 
 "`A = find_tensor(As)` returns the first Tensor among the arguments."
-find_tensor(bc::Base.Broadcast.Broadcasted) = find_tensor(bc.args)
+find_tensor(bc::Broadcast.Broadcasted) = find_tensor(bc.args)
 find_tensor(args::Tuple) = find_tensor(find_tensor(args[1]), Base.tail(args))
 find_tensor(x) = x
 find_tensor(a::Tensor, rest) = a
 find_tensor(::Any, rest) = find_tensor(rest)
 
-function Base.summary(io::IO,
+function summary(io::IO,
                       T::Tensor)
   for (dim, ind) in enumerate(inds(T))
     println(io, "Dim $dim: ", ind)

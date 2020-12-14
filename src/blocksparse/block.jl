@@ -43,7 +43,7 @@ Block(t::Tuple{Vararg{<:Any, N}}) where {N} = Block{N}(t)
 
 Block(::Tuple{}) where {N} = Block{0}(())
 
-Block(I::Integer...) = Block(I)
+Block(I::Union{Integer, Block{1}}...) = Block(I)
 
 #
 # Conversions
@@ -61,6 +61,8 @@ convert(::Type{Block}, t::Tuple) where {N} = Block(t)
 
 convert(::Type{Block{N}}, t::Tuple) where {N} = Block{N}(t)
 
+(::Type{IntT})(b::Block{1}) where {IntT <: Integer}= IntT(only(b))
+
 #
 # Getting and setting fields
 #
@@ -77,7 +79,6 @@ length(::Block{N}) where {N} = N
 
 iterate(b::Block, args...) = iterate(b.data, args...)
 
-using Base: @propagate_inbounds
 @propagate_inbounds function getindex(b::Block, i::Integer)
   return b.data[i]
 end
@@ -99,7 +100,7 @@ getindices(b::Block, I) = getindices(Tuple(b), I)
 #
 
 # XXX: define this properly
-Base.checkbounds(::Tensor, ::Block) = nothing
+checkbounds(::Tensor, ::Block) = nothing
 
 #
 # Hashing
@@ -111,7 +112,6 @@ Base.checkbounds(::Tensor, ::Block) = nothing
 # a bit faster.
 _hash(t::Tuple) = _hash(t, zero(UInt))
 _hash(::Tuple{}, h::UInt) = h + Base.tuplehash_seed
-using Base.Cartesian: @nexprs
 @generated function _hash(b::NTuple{N}, h::UInt) where {N}
   quote
     out = h + Base.tuplehash_seed
@@ -138,7 +138,7 @@ hash(b::Block, h::UInt) = h + hash(b)
 # Borrowed from:
 # https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
 # This seems to have a lot of clashes
-#function Base.hash(b::Block, seed::UInt)
+#function hash(b::Block, seed::UInt)
 #  h = UInt(0x9e3779b9)
 #  for n in b
 #    seed ⊻= n + h + (seed << 6) + (seed >> 2)
@@ -150,7 +150,7 @@ hash(b::Block, h::UInt) = h + hash(b)
 # http://www.docjar.com/html/api/java/util/Arrays.java.html
 # Could also consider uring the CPython tuple hash:
 # https://github.com/python/cpython/blob/0430dfac629b4eb0e899a09b899a494aa92145f6/Objects/tupleobject.c#L406
-#function Base.hash(b::Block, h::UInt)
+#function hash(b::Block, h::UInt)
 #  h += Base.tuplehash_seed
 #  for n in b
 #    h = 31 * h + n ⊻ (n >> 32)

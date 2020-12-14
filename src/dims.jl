@@ -33,22 +33,22 @@ mindim(::Tuple{}) = 1
 diaglength(inds::Tuple) = mindim(inds)
 
 """
-    strides(ds)
+    dim_to_strides(ds)
 
 Get the strides from the dimensions.
 
-This is unexported, call with NDTensors.strides.
+This is unexported, call with NDTensors.dim_to_strides.
 """
-strides(ds) = Base.size_to_strides(1, dims(ds)...)
+dim_to_strides(ds) = Base.size_to_strides(1, dims(ds)...)
 
 """
-    stride(ds, k::Int)
+    dim_to_stride(ds, k::Int)
 
 Get the stride of the dimension k from the dimensions.
 
 This is unexported, call with NDTensors.stride.
 """
-stride(ds, k::Int) = strides(ds)[k]
+dim_to_stride(ds, k::Int) = dim_to_strides(ds)[k]
 
 # This is to help with some generic programming in the Tensor
 # code (it helps to construct a Tuple(::NTuple{N,Int}) where the 

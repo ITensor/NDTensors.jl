@@ -62,64 +62,64 @@ end
 const NonuniformDiagBlockSparse{ElT,VecT} = DiagBlockSparse{ElT,VecT} where {VecT<:AbstractVector}
 const UniformDiagBlockSparse{ElT,VecT} = DiagBlockSparse{ElT,VecT} where {VecT<:Number}
 
-Base.@propagate_inbounds function
-Base.getindex(D::NonuniformDiagBlockSparse,
+@propagate_inbounds function
+getindex(D::NonuniformDiagBlockSparse,
               i::Int)
   return data(D)[i]
 end
 
-Base.getindex(D::UniformDiagBlockSparse, i::Int) = data(D)
+getindex(D::UniformDiagBlockSparse, i::Int) = data(D)
 
-Base.@propagate_inbounds function
-Base.setindex!(D::DiagBlockSparse,
+@propagate_inbounds function
+setindex!(D::DiagBlockSparse,
                val,
                i::Int)
   data(D)[i] = val
   return D
 end
 
-function Base.setindex!(D::UniformDiagBlockSparse,val,i::Int)
+function setindex!(D::UniformDiagBlockSparse,val,i::Int)
   error("Cannot set elements of a uniform DiagBlockSparse storage")
 end
 
-#Base.fill!(D::DiagBlockSparse,v) = fill!(data(D),v)
+#fill!(D::DiagBlockSparse,v) = fill!(data(D),v)
 
 # convert to complex
 # TODO: this could be a generic TensorStorage function
-Base.complex(D::DiagBlockSparse) = DiagBlockSparse(complex(data(D)))
+complex(D::DiagBlockSparse) = DiagBlockSparse(complex(data(D)))
 
-Base.copy(D::DiagBlockSparse) = DiagBlockSparse(copy(data(D)))
+copy(D::DiagBlockSparse) = DiagBlockSparse(copy(data(D)))
 
-Base.conj(D::DiagBlockSparse{<:Real}) = D
-Base.conj(D::DiagBlockSparse{<:Complex}) = DiagBlockSparse(conj(data(D)))
+conj(D::DiagBlockSparse{<:Real}) = D
+conj(D::DiagBlockSparse{<:Complex}) = DiagBlockSparse(conj(data(D)))
 
 # TODO: make this generic for all storage types
-Base.eltype(::DiagBlockSparse{ElT}) where {ElT} = ElT
-Base.eltype(::Type{<:DiagBlockSparse{ElT}}) where {ElT} = ElT
+eltype(::DiagBlockSparse{ElT}) where {ElT} = ElT
+eltype(::Type{<:DiagBlockSparse{ElT}}) where {ElT} = ElT
 
 # Deal with uniform DiagBlockSparse conversion
-#Base.convert(::Type{<:DiagBlockSparse{ElT,VecT}},D::DiagBlockSparse) where {ElT,VecT} = DiagBlockSparse(convert(VecT,data(D)))
+#convert(::Type{<:DiagBlockSparse{ElT,VecT}},D::DiagBlockSparse) where {ElT,VecT} = DiagBlockSparse(convert(VecT,data(D)))
 
-Base.size(D::DiagBlockSparse) = size(data(D))
+size(D::DiagBlockSparse) = size(data(D))
 
 # TODO: write in terms of ::Int, not inds
-Base.similar(D::NonuniformDiagBlockSparse) = DiagBlockSparse(similar(data(D)))
-#Base.similar(D::NonuniformDiagBlockSparse,inds) = DiagBlockSparse(similar(data(D),minimum(dims(inds))))
-#function Base.similar(D::Type{<:NonuniformDiagBlockSparse{ElT,VecT}},inds) where {ElT,VecT}
+similar(D::NonuniformDiagBlockSparse) = DiagBlockSparse(similar(data(D)))
+#similar(D::NonuniformDiagBlockSparse,inds) = DiagBlockSparse(similar(data(D),minimum(dims(inds))))
+#function similar(D::Type{<:NonuniformDiagBlockSparse{ElT,VecT}},inds) where {ElT,VecT}
 #  return DiagBlockSparse(similar(VecT,diaglength(inds)))
 #end
 
-Base.similar(D::UniformDiagBlockSparse) = DiagBlockSparse(zero(T))
-Base.similar(D::UniformDiagBlockSparse,inds) = similar(D)
-Base.similar(::Type{<:UniformDiagBlockSparse{ElT}},inds) where {ElT} = DiagBlockSparse(zero(ElT))
+similar(D::UniformDiagBlockSparse) = DiagBlockSparse(zero(T))
+similar(D::UniformDiagBlockSparse,inds) = similar(D)
+similar(::Type{<:UniformDiagBlockSparse{ElT}},inds) where {ElT} = DiagBlockSparse(zero(ElT))
 
-Base.similar(D::DiagBlockSparse,n::Int) = DiagBlockSparse(similar(data(D),n))
+similar(D::DiagBlockSparse,n::Int) = DiagBlockSparse(similar(data(D),n))
 
-Base.similar(D::DiagBlockSparse,::Type{ElR},n::Int) where {ElR} = DiagBlockSparse(similar(data(D),ElR,n))
+similar(D::DiagBlockSparse,::Type{ElR},n::Int) where {ElR} = DiagBlockSparse(similar(data(D),ElR,n))
 
 # TODO: make this work for other storage besides Vector
-Base.zeros(::Type{<:NonuniformDiagBlockSparse{ElT}},dim::Int64) where {ElT} = DiagBlockSparse(zeros(ElT,dim))
-Base.zeros(::Type{<:UniformDiagBlockSparse{ElT}},dim::Int64) where {ElT} = DiagBlockSparse(zero(ElT))
+zeros(::Type{<:NonuniformDiagBlockSparse{ElT}},dim::Int64) where {ElT} = DiagBlockSparse(zeros(ElT,dim))
+zeros(::Type{<:UniformDiagBlockSparse{ElT}},dim::Int64) where {ElT} = DiagBlockSparse(zero(ElT))
 
 Base.:*(D::DiagBlockSparse,x::Number) = DiagBlockSparse(x*data(D))
 Base.:*(x::Number,D::DiagBlockSparse) = D*x
@@ -129,13 +129,13 @@ Base.:*(x::Number,D::DiagBlockSparse) = D*x
 # Useful for knowing how conversions should work when adding and contracting
 #
 
-function Base.promote_rule(::Type{<:UniformDiagBlockSparse{ElT1}},
+function promote_rule(::Type{<:UniformDiagBlockSparse{ElT1}},
                            ::Type{<:UniformDiagBlockSparse{ElT2}}) where {ElT1,ElT2}
   ElR = promote_type(ElT1,ElT2)
   return DiagBlockSparse{ElR,ElR}
 end
 
-function Base.promote_rule(::Type{<:NonuniformDiagBlockSparse{ElT1,VecT1}},
+function promote_rule(::Type{<:NonuniformDiagBlockSparse{ElT1,VecT1}},
                            ::Type{<:NonuniformDiagBlockSparse{ElT2,VecT2}}) where {ElT1,VecT1<:AbstractVector,
                                                                         ElT2,VecT2<:AbstractVector}
   ElR = promote_type(ElT1,ElT2)
@@ -144,17 +144,17 @@ function Base.promote_rule(::Type{<:NonuniformDiagBlockSparse{ElT1,VecT1}},
 end
 
 # This is an internal definition, is there a more general way?
-#Base.promote_type(::Type{Vector{ElT1}},
+#promote_type(::Type{Vector{ElT1}},
 #                  ::Type{ElT2}) where {ElT1<:Number,
 #                                       ElT2<:Number} = Vector{promote_type(ElT1,ElT2)}
 #
-#Base.promote_type(::Type{ElT1},
+#promote_type(::Type{ElT1},
 #                  ::Type{Vector{ElT2}}) where {ElT1<:Number,
 #                                               ElT2<:Number} = promote_type(Vector{ElT2},ElT1)
 
 # TODO: how do we make this work more generally for T2<:AbstractVector{S2}?
 # Make a similar_type(AbstractVector{S2},T1) -> AbstractVector{T1} function?
-function Base.promote_rule(::Type{<:UniformDiagBlockSparse{ElT1,VecT1}},
+function promote_rule(::Type{<:UniformDiagBlockSparse{ElT1,VecT1}},
                            ::Type{<:NonuniformDiagBlockSparse{ElT2,Vector{ElT2}}}) where {ElT1,VecT1<:Number,
                                                                                           ElT2}
   ElR = promote_type(ElT1,ElT2)
@@ -162,7 +162,7 @@ function Base.promote_rule(::Type{<:UniformDiagBlockSparse{ElT1,VecT1}},
   return DiagBlockSparse{ElR,VecR}
 end
 
-function Base.promote_rule(::Type{BlockSparseT1},
+function promote_rule(::Type{BlockSparseT1},
                            ::Type{<:NonuniformDiagBlockSparse{ElT2,VecT2,N2}}) where {BlockSparseT1<:BlockSparse,
                                                                                       ElT2<:Number,
                                                                                       VecT2<:AbstractVector,
@@ -170,7 +170,7 @@ function Base.promote_rule(::Type{BlockSparseT1},
   return promote_type(BlockSparseT1,BlockSparse{ElT2,VecT2,N2})
 end
 
-function Base.promote_rule(::Type{BlockSparseT1},
+function promote_rule(::Type{BlockSparseT1},
                            ::Type{<:UniformDiagBlockSparse{ElT2,ElT2}}) where {BlockSparseT1<:BlockSparse,
                                                                         ElT2<:Number}
   return promote_type(BlockSparseT1,ElT2)
@@ -240,11 +240,11 @@ function blockview(T::UniformDiagBlockSparseTensor,
   return tensor(Diag(getdiagindex(T,1)),blockdimsT)
 end
 
-Base.IndexStyle(::Type{<:DiagBlockSparseTensor}) = IndexCartesian()
+IndexStyle(::Type{<:DiagBlockSparseTensor}) = IndexCartesian()
 
 # TODO: this needs to be better (promote element type, check order compatibility,
 # etc.
-function Base.convert(::Type{<:DenseTensor{ElT,N}}, T::DiagBlockSparseTensor{ElT,N}) where {ElT<:Number,N}
+function convert(::Type{<:DenseTensor{ElT,N}}, T::DiagBlockSparseTensor{ElT,N}) where {ElT<:Number,N}
   return dense(T)
 end
 
@@ -293,16 +293,16 @@ end
 matrix(T::DiagBlockSparseTensor{<:Number,2}) = array(T)
 vector(T::DiagBlockSparseTensor{<:Number,1}) = array(T)
 
-function Base.Array{ElT,N}(T::DiagBlockSparseTensor{ElT,N}) where {ElT,N}
+function Array{ElT,N}(T::DiagBlockSparseTensor{ElT,N}) where {ElT,N}
   return array(T)
 end
 
-function Base.Array(T::DiagBlockSparseTensor{ElT,N}) where {ElT,N}
+function Array(T::DiagBlockSparseTensor{ElT,N}) where {ElT,N}
   return Array{ElT,N}(T)
 end
 
 # Needed to get slice of DiagBlockSparseTensor like T[1:3,1:3]
-function Base.similar(T::DiagBlockSparseTensor{<:Number,N},
+function similar(T::DiagBlockSparseTensor{<:Number,N},
                       ::Type{ElR},
                       inds::Dims{N}) where {ElR<:Number,N}
   return tensor(similar(store(T),ElR,minimum(inds)),inds)
@@ -323,8 +323,8 @@ function setdiag(T::DiagBlockSparseTensor,
   return tensor(DiagBlockSparse(val), inds(T))
 end
 
-Base.@propagate_inbounds function
-Base.getindex(T::DiagBlockSparseTensor{ElT,N},
+@propagate_inbounds function
+getindex(T::DiagBlockSparseTensor{ElT,N},
               inds::Vararg{Int,N}) where {ElT,N}
   if all(==(inds[1]),inds)
     return store(T)[inds[1]]
@@ -333,21 +333,21 @@ Base.getindex(T::DiagBlockSparseTensor{ElT,N},
   end
 end
 
-Base.@propagate_inbounds function
-Base.getindex(T::DiagBlockSparseTensor{<:Number,1},
+@propagate_inbounds function
+getindex(T::DiagBlockSparseTensor{<:Number,1},
               ind::Int)
   return store(T)[ind]
 end
 
-Base.@propagate_inbounds function
-Base.getindex(T::DiagBlockSparseTensor{<:Number,0})
+@propagate_inbounds function
+getindex(T::DiagBlockSparseTensor{<:Number,0})
   return store(T)[1]
 end
 
 # Set diagonal elements
 # Throw error for off-diagonal
-Base.@propagate_inbounds function
-Base.setindex!(T::DiagBlockSparseTensor{<: Number, N},
+@propagate_inbounds function
+setindex!(T::DiagBlockSparseTensor{<: Number, N},
                val,
                inds::Vararg{Int, N}) where {N}
   all(==(inds[1]),inds) || error("Cannot set off-diagonal element of DiagBlockSparse storage")
@@ -355,29 +355,29 @@ Base.setindex!(T::DiagBlockSparseTensor{<: Number, N},
   return T
 end
 
-Base.@propagate_inbounds function
-Base.setindex!(T::DiagBlockSparseTensor{<:Number, 1},
+@propagate_inbounds function
+setindex!(T::DiagBlockSparseTensor{<:Number, 1},
                val,
                ind::Int)
   store(T)[ind] = val
   return T
 end
 
-Base.@propagate_inbounds function
-Base.setindex!(T::DiagBlockSparseTensor{<:Number,0},
+@propagate_inbounds function
+setindex!(T::DiagBlockSparseTensor{<:Number,0},
                val)
   store(T)[1] = val
   return T
 end
 
-function Base.setindex!(T::UniformDiagBlockSparseTensor{<:Number, N},
+function setindex!(T::UniformDiagBlockSparseTensor{<:Number, N},
                         val,
                         inds::Vararg{Int, N}) where {N}
   error("Cannot set elements of a uniform DiagBlockSparse storage")
 end
 
 # TODO: make a fill!! that works for uniform and non-uniform
-#Base.fill!(T::DiagBlockSparseTensor,v) = fill!(store(T),v)
+#fill!(T::DiagBlockSparseTensor,v) = fill!(store(T),v)
 
 function dense(::Type{<:Tensor{ElT,
                                N,
@@ -434,7 +434,7 @@ function outer(T1::DiagBlockSparseTensor{ElT1,N1},
   return R
 end
 
-function Base.permutedims!(R::DiagBlockSparseTensor{<:Number,N},
+function permutedims!(R::DiagBlockSparseTensor{<:Number,N},
                            T::DiagBlockSparseTensor{<:Number,N},
                            perm::NTuple{N,Int},f::Function=(r,t)->t) where {N}
   # TODO: check that inds(R)==permute(inds(T),perm)?
@@ -444,14 +444,14 @@ function Base.permutedims!(R::DiagBlockSparseTensor{<:Number,N},
   return R
 end
 
-function Base.permutedims(T::DiagBlockSparseTensor{<:Number,N},
+function permutedims(T::DiagBlockSparseTensor{<:Number,N},
                           perm::NTuple{N,Int},f::Function=identity) where {N}
   R = similar(T,permute(inds(T),perm))
   permutedims!(R,T,perm,f)
   return R
 end
 
-function Base.permutedims(T::UniformDiagBlockSparseTensor{ElT,N},
+function permutedims(T::UniformDiagBlockSparseTensor{ElT,N},
                           perm::NTuple{N,Int},
                           f::Function=identity) where {ElR,ElT,N}
   R = tensor(DiagBlockSparse(f(getdiagindex(T,1))),permute(inds(T),perm))
@@ -475,7 +475,7 @@ function permutedims!!(R::UniformDiagBlockSparseTensor{ElR,N},
   return R
 end
 
-function Base.permutedims!(R::DenseTensor{ElR,N},
+function permutedims!(R::DenseTensor{ElR,N},
                            T::DiagBlockSparseTensor{ElT,N},
                            perm::NTuple{N,Int},
                            f::Function = (r,t)->t) where {ElR,ElT,N}
@@ -562,7 +562,7 @@ contract!(C::BlockSparseTensor,Clabels,
                                                         B,Blabels,
                                                         A,Alabels)
 
-function Base.show(io::IO,
+function show(io::IO,
                    mime::MIME"text/plain",
                    T::DiagBlockSparseTensor)
   summary(io,T)
@@ -575,6 +575,6 @@ function Base.show(io::IO,
   end
 end
 
-Base.show(io::IO, T::DiagBlockSparseTensor) = show(io,MIME("text/plain"),T)
+show(io::IO, T::DiagBlockSparseTensor) = show(io,MIME("text/plain"),T)
 
 

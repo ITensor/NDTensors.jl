@@ -15,6 +15,9 @@ using Base:
   @propagate_inbounds,
   ReshapedArray
 
+using Base.Cartesian:
+  @nexprs
+
 #####################################
 # Imports and exports
 #
