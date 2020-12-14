@@ -1,8 +1,11 @@
 
+mult_combiner_signs(T,labelsC,indsC,labelsT,indsT) = T
+
 function contract(T::BlockSparseTensor,
                   labelsT,
                   C::CombinerTensor,
                   labelsC)
+  println("----------------- in contract BlockSparse, Combiner ----")
   # Get the label marking the combined index
   # By convention the combined index is the first one
   # TODO: consider storing the location of the combined
@@ -14,6 +17,8 @@ function contract(T::BlockSparseTensor,
   if labelsC[1] ∉ labelsT
     # Combine
     labelsRc = contract_labels(labelsC,labelsT)
+    #<fermions>:
+    T = mult_combiner_signs(C,labelsC,inds(C),T,labelsT,inds(T),labelsRc)
     cpos_in_labelsRc = findfirst(==(clabel),labelsRc)
     labelsRuc = insertat(labelsRc,labels_uc,cpos_in_labelsRc)
     indsRc = contract_inds(inds(C),labelsC,inds(T),labelsT,labelsRc)
@@ -37,7 +42,11 @@ function contract(T::BlockSparseTensor,
     end
     labelsRuc = insertat(labelsRc,labels_uc,cpos_in_labelsRc)
     indsRuc = contract_inds(inds(C),labelsC,inds(T),labelsT,labelsRuc)
+    #<fermions>:
+    T = mult_combiner_signs(C,labelsC,inds(C),T,labelsT,inds(T),labelsRuc)
     Ruc = uncombine(T,indsRuc,cpos_in_labelsRc,blockperm(C),blockcomb(C))
+    #<fermions>: if calling after:
+    #Ruc = mult_combiner_signs(C,labelsC,inds(C),Ruc,labelsT,inds(T),labelsRuc)
     return Ruc
   end
 end
