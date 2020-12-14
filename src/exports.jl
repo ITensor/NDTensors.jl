@@ -5,6 +5,9 @@ export addblock!!,
 # blocksparse/blocksparsetensor.jl
        randomBlockSparseTensor,
 
+# combiner.jl
+      cinds,
+
 # dense.jl
        randomTensor,
        randomDenseTensor,

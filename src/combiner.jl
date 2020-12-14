@@ -8,18 +8,27 @@ struct Combiner <: TensorStorage{Number}
   perm::Vector{Int}
   comb::Vector{Int}
   cind::Vector{Int}
-  Combiner(perm::Vector{Int},comb::Vector{Int},cind::Vector{Int}) = new(perm,comb,cind)
+  isconj::Bool
+  function Combiner(perm::Vector{Int},
+                    comb::Vector{Int},
+                    cind::Vector{Int},
+                    isconj::Bool) 
+    new(perm,comb,cind,isconj)
+  end
 end
 
-Combiner(perm::Vector{Int},comb::Vector{Int}) = Combiner(perm,comb,Int[1])
+Combiner(perm::Vector{Int},comb::Vector{Int}) = Combiner(perm,comb,Int[1],false)
 
-Combiner() = Combiner(Int[],Int[],Int[1])
+Combiner() = Combiner(Int[],Int[],Int[1],false)
 
 data(::Combiner) = error("Combiner storage has no data")
 
 blockperm(C::Combiner) = C.perm
 blockcomb(C::Combiner) = C.comb
 cinds(C::Combiner) = C.cind
+isconj(C::Combiner) = C.isconj
+
+Base.copy(C::Combiner) = Combiner(copy(C.perm),copy(C.comb),copy(C.cind),C.isconj)
 
 Base.eltype(::Type{<:Combiner}) = Number
 
@@ -27,6 +36,8 @@ Base.eltype(::Combiner) = eltype(Combiner)
 
 Base.promote_rule(::Type{<:Combiner},
                   StorageT::Type{<:Dense}) = StorageT
+
+Base.conj(C::Combiner; always_copy = false) = Combiner(C.perm,C.comb,C.cind,!C.isconj)
 
 #
 # CombinerTensor (Tensor using Combiner storage)
@@ -40,7 +51,8 @@ uncombinedinds(T::CombinerTensor) = popfirst(inds(T))
 blockperm(C::CombinerTensor) = blockperm(store(C))
 blockcomb(C::CombinerTensor) = blockcomb(store(C))
 
-Base.conj(T::CombinerTensor; always_copy = false) = T
+# This function removed in favor of Base.conj(::Combiner) above:
+#Base.conj(T::CombinerTensor; always_copy = false) = T
 
 function contraction_output(::TensorT1,
                             ::TensorT2,
