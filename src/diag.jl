@@ -20,11 +20,9 @@ function Diag{ElR}(data::AbstractVector{ElT}) where {ElR<:Number,ElT<:Number}
   ElT == ElR ? Diag(data) : Diag(ElR.(data))
 end
 
-Diag(::Type{ElT},
-     n::Integer) where {ElT<:Number} = Diag(zeros(ElT,n))
+Diag(::Type{ElT}, n::Integer) where {ElT<:Number} = Diag(zeros(ElT,n))
 
-Diag(x::ElT,
-     n::Integer) where {ElT<:Number} = Diag(fill(x,n))
+Diag(x::ElT, n::Integer) where {ElT<:Number} = Diag(fill(x,n))
 
 copy(D::Diag) = Diag(copy(data(D)))
 
@@ -61,8 +59,8 @@ similar(D::Diag,::Type{ElR},n::Int) where {ElR} = Diag(similar(data(D),ElR,n))
 zeros(::Type{<:NonuniformDiag{ElT}},dim::Int64) where {ElT} = Diag(zeros(ElT,dim))
 zeros(::Type{<:UniformDiag{ElT}},dim::Int64) where {ElT} = Diag(zero(ElT))
 
-Base.:*(D::Diag,x::Number) = Diag(x*data(D))
-Base.:*(x::Number,D::Diag) = D*x
+(D::Diag * x::Number) = Diag(x * data(D))
+(x::Number * D::Diag) = D * x
 
 #
 # Type promotions involving Diag
@@ -70,14 +68,14 @@ Base.:*(x::Number,D::Diag) = D*x
 #
 
 function promote_rule(::Type{<:UniformDiag{ElT1}},
-                           ::Type{<:UniformDiag{ElT2}}) where {ElT1,ElT2}
+                      ::Type{<:UniformDiag{ElT2}}) where {ElT1,ElT2}
   ElR = promote_type(ElT1,ElT2)
   return Diag{ElR,ElR}
 end
 
 function promote_rule(::Type{<:NonuniformDiag{ElT1,VecT1}},
-                           ::Type{<:NonuniformDiag{ElT2,VecT2}}) where {ElT1,VecT1<:AbstractVector,
-                                                                        ElT2,VecT2<:AbstractVector}
+                      ::Type{<:NonuniformDiag{ElT2,VecT2}}) where {ElT1,VecT1<:AbstractVector,
+                                                                   ElT2,VecT2<:AbstractVector}
   ElR = promote_type(ElT1,ElT2)
   VecR = promote_type(VecT1,VecT2)
   return Diag{ElR,VecR}
@@ -95,22 +93,22 @@ end
 # TODO: how do we make this work more generally for T2<:AbstractVector{S2}?
 # Make a similar_type(AbstractVector{S2},T1) -> AbstractVector{T1} function?
 function promote_rule(::Type{<:UniformDiag{ElT1,VecT1}},
-                           ::Type{<:NonuniformDiag{ElT2,Vector{ElT2}}}) where {ElT1,VecT1<:Number,
-                                                                               ElT2}
+                      ::Type{<:NonuniformDiag{ElT2,Vector{ElT2}}}) where {ElT1,VecT1<:Number,
+                                                                          ElT2}
   ElR = promote_type(ElT1,ElT2)
   VecR = Vector{ElR}
   return Diag{ElR,VecR}
 end
 
 function promote_rule(::Type{DenseT1},
-                           ::Type{<:NonuniformDiag{ElT2,VecT2}}) where {DenseT1<:Dense,
-                                                                        ElT2,VecT2<:AbstractVector}
+                      ::Type{<:NonuniformDiag{ElT2,VecT2}}) where {DenseT1<:Dense,
+                                                                   ElT2,VecT2<:AbstractVector}
   return promote_type(DenseT1,Dense{ElT2,VecT2})
 end
 
 function promote_rule(::Type{DenseT1},
-                           ::Type{<:UniformDiag{ElT2,VecT2}}) where {DenseT1<:Dense,
-                                                                     ElT2,VecT2<:Number}
+                      ::Type{<:UniformDiag{ElT2,VecT2}}) where {DenseT1<:Dense,
+                                                                ElT2,VecT2<:Number}
   return promote_type(DenseT1,ElT2)
 end
 
@@ -405,6 +403,7 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
                    convert_to_dense::Bool = true) where {ElA,NA,
                                                          ElB,NB,
                                                          ElC,NC}
+  @timeit_debug timer "diag-dense contract!" begin 
   if all(i -> i < 0, Blabels)
     # If all of B is contracted
     # TODO: can also check NC+NB==NA
@@ -487,16 +486,14 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
       end
     end
   end
+  end
 end
 
-contract!(C::DenseTensor,Clabels,
-          A::DenseTensor,Alabels,
-          B::DiagTensor,Blabels) =
+contract!(C::DenseTensor, Clabels, A::DenseTensor, Alabels,
+          B::DiagTensor, Blabels) =
   contract!(C, Clabels, B, Blabels, A, Alabels)
 
-function show(io::IO,
-                   mime::MIME"text/plain",
-                   T::DiagTensor)
+function show(io::IO, mime::MIME"text/plain", T::DiagTensor)
   summary(io,T)
   print_tensor(io,T)
 end

@@ -36,6 +36,7 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
 
   truncate = haskey(kwargs, :maxdim) || haskey(kwargs, :cutoff)
 
+  @timeit_debug timer "block sparse svd" begin
   Us = Vector{DenseTensor{ElT, 2}}(undef, nnzblocks(T))
   Ss = Vector{DiagTensor{real(ElT), 2}}(undef, nnzblocks(T))
   Vs = Vector{DenseTensor{ElT, 2}}(undef, nnzblocks(T))
@@ -180,6 +181,7 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
   end
 
   return U,S,V,Spectrum(d,truncerr)
+  end # @timeit_debug
 end
 
 _eigen_eltypes(T::Hermitian{ElT,<:BlockSparseMatrix{ElT}}) where {ElT} = real(ElT), ElT

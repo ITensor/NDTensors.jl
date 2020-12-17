@@ -17,11 +17,11 @@ data(::Combiner) = error("Combiner storage has no data")
 blockperm(C::Combiner) = C.perm
 blockcomb(C::Combiner) = C.comb
 
-Base.eltype(::Type{<:Combiner}) = Number
+eltype(::Type{<:Combiner}) = Number
 
-Base.eltype(::Combiner) = eltype(Combiner)
+eltype(::Combiner) = eltype(Combiner)
 
-Base.promote_rule(::Type{<:Combiner},
+promote_rule(::Type{<:Combiner},
                   StorageT::Type{<:Dense}) = StorageT
 
 #
@@ -36,7 +36,7 @@ uncombinedinds(T::CombinerTensor) = popfirst(inds(T))
 blockperm(C::CombinerTensor) = blockperm(store(C))
 blockcomb(C::CombinerTensor) = blockcomb(store(C))
 
-Base.conj(T::CombinerTensor; always_copy = false) = T
+conj(T::CombinerTensor; always_copy = false) = T
 
 function contraction_output(::TensorT1,
                             ::TensorT2,
@@ -117,16 +117,12 @@ function contract!!(R::Tensor{<:Number,NR},
   return contract!!(R,labelsR,T2,labelsT2,T1,labelsT1)
 end
 
-function Base.show(io::IO,
-                   mime::MIME"text/plain",
-                   S::Combiner)
+function show(io::IO, mime::MIME"text/plain", S::Combiner)
   println(io, "Permutation of blocks: ", S.perm)
   println(io, "Combination of blocks: ", S.comb)
 end
 
-function Base.show(io::IO,
-                   mime::MIME"text/plain",
-                   T::CombinerTensor)
+function show(io::IO, mime::MIME"text/plain", T::CombinerTensor)
   summary(io, T)
   println(io)
   show(io, mime, store(T))

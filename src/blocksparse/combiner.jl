@@ -1,8 +1,7 @@
 
-function contract(T::BlockSparseTensor,
-                  labelsT,
-                  C::CombinerTensor,
-                  labelsC)
+function contract(T::BlockSparseTensor, labelsT,
+                  C::CombinerTensor, labelsC)
+  @timeit_debug timer "Block sparse (un)combiner" begin
   # Get the label marking the combined index
   # By convention the combined index is the first one
   # TODO: consider storing the location of the combined
@@ -40,16 +39,14 @@ function contract(T::BlockSparseTensor,
     Ruc = uncombine(T,indsRuc,cpos_in_labelsRc,blockperm(C),blockcomb(C))
     return Ruc
   end
+  end
 end
 
-contract(C::CombinerTensor,
-         labelsC,
-         T::BlockSparseTensor,
-         labelsT) = contract(T,labelsT,C,labelsC)
+contract(C::CombinerTensor, labelsC, T::BlockSparseTensor, labelsT) =
+  contract(T,labelsT,C,labelsC)
 
 # Special case when no indices are combined
-contract(T::BlockSparseTensor,
-         labelsT,
-         C::CombinerTensor{<:Any,0},
-         labelsC) = copy(T)
+# XXX: no copy
+contract(T::BlockSparseTensor, labelsT,
+         C::CombinerTensor{<:Any,0}, labelsC) = copy(T)
 

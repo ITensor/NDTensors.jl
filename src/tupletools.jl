@@ -112,7 +112,7 @@ function is_trivial_permutation(P)
   # TODO: use `all(n->P[n]==n,1:length(P))`?
   N = length(P)
   for n in 1:N
-    P[n]!=n && return false
+    @inbounds P[n] != n && return false
   end
   return true
 end

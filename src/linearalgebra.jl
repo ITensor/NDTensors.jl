@@ -14,10 +14,7 @@ export eigs,
 # and passable to BLAS/LAPACK, it cannot
 # be made <: StridedArray
 
-function Base.:*(T1::Tensor{ElT1,2,StoreT1},
-                 T2::Tensor{ElT2,2,StoreT2}) where
-                                       {ElT1,StoreT1<:Dense,IndsT1,
-                                        ElT2,StoreT2<:Dense,IndsT2}
+function (T1::Tensor{ElT1,2,StoreT1} * T2::Tensor{ElT2,2,StoreT2}) where {ElT1, StoreT1 <: Dense,IndsT1, ElT2, StoreT2 <: Dense, IndsT2}
   RM = matrix(T1)*matrix(T2)
   indsR = (ind(T1,1), ind(T2,2))
   return tensor(Dense(vec(RM)), indsR)
@@ -28,8 +25,7 @@ function LinearAlgebra.exp(T::DenseTensor{ElT,2}) where {ElT<:Union{Real,Complex
   return tensor(Dense(vec(expTM)),inds(T))
 end
 
-function LinearAlgebra.exp(T::Hermitian{ElT,
-                                        <:DenseTensor{ElT,2}}) where {ElT<:Union{Real,Complex}}
+function LinearAlgebra.exp(T::Hermitian{ElT, <: DenseTensor{ElT,2}}) where {ElT<:Union{Real,Complex}}
   # exp(::Hermitian/Symmetric) returns Hermitian/Symmetric,
   # so extract the parent matrix
   expTM = parent(exp(matrix(T)))
@@ -111,6 +107,7 @@ function LinearAlgebra.svd(T::DenseTensor{ElT,2,IndsT};
                                   use_relative_cutoff)
   alg::String = get(kwargs, :alg, "divide_and_conquer")
 
+  @timeit_debug timer "dense svd" begin
   if alg == "divide_and_conquer"
     MUSV = svd_catch_error(matrix(T); alg = LinearAlgebra.DivideAndConquer())
   elseif alg == "qr_iteration"
@@ -150,6 +147,7 @@ function LinearAlgebra.svd(T::DenseTensor{ElT,2,IndsT};
   end
   MU, MS, MV = MUSV
   conj!(MV)
+  end # @timeit_debug
 
   P = MS .^ 2
   if truncate

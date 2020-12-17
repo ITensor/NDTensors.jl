@@ -611,6 +611,7 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
                        T::BlockSparseTensor{ElT,N},
                        perm::NTuple{N,Int},
                        f::Function=(r,t)->t) where {ElR,ElT,N}
+  @timeit_debug timer "block sparse permutedims!!" begin
   bofsRR = blockoffsets(R)
   bofsT = blockoffsets(T)
 
@@ -643,6 +644,7 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
 
   permutedims!(R, T, perm, f)
   return R
+  end
 end
 
 # Version where it is known that R has the same blocks
@@ -781,6 +783,7 @@ function contraction_output(T1::TensorT1,
                             labelsT2,
                             labelsR) where {TensorT1<:BlockSparseTensor,
                                             TensorT2<:BlockSparseTensor}
+
   indsR = contract_inds(inds(T1),labelsT1,inds(T2),labelsT2,labelsR)
   TensorR = contraction_output_type(TensorT1,TensorT2,typeof(indsR))
   blockoffsetsR,contraction_plan = contract_blockoffsets(blockoffsets(T1),inds(T1),labelsT1,
@@ -795,9 +798,11 @@ function contract(T1::BlockSparseTensor{<:Any,N1},
                   T2::BlockSparseTensor{<:Any,N2},
                   labelsT2,
                   labelsR = contract_labels(labelsT1,labelsT2)) where {N1,N2}
+  @timeit_debug timer "Block sparse contract" begin
   R,contraction_plan = contraction_output(T1,labelsT1,T2,labelsT2,labelsR)
   R = contract!(R,labelsR,T1,labelsT1,T2,labelsT2,contraction_plan)
   return R
+  end
 end
 
 function contract!(R::BlockSparseTensor{ElR, NR},

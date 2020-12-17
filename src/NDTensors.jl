@@ -66,7 +66,7 @@ include("deprecated.jl")
 # A global timer used with TimerOutputs.jl
 #
 
-const GLOBAL_TIMER = TimerOutput()
+const timer = TimerOutput()
 
 #####################################
 # Optional TBLIS contraction backend
