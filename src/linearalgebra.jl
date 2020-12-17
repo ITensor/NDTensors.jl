@@ -122,7 +122,7 @@ function LinearAlgebra.svd(T::DenseTensor{ElT,2,IndsT};
       "The SVD algorithm `\"$alg\"` has thrown an error,\n" *
       "likely because of a convergance failure. You can try\n" *
       "other SVD algorithms that may converge better using the\n" *
-      "`alg` keyword argument:\n\n" *
+      "`alg` (or `svd_alg` if called through `factorize` or MPS/MPO functionality) keyword argument:\n\n" *
       " - \"divide_and_conquer\" is a divide-and-conquer algorithm\n" *
       "   (LAPACK's `gesdd`). It is fast, but may lead to some innacurate\n" *
       "   singular values for very ill-conditioned matrices.\n" *
