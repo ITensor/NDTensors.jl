@@ -26,20 +26,17 @@ end
 
 Dense{ElT}(dim::Integer) where {ElT} = Dense(zeros(ElT, dim))
 
-Dense{ElT}(::UndefInitializer,
-           dim::Integer) where {ElT} = Dense(Vector{ElT}(undef,dim))
+Dense{ElT}(::UndefInitializer, dim::Integer) where {ElT} =
+  Dense(Vector{ElT}(undef,dim))
 
-Dense(::Type{ElT},
-      dim::Integer) where {ElT} = Dense{ElT}(dim)
+Dense(::Type{ElT}, dim::Integer) where {ElT} = Dense{ElT}(dim)
 
-Dense(x::ElT,
-      dim::Integer) where {ElT<:Number} = Dense(fill(x,dim))
+Dense(x::ElT, dim::Integer) where {ElT <: Number} = Dense(fill(x,dim))
 
 Dense(dim::Integer) = Dense(Float64,dim)
 
-Dense(::Type{ElT},
-      ::UndefInitializer,
-      dim::Integer) where {ElT} = Dense{ElT}(undef,dim)
+Dense(::Type{ElT}, ::UndefInitializer, dim::Integer) where {ElT} =
+  Dense{ElT}(undef,dim)
 
 Dense(::UndefInitializer,dim::Integer) = Dense(Float64,undef,dim)
 
@@ -50,15 +47,13 @@ Dense(::Type{ElT}) where {ElT} = Dense{ElT}()
 # Random constructors
 #
 
-function randn(::Type{StoreT}, dim::Integer) where {StoreT<:Dense}
-  return Dense(randn(eltype(StoreT), dim))
-end
+randn(::Type{StoreT}, dim::Integer) where {StoreT <: Dense} =
+  Dense(randn(eltype(StoreT), dim))
 
 copy(D::Dense) = Dense(copy(data(D)))
 
-function complex(::Type{Dense{ElT, Vector{ElT}}}) where {ElT}
-  return Dense{complex(ElT),Vector{complex(ElT)}}
-end
+complex(::Type{Dense{ElT, Vector{ElT}}}) where {ElT} =
+  Dense{complex(ElT),Vector{complex(ElT)}}
 
 similar(D::Dense) = Dense(similar(data(D)))
 
@@ -116,14 +111,12 @@ convert(::Type{<:Dense{ElR,VecR}}, D::Dense) where {ElR,VecR} =
 
 const DenseTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where {StoreT<:Dense}
 
-DenseTensor(::Type{ElT},
-            inds) where {ElT} =
+DenseTensor(::Type{ElT}, inds) where {ElT} =
   tensor(Dense(ElT,dim(inds)),inds)
 
 # Special convenience function for Int
 # dimensions
-DenseTensor(::Type{ElT},
-            inds::Int...) where {ElT} =
+DenseTensor(::Type{ElT}, inds::Int...) where {ElT} =
   DenseTensor(ElT, inds)
 
 DenseTensor(inds) = tensor(Dense(dim(inds)), inds)
@@ -463,7 +456,9 @@ function _gemm!(tA, tB, alpha,
                 A::AbstractVecOrMat{<:LinearAlgebra.BlasFloat},
                 B::AbstractVecOrMat{<:LinearAlgebra.BlasFloat},
                 beta, C::AbstractVecOrMat{<:LinearAlgebra.BlasFloat})
-    BLAS.gemm!(tA, tB, alpha, A, B, beta, C)
+  @timeit_debug timer "BLAS.gemm!" begin
+  BLAS.gemm!(tA, tB, alpha, A, B, beta, C)
+  end
 end
 
 # generic matmul
@@ -539,12 +534,9 @@ function contraction_output(T1::Tensor,
 end
 
 # TODO: move to tensor.jl?
-function contract(T1::Tensor{<:Any, N1},
-                  labelsT1,
-                  T2::Tensor{<:Any, N2},
-                  labelsT2,
-                  labelsR = contract_labels(labelsT1,
-                                            labelsT2)) where {N1, N2}
+function contract(T1::Tensor, labelsT1, T2::Tensor,
+                  labelsT2, labelsR = contract_labels(labelsT1, labelsT2))
+  @timeit_debug timer "dense contract" begin
   # TODO: put the contract_inds logic into contraction_output,
   # call like R = contraction_ouput(T1,labelsT1,T2,labelsT2)
   #indsR = contract_inds(inds(T1),labelsT1,inds(T2),labelsT2,labelsR)
@@ -557,6 +549,7 @@ function contract(T1::Tensor{<:Any, N1},
                  T1, labelsT1,
                  T2, labelsT2)
   return R
+  end
 end
 
 # Move to tensor.jl? Is this generic for all storage types?
@@ -626,28 +619,188 @@ function _contract!!(R::Tensor, labelsR,
   return R
 end
 
-function contract!(R::DenseTensor{ElR, NR},
-                   labelsR,
-                   T1::DenseTensor{ElT1, N1},
-                   labelsT1,
-                   T2::DenseTensor{ElT2, N2},
-                   labelsT2,
-                   α::Elα = one(ElR),
-                   β::Elβ = zero(ElR)) where {Elα, Elβ, ElR, ElT1, ElT2, NR, N1, N2}
-  # Special case for scalar tensors
-  if nnz(R) == 1 && nnz(T1) == 1 && nnz(T2) == 1
-    if β == zero(Elβ)
-      R[1] = α * T1[1] * T2[1]
-    elseif α == zero(Elα)
-      R[1] = β * R[1]
+Strided.StridedView(T::DenseTensor) = StridedView(convert(Array, T))
+
+# Both are scalar-like tensors
+function _contract_scalar!(R::DenseTensor{ElR}, labelsR,
+                           T1::Number, labelsT1,
+                           T2::Number, labelsT2,
+                           α = one(ElR), β = zero(ElR)) where {ElR}
+  if iszero(β)
+    R[1] = α * T1 * T2
+  elseif iszero(α)
+    R[1] = β * R[1]
+  else
+    R[1] = α * T1 * T2 + β * R[1]
+  end
+  return R
+end
+
+# Trivial permutation
+function _contract_scalar_noperm!(R::DenseTensor{ElR}, T::DenseTensor,
+                                  α, β = zero(ElR)) where {ElR}
+  Rᵈ = data(R)
+  Tᵈ = data(T)
+  if iszero(β)
+    if iszero(α)
+      fill!(Rᵈ, 0)
     else
-      R[1] = α * T1[1] * T2[1] + β * R[1]
+      # Rᵈ .= α .* T₂ᵈ
+      BLAS.axpby!(α, Tᵈ, β, Rᵈ)
+    end
+  elseif isone(β)
+    if iszero(α)
+      # Rᵈ .= Rᵈ
+      # No-op
+    else
+      # Rᵈ .= α .* Tᵈ .+ Rᵈ
+      BLAS.axpy!(α, Tᵈ, Rᵈ)
+    end
+  else
+    if iszero(α)
+      # Rᵈ .= β .* Rᵈ
+      BLAS.scal!(length(Rᵈ), β, Rᵈ, 1)
+    else
+      # Rᵈ .= α .* Tᵈ .+ β .* Rᵈ
+      BLAS.axpby!(α, Tᵈ, β, Rᵈ)
+    end
+  end
+  return R
+end
+
+# Non-trivial permutation
+function _contract_scalar_perm!(Rᵃ::AbstractArray{ElR}, Tᵃ::AbstractArray, perm,
+                                α, β = zero(ElR)) where {ElR}
+  if iszero(β)
+    if iszero(α)
+      fill!(Rᵃ, 0)
+    else
+      @strided Rᵃ .= α .* permutedims(Tᵃ, perm)
+    end
+  elseif isone(β)
+    if iszero(α)
+      # Rᵃ .= Rᵃ
+      # No-op
+    else
+      @strided Rᵃ .= α .* permutedims(Tᵃ, perm) .+ Rᵃ
+    end
+  else
+    if iszero(α)
+      # Rᵃ .= β .* Rᵃ
+      BLAS.scal!(length(Rᵃ), β, Rᵃ, 1)
+    else
+      Rᵃ .= α .* permutedims(Tᵃ, perm) .+ β .* Rᵃ
+    end
+  end
+  return Rᵃ
+end
+
+function drop_singletons(::Order{N}, labels, dims) where {N}
+  labelsᵣ = MVector{N, Int}(undef)
+  dimsᵣ = MVector{N, Int}(undef)
+  nkeep = 1
+  for n in 1:length(dims)
+    if dims[n] > 1
+      @inbounds labelsᵣ[nkeep] = labels[n]
+      @inbounds dimsᵣ[nkeep] = dims[n]
+      nkeep += 1
+    end
+  end
+  return Tuple(labelsᵣ), Tuple(dimsᵣ)
+end
+
+function drop_singletons(labels1, dims1, labels2, dims2)
+  nkeep = count(≠(1), dims1)
+  labels1ᵣ, dims1ᵣ = drop_singletons(Order(nkeep), labels1, dims1)
+  labels2ᵣ, dims2ᵣ = drop_singletons(Order(nkeep), labels2, dims2)
+  return labels1ᵣ, dims1ᵣ, labels2ᵣ, dims2ᵣ
+end
+
+function _contract_scalar_maybe_perm!(::Order{N},
+                                      R::DenseTensor{ElR, NR}, labelsR,
+                                      T::DenseTensor, labelsT,
+                                      α, β = zero(ElR)) where {ElR, NR, N}
+  labelsRᵣ, dimsRᵣ = drop_singletons(Order(N), labelsR, dims(R))
+  labelsTᵣ, dimsTᵣ = drop_singletons(Order(N), labelsT, dims(T))
+  perm = ntuple(n -> findfirst(==(labelsRᵣ[n]), labelsTᵣ), Val(N))
+  if isnothing(findfirst(n -> n ≠ perm[n], 1:length(perm)))
+    # trivial permutation
+    _contract_scalar_noperm!(R, T, α, β)
+  else
+    # non-trivial permutation
+    Rᵣ = ReshapedArray(data(R), dimsRᵣ, ())
+    Tᵣ = ReshapedArray(data(T), dimsTᵣ, ())
+    _contract_scalar_perm!(Rᵣ, Tᵣ, perm, α, β)
+  end
+  return R
+end
+
+function _contract_scalar_maybe_perm!(R::DenseTensor{ElR, NR}, labelsR,
+                                      T::DenseTensor, labelsT,
+                                      α, β = zero(ElR)) where {ElR, NR}
+  N = count(≠(1), dims(R))
+  _contract_scalar_maybe_perm!(Order(N), R, labelsR, T, labelsT, α, β)
+  return R
+  #labelsRᵣ, dimsRᵣ, labelsTᵣ, dimsTᵣ = drop_singletons(labelsR, dims(R), labelsT, dims(T))
+  #perm = ntuple(n -> findfirst(==(labelsRᵣ[n]), labelsTᵣ), length(labelsRᵣ))
+  #if isnothing(findfirst(n -> n ≠ perm[n], 1:length(perm)))
+  #  # trivial permutation
+  #  _contract_scalar_noperm!(R, T, α, β)
+  #else
+  #  # non-trivial permutation
+  #  Rᵣ = reshape(R, dimsRᵣ)
+  #  Tᵣ = reshape(T, dimsTᵣ)
+  #  _contract_scalar_perm!(Rᵣ, Tᵣ, perm, α, β)
+  #end
+  #return R
+end
+
+# XXX: handle case of non-trivial permutation
+function _contract_scalar_maybe_perm!(R::DenseTensor{ElR, NR}, labelsR,
+                                      T₁::DenseTensor, labelsT₁,
+                                      T₂::DenseTensor, labelsT₂,
+                                      α = one(ElR), β = zero(ElR)) where {ElR, NR}
+  if nnz(T₁) == 1
+    _contract_scalar_maybe_perm!(R, labelsR, T₂, labelsT₂, α * T₁[1], β)
+  elseif nnz(T₂) == 1
+    _contract_scalar_maybe_perm!(R, labelsR, T₁, labelsT₁, α * T₂[1], β)
+  else
+    error("In _contract_scalar_perm!, one tensor must be a scalar")
+  end
+  return R
+end
+
+# At least one of the tensors is size 1
+function _contract_scalar!(R::DenseTensor{ElR}, labelsR,
+                           T1::DenseTensor, labelsT1,
+                           T2::DenseTensor, labelsT2,
+                           α = one(ElR), β = zero(ElR)) where {ElR}
+  if nnz(T1) == nnz(T2) == 1
+    _contract_scalar!(R, labelsR, T1[1], labelsT1, T2[1], labelsT2, α, β)
+  else
+    _contract_scalar_maybe_perm!(R, labelsR, T1, labelsT1, T2, labelsT2, α, β)
+  end
+  return R
+end
+
+function contract!(R::DenseTensor{ElR, NR}, labelsR,
+                   T1::DenseTensor{ElT1, N1}, labelsT1,
+                   T2::DenseTensor{ElT2, N2}, labelsT2,
+                   α::Elα = one(ElR), β::Elβ = zero(ElR)) where {Elα, Elβ, ElR, ElT1, ElT2, NR, N1, N2}
+  @timeit_debug timer "dense contract!" begin
+
+  # Special case for scalar tensors
+  if nnz(T1) == 1 || nnz(T2) == 1
+    @timeit_debug timer "special length 1 cases" begin
+    _contract_scalar!(R, labelsR, T1, labelsT1, T2, labelsT2, α, β)
     end
     return R
   end
 
   if use_tblis() && ElR <: LinearAlgebra.BlasReal && (ElR == ElT1 == ElT2 == Elα == Elβ)
+    @timeit_debug timer "TBLIS contract!" begin
     contract!(Val(:TBLIS), R, labelsR, T1, labelsT1, T2, labelsT2, α, β)
+    end
     return R
   end
 
@@ -661,11 +814,8 @@ function contract!(R::DenseTensor{ElR, NR},
     return R
   end
 
-  props = ContractionProperties(labelsT1,
-                                labelsT2,
-                                labelsR)
-  compute_contraction_properties!(props,
-                                  T1, T2, R)
+  props = ContractionProperties(labelsT1, labelsT2, labelsR)
+  compute_contraction_properties!(props, T1, T2, R)
 
   if ElT1 != ElT2
     # TODO: use promote instead
@@ -686,6 +836,7 @@ function contract!(R::DenseTensor{ElR, NR},
 
   _contract!(R,T1,T2,props,α,β)
   return R
+  end
 end
 
 function _contract!(CT::DenseTensor{El, NC},
@@ -702,7 +853,9 @@ function _contract!(CT::DenseTensor{El, NC},
   tA = 'N'
   if props.permuteA
     pA = NTuple{NA, Int}(props.PA)
+    @timeit_debug timer "_contract!: permutedims A" begin
     @strided Ap = permutedims(A, pA)
+    end
     AM = ReshapedArray(Ap, (props.dmid, props.dleft), ())
     tA = 'T'
   else
@@ -718,7 +871,9 @@ function _contract!(CT::DenseTensor{El, NC},
   tB = 'N'
   if props.permuteB
     pB = NTuple{NB, Int}(props.PB)
+    @timeit_debug timer "_contract!: permutedims B" begin
     @strided Bp = permutedims(B, pB)
+    end
     BM = ReshapedArray(Bp, (props.dmid, props.dright), ())
   else
     if Btrans(props)
@@ -752,7 +907,9 @@ function _contract!(CT::DenseTensor{El, NC},
     pC = NTuple{NC, Int}(props.PC)
     Cr = ReshapedArray(CM.parent, props.newCrange, ())
     # TODO: use invperm(pC) here?
+    @timeit_debug timer "_contract!: permutedims C" begin
     @strided C .= permutedims(Cr, pC)
+    end
   end
   return CT
 end

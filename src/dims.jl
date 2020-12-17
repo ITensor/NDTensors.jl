@@ -69,3 +69,26 @@ dag(i::Int) = i
 # This is to help with ITensor compatibility
 sim(i::Int) = i
 
+#
+# Order value type
+#
+
+# More complicated definition makes Order(Ref(2)[]) faster
+@eval struct Order{N}
+  (OrderT::Type{ <: Order})() = $(Expr(:new, :OrderT))
+end
+
+@doc """
+    Order{N}
+
+A value type representing the order of an ITensor.
+""" Order
+
+"""
+    Order(N) = Order{N}()
+
+Create an instance of the value type Order representing
+the order of an ITensor.
+"""
+Order(N) = Order{N}()
+

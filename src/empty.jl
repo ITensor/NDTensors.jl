@@ -105,6 +105,14 @@ end
 
 setindex!!(T::EmptyTensor, x, I...) = setindex(T, x, I...)
 
+# Version of contraction where output storage is empty
+function contract!!(R::EmptyTensor{<:Number, NR}, labelsR::NTuple{NR},
+                    T1::Tensor{<:Number, N1}, labelsT1::NTuple{N1},
+                    T2::Tensor{<:Number, N2}, labelsT2::NTuple{N2}) where {NR, N1, N2}
+  RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
+  return RR
+end
+
 function show(io::IO,
                    mime::MIME"text/plain",
                    T::EmptyTensor)
