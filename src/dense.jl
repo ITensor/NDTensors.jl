@@ -377,16 +377,18 @@ end
 # Version that may overwrite the result or promote
 # and return the result
 # TODO: move to tensor.jl?
-function permutedims!!(R::Tensor,
-                       T::Tensor,
+function permutedims!!(R::Tensor, T::Tensor,
                        perm::NTuple{N,Int},
                        f::Function=(r,t)->t) where {N}
-  RA = array(R)
-  TA = array(T)
+  #RA = array(R)
+  #TA = array(T)
+  RA = ReshapedArray(data(R), dims(R), ())
+  TA = ReshapedArray(data(T), dims(T), ())
   if !is_trivial_permutation(perm)
     @strided RA .= f.(RA, permutedims(TA, perm))
   else
-    @strided RA .= f.(RA, TA)
+    # TODO: specialize for specific functions
+    RA .= f.(RA, TA)
   end
   return R
 end
@@ -560,19 +562,8 @@ function contract!!(R::Tensor{<:Number,NR},
                     T2::Tensor{<:Number,N2},
                     labelsT2::NTuple{N2},
                     α::Number=1, β::Number=0) where {NR,N1,N2}
-  if N1==0
-    (α ≠ 1 || β ≠ 0) &&
-      error("contract!! not yet implemented for scalar ITensor with non-trivial α and β")
-    # TODO: replace with an add! function?
-    # What about doing `R .= T1[] .* PermutedDimsArray(T2,perm)`?
-    perm = getperm(labelsR,labelsT2)
-    R = permutedims!!(R,T2,perm,(r,t2)->T1[]*t2)
-  elseif N2==0
-    (α ≠ 1 || β ≠ 0) &&
-      error("contract!! not yet implemented for scalar ITensor with non-trivial α and β")
-    perm = getperm(labelsR,labelsT1)
-    R = permutedims!!(R,T1,perm,(r,t1)->T2[]*t1)
-  elseif N1+N2==NR
+  if (N1 ≠ 0) && (N2 ≠ 0) && (N1 + N2 == NR)
+    # Outer product
     (α ≠ 1 || β ≠ 0) &&
       error("contract!! not yet implemented for outer product tensor contraction with non-trivial α and β")
     # TODO: permute T1 and T2 appropriately first (can be more efficient
@@ -695,25 +686,32 @@ function _contract_scalar_perm!(Rᵃ::AbstractArray{ElR}, Tᵃ::AbstractArray, p
   return Rᵃ
 end
 
+#function drop_singletons(::Order{N}, labels, dims) where {N}
+#  labelsᵣ = MVector{N, Int}(undef)
+#  dimsᵣ = MVector{N, Int}(undef)
+#  nkeep = 1
+#  for n in 1:length(dims)
+#    if dims[n] > 1
+#      @inbounds labelsᵣ[nkeep] = labels[n]
+#      @inbounds dimsᵣ[nkeep] = dims[n]
+#      nkeep += 1
+#    end
+#  end
+#  return labelsᵣ, dimsᵣ
+#end
+
 function drop_singletons(::Order{N}, labels, dims) where {N}
-  labelsᵣ = MVector{N, Int}(undef)
-  dimsᵣ = MVector{N, Int}(undef)
+  labelsᵣ = ntuple(zero, Val(N))
+  dimsᵣ = labelsᵣ
   nkeep = 1
   for n in 1:length(dims)
     if dims[n] > 1
-      @inbounds labelsᵣ[nkeep] = labels[n]
-      @inbounds dimsᵣ[nkeep] = dims[n]
+      labelsᵣ = @inbounds setindex(labelsᵣ, labels[n], nkeep)
+      dimsᵣ = @inbounds setindex(dimsᵣ, dims[n], nkeep)
       nkeep += 1
     end
   end
-  return Tuple(labelsᵣ), Tuple(dimsᵣ)
-end
-
-function drop_singletons(labels1, dims1, labels2, dims2)
-  nkeep = count(≠(1), dims1)
-  labels1ᵣ, dims1ᵣ = drop_singletons(Order(nkeep), labels1, dims1)
-  labels2ᵣ, dims2ᵣ = drop_singletons(Order(nkeep), labels2, dims2)
-  return labels1ᵣ, dims1ᵣ, labels2ᵣ, dims2ᵣ
+  return labelsᵣ, dimsᵣ
 end
 
 function _contract_scalar_maybe_perm!(::Order{N},
@@ -722,8 +720,8 @@ function _contract_scalar_maybe_perm!(::Order{N},
                                       α, β = zero(ElR)) where {ElR, NR, N}
   labelsRᵣ, dimsRᵣ = drop_singletons(Order(N), labelsR, dims(R))
   labelsTᵣ, dimsTᵣ = drop_singletons(Order(N), labelsT, dims(T))
-  perm = ntuple(n -> findfirst(==(labelsRᵣ[n]), labelsTᵣ), Val(N))
-  if isnothing(findfirst(n -> n ≠ perm[n], 1:length(perm)))
+  perm = getperm(labelsRᵣ, labelsTᵣ)
+  if is_trivial_permutation(perm)
     # trivial permutation
     _contract_scalar_noperm!(R, T, α, β)
   else
@@ -741,18 +739,6 @@ function _contract_scalar_maybe_perm!(R::DenseTensor{ElR, NR}, labelsR,
   N = count(≠(1), dims(R))
   _contract_scalar_maybe_perm!(Order(N), R, labelsR, T, labelsT, α, β)
   return R
-  #labelsRᵣ, dimsRᵣ, labelsTᵣ, dimsTᵣ = drop_singletons(labelsR, dims(R), labelsT, dims(T))
-  #perm = ntuple(n -> findfirst(==(labelsRᵣ[n]), labelsTᵣ), length(labelsRᵣ))
-  #if isnothing(findfirst(n -> n ≠ perm[n], 1:length(perm)))
-  #  # trivial permutation
-  #  _contract_scalar_noperm!(R, T, α, β)
-  #else
-  #  # non-trivial permutation
-  #  Rᵣ = reshape(R, dimsRᵣ)
-  #  Tᵣ = reshape(T, dimsTᵣ)
-  #  _contract_scalar_perm!(Rᵣ, Tᵣ, perm, α, β)
-  #end
-  #return R
 end
 
 # XXX: handle case of non-trivial permutation
