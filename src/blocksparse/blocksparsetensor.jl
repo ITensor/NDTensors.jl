@@ -611,7 +611,7 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
                        T::BlockSparseTensor{ElT,N},
                        perm::NTuple{N,Int},
                        f::Function=(r,t)->t) where {ElR,ElT,N}
-  @timeit_debug timer "block sparse permutedims!!" begin
+  #@timeit_debug timer "block sparse permutedims!!" begin
   bofsRR = blockoffsets(R)
   bofsT = blockoffsets(T)
 
@@ -644,7 +644,7 @@ function permutedims!!(R::BlockSparseTensor{ElR,N},
 
   permutedims!(R, T, perm, f)
   return R
-  end
+  #end
 end
 
 # Version where it is known that R has the same blocks
@@ -798,22 +798,86 @@ function contract(T1::BlockSparseTensor{<:Any,N1},
                   T2::BlockSparseTensor{<:Any,N2},
                   labelsT2,
                   labelsR = contract_labels(labelsT1,labelsT2)) where {N1,N2}
-  @timeit_debug timer "Block sparse contract" begin
+  #@timeit_debug timer "Block sparse contract" begin
   R,contraction_plan = contraction_output(T1,labelsT1,T2,labelsT2,labelsR)
   R = contract!(R,labelsR,T1,labelsT1,T2,labelsT2,contraction_plan)
   return R
-  end
+  #end
 end
 
-function contract!(R::BlockSparseTensor{ElR, NR},
-                   labelsR,
-                   T1::BlockSparseTensor{ElT1, N1},
-                   labelsT1,
-                   T2::BlockSparseTensor{ElT2, N2},
-                   labelsT2,
+# XXX: this is not thread safe, divide into groups of
+# contractions that contract into the same block
+function _threaded_contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
+                             T1::BlockSparseTensor{ElT1, N1}, labelsT1,
+                             T2::BlockSparseTensor{ElT2, N2}, labelsT2,
+                             contraction_plan) where {ElR, ElT1, ElT2,
+                                                      N1, N2, NR}
+  # Sort the contraction plan by the output block
+  #display(contraction_plan)
+  sort!(contraction_plan; by = last)
+  #display(contraction_plan)
+
+  # Ranges of contractions to the same block
+  repeats = Vector{UnitRange{Int}}(undef, nnzblocks(R))
+  ncontracted = 1
+  posR = last(contraction_plan[1])
+  posR_unique = posR
+  for n in 1:nnzblocks(R)-1
+    start = ncontracted
+    while posR == posR_unique
+      ncontracted += 1
+      posR = last(contraction_plan[ncontracted])
+    end
+    posR_unique = posR
+    repeats[n] = start:ncontracted-1
+  end
+  repeats[end] = ncontracted:length(contraction_plan)
+
+  #@show repeats
+
+  #R .= 0
+
+  #display(contraction_plan)
+
+  contraction_plan_blocks = Vector{Tuple{Tensor, Tensor, Tensor}}(undef, length(contraction_plan))
+
+  for ncontracted in 1:length(contraction_plan)
+    pos1, pos2, posR = contraction_plan[ncontracted]
+    blockT1 = blockview(T1, pos1)
+    blockT2 = blockview(T2, pos2)
+    blockR = blockview(R, posR)
+    contraction_plan_blocks[ncontracted] = (blockT1, blockT2, blockR)
+  end
+
+  α = one(ElR)
+  #β = one(ElR)
+  Threads.@sync for ncontracted_range in repeats
+    # Overwrite the block since it hasn't been written to
+    # R .= α .* (T1 * T2)
+    β = zero(ElR)
+    Threads.@spawn for ncontracted in ncontracted_range
+      blockT1, blockT2, blockR = contraction_plan_blocks[ncontracted]
+      # R .= α .* (T1 * T2) .+ β .* R
+      contract!(blockR, labelsR, blockT1, labelsT1,
+                blockT2, labelsT2, α, β)
+      # Now keep adding to the block, since it has
+      # been written to
+      # R .= α .* (T1 * T2) .+ R
+      β = one(ElR)
+    end
+  end
+  return R
+end
+
+function contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
+                   T1::BlockSparseTensor{ElT1, N1}, labelsT1,
+                   T2::BlockSparseTensor{ElT2, N2}, labelsT2,
                    contraction_plan) where {ElR, ElT1, ElT2,
                                             N1, N2, NR}
-  #already_written_to = fill(false,nnzblocks(R))
+  if use_threaded_blocksparse()
+    _threaded_contract!(R, labelsR, T1, labelsT1, T2, labelsT2, contraction_plan)
+    return R
+  end
   already_written_to = Dict{Block{NR}, Bool}()
   # In R .= α .* (T1 * T2) .+ β .* R
   α = one(ElR)

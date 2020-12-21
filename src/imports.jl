@@ -22,6 +22,7 @@ import Base:
   getindex,
   hash,
   isempty,
+  isless,
   iterate,
   length,
   ndims,

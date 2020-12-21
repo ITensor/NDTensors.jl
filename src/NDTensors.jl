@@ -18,6 +18,10 @@ using Base:
 using Base.Cartesian:
   @nexprs
 
+using Base.Threads:
+  @threads,
+  nthreads
+
 #####################################
 # Imports and exports
 #
@@ -68,6 +72,23 @@ include("deprecated.jl")
 
 const timer = TimerOutput()
 
+#####################################
+# Optional block sparse multithreading
+#
+
+const _use_threaded_blocksparse = Ref(false)
+
+use_threaded_blocksparse() = _use_threaded_blocksparse[]
+
+function enable_threaded_blocksparse!()
+  _use_threaded_blocksparse[] = true
+  return nothing
+end
+
+function disable_threaded_blocksparse!()
+  _use_threaded_blocksparse[] = false
+  return nothing
+end
 #####################################
 # Optional TBLIS contraction backend
 #

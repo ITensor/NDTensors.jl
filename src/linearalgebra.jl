@@ -107,7 +107,7 @@ function LinearAlgebra.svd(T::DenseTensor{ElT,2,IndsT};
                                   use_relative_cutoff)
   alg::String = get(kwargs, :alg, "divide_and_conquer")
 
-  @timeit_debug timer "dense svd" begin
+  #@timeit_debug timer "dense svd" begin
   if alg == "divide_and_conquer"
     MUSV = svd_catch_error(matrix(T); alg = LinearAlgebra.DivideAndConquer())
   elseif alg == "qr_iteration"
@@ -147,7 +147,7 @@ function LinearAlgebra.svd(T::DenseTensor{ElT,2,IndsT};
   end
   MU, MS, MV = MUSV
   conj!(MV)
-  end # @timeit_debug
+  #end # @timeit_debug
 
   P = MS .^ 2
   if truncate
