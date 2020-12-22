@@ -64,6 +64,32 @@ function svd_catch_error(A; kwargs...)
   return USV
 end
 
+function lapack_svd_error_message(alg)
+  return "The SVD algorithm `\"$alg\"` has thrown an error,\n" *
+  "likely because of a convergance failure. You can try\n" *
+  "other SVD algorithms that may converge better using the\n" *
+  "`alg` (or `svd_alg` if called through `factorize` or MPS/MPO functionality) keyword argument:\n\n" *
+  " - \"divide_and_conquer\" is a divide-and-conquer algorithm\n" *
+  "   (LAPACK's `gesdd`). It is fast, but may lead to some innacurate\n" *
+  "   singular values for very ill-conditioned matrices.\n" *
+  "   It also may sometimes fail to converge, leading to errors\n" *
+  "   (in which case `\"qr_iteration\"` or `\"recursive\"` can be tried).\n\n" *
+  " - `\"qr_iteration\"` (LAPACK's `gesvd`) is typically slower \n" *
+  "   than \"divide_and_conquer\", especially for large matrices,\n" *
+  "   but is more accurate for very ill-conditioned matrices \n" *
+  "   compared to `\"divide_and_conquer\"`.\n\n" *
+  " - `\"recursive\"` is ITensor's custom SVD algorithm. It is very\n" *
+  "   reliable, but may be slow if high precision is needed.\n" *
+  "   To get an `svd` of a matrix `A`, an eigendecomposition of\n" *
+  "   ``A^{\\dagger} A`` is used to compute `U` and then a `qr` of\n" *
+  "   ``A^{\\dagger} U`` is used to compute `V`. This is performed\n" *
+  "   recursively to compute small singular values.\n\n" *
+  "Returning `nothing`. For an output `F = svd(A, ...)` you can check if\n" *
+  "`isnothing(F)` in your code and try a different algorithm.\n\n" *
+  "To suppress this message in the future, you can wrap the `svd` call in the\n" *
+  "`@suppress` macro from the `Suppressor` package.\n"
+end
+
 """
     svd(T::DenseTensor{<:Number,2}; kwargs...)
 
@@ -118,31 +144,11 @@ function LinearAlgebra.svd(T::DenseTensor{ElT,2,IndsT};
     error("svd algorithm $alg is not currently supported. Please see the documentation for currently supported algorithms.")
   end
   if isnothing(MUSV)
-    lapack_svd_error =
-      "The SVD algorithm `\"$alg\"` has thrown an error,\n" *
-      "likely because of a convergance failure. You can try\n" *
-      "other SVD algorithms that may converge better using the\n" *
-      "`alg` (or `svd_alg` if called through `factorize` or MPS/MPO functionality) keyword argument:\n\n" *
-      " - \"divide_and_conquer\" is a divide-and-conquer algorithm\n" *
-      "   (LAPACK's `gesdd`). It is fast, but may lead to some innacurate\n" *
-      "   singular values for very ill-conditioned matrices.\n" *
-      "   It also may sometimes fail to converge, leading to errors\n" *
-      "   (in which case `\"qr_iteration\"` or `\"recursive\"` can be tried).\n\n" *
-      " - `\"qr_iteration\"` (LAPACK's `gesvd`) is typically slower \n" *
-      "   than \"divide_and_conquer\", especially for large matrices,\n" *
-      "   but is more accurate for very ill-conditioned matrices \n" *
-      "   compared to `\"divide_and_conquer\"`.\n\n" *
-      " - `\"recursive\"` is ITensor's custom SVD algorithm. It is very\n" *
-      "   reliable, but may be slow if high precision is needed.\n" *
-      "   To get an `svd` of a matrix `A`, an eigendecomposition of\n" *
-      "   ``A^{\\dagger} A`` is used to compute `U` and then a `qr` of\n" *
-      "   ``A^{\\dagger} U`` is used to compute `V`. This is performed\n" *
-      "   recursively to compute small singular values.\n\n" *
-      "Returning `nothing`. For an output `F = svd(A, ...)` you can check if\n" *
-      "`isnothing(F)` in your code and try a different algorithm.\n\n" *
-      "To suppress this message in the future, you can wrap the `svd` call in the\n" *
-      "`@suppress` macro from the `Suppressor` package.\n"
-    println(lapack_svd_error)
+    if any(isnan, T)
+      println("SVD failed, the matrix you were trying to SVD contains NaNs.")
+    else
+      println(lapack_svd_error_message(alg))
+    end
     return nothing
   end
   MU, MS, MV = MUSV
