@@ -169,4 +169,28 @@ end
     end
 end
 
+@testset "Contraction with size 1 block and NaN" begin
+  @testset "No permutation" begin
+    R = Tensor(ComplexF64, 2, 2, 1)
+    fill!(R, NaN)
+    @test any(isnan, R)
+    T1 = randomTensor(2, 2, 1)
+    T2 = randomTensor(ComplexF64, 1, 1)
+    NDTensors.contract!(R, (1, 2, 3), T1, (1, 2, -1), T2, (-1, 1))
+    @test !any(isnan, R)
+    @test convert(Array, R) ≈ convert(Array, T1) * T2[1]
+  end
+
+  @testset "Permutation" begin
+    R = Tensor(ComplexF64, 2, 2, 1)
+    fill!(R, NaN)
+    @test any(isnan, R)
+    T1 = randomTensor(2, 2, 1)
+    T2 = randomTensor(ComplexF64, 1, 1)
+    NDTensors.contract!(R, (2, 1, 3), T1, (1, 2, -1), T2, (-1, 1))
+    @test !any(isnan, R)
+    @test convert(Array, R) ≈ permutedims(convert(Array, T1), (2, 1, 3)) * T2[1]
+  end
+end
+
 nothing
