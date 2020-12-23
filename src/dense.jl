@@ -628,7 +628,40 @@ function _contract_scalar!(R::DenseTensor{ElR}, labelsR,
 end
 
 # Trivial permutation
+# Version where R and T have different element types, so we can't call BLAS
+# Instead use Julia's broadcasting (maybe consider Strided in the future)
 function _contract_scalar_noperm!(R::DenseTensor{ElR}, T::DenseTensor,
+                                  α, β = zero(ElR)) where {ElR}
+  Rᵈ = data(R)
+  Tᵈ = data(T)
+  if iszero(β)
+    if iszero(α)
+      fill!(Rᵈ, 0)
+    else
+      Rᵈ .= α .* Tᵈ
+    end
+  elseif isone(β)
+    if iszero(α)
+      # No-op
+      # Rᵈ .= Rᵈ
+    else
+      Rᵈ .= α .* Tᵈ .+ Rᵈ
+    end
+  else
+    if iszero(α)
+      # Rᵈ .= β .* Rᵈ
+      BLAS.scal!(length(Rᵈ), β, Rᵈ, 1)
+    else
+      Rᵈ .= α .* Tᵈ .+ β .* Rᵈ
+    end
+  end
+  return R
+end
+
+# Trivial permutation
+# Version where R and T are the same element type, so we can
+# call BLAS
+function _contract_scalar_noperm!(R::DenseTensor{ElR}, T::DenseTensor{ElR},
                                   α, β = zero(ElR)) where {ElR}
   Rᵈ = data(R)
   Tᵈ = data(T)
@@ -641,8 +674,8 @@ function _contract_scalar_noperm!(R::DenseTensor{ElR}, T::DenseTensor,
     end
   elseif isone(β)
     if iszero(α)
-      # Rᵈ .= Rᵈ
       # No-op
+      # Rᵈ .= Rᵈ
     else
       # Rᵈ .= α .* Tᵈ .+ Rᵈ
       BLAS.axpy!(α, Tᵈ, Rᵈ)
@@ -685,20 +718,6 @@ function _contract_scalar_perm!(Rᵃ::AbstractArray{ElR}, Tᵃ::AbstractArray, p
   end
   return Rᵃ
 end
-
-#function drop_singletons(::Order{N}, labels, dims) where {N}
-#  labelsᵣ = MVector{N, Int}(undef)
-#  dimsᵣ = MVector{N, Int}(undef)
-#  nkeep = 1
-#  for n in 1:length(dims)
-#    if dims[n] > 1
-#      @inbounds labelsᵣ[nkeep] = labels[n]
-#      @inbounds dimsᵣ[nkeep] = dims[n]
-#      nkeep += 1
-#    end
-#  end
-#  return labelsᵣ, dimsᵣ
-#end
 
 function drop_singletons(::Order{N}, labels, dims) where {N}
   labelsᵣ = ntuple(zero, Val(N))
