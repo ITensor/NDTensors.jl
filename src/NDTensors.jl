@@ -80,12 +80,12 @@ const _use_threaded_blocksparse = Ref(false)
 
 use_threaded_blocksparse() = _use_threaded_blocksparse[]
 
-function enable_threaded_blocksparse!()
+function enable_threaded_blocksparse()
   _use_threaded_blocksparse[] = true
   return nothing
 end
 
-function disable_threaded_blocksparse!()
+function disable_threaded_blocksparse()
   _use_threaded_blocksparse[] = false
   return nothing
 end
@@ -96,19 +96,24 @@ const _use_tblis = Ref(false)
 
 use_tblis() = _use_tblis[]
 
-function enable_tblis!()
+function enable_tblis()
   _use_tblis[] = true
   return nothing
 end
 
-function disable_tblis!()
+function disable_tblis()
   _use_tblis[] = false
   return nothing
 end
 
+# For backwards compatibility
+# XXX: deprecate
+enable_tblis!() = enable_tblis()
+disable_tblis!() = disable_tblis()
+
 function __init__()
   @require TBLIS="48530278-0828-4a49-9772-0f3830dfa1e9" begin
-    enable_tblis!()
+    enable_tblis()
     include("tblis.jl")
   end
 end

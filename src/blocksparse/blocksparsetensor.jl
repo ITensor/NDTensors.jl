@@ -812,10 +812,10 @@ function _threaded_contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
                              T2::BlockSparseTensor{ElT2, N2}, labelsT2,
                              contraction_plan) where {ElR, ElT1, ElT2,
                                                       N1, N2, NR}
-  # Sort the contraction plan by the output block
-  #display(contraction_plan)
+  # Sort the contraction plan by the output blocks
+  # This is to help determine which output blocks are the result
+  # of multiple contractions
   sort!(contraction_plan; by = last)
-  #display(contraction_plan)
 
   # Ranges of contractions to the same block
   repeats = Vector{UnitRange{Int}}(undef, nnzblocks(R))
@@ -833,14 +833,7 @@ function _threaded_contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
   end
   repeats[end] = ncontracted:length(contraction_plan)
 
-  #@show repeats
-
-  #R .= 0
-
-  #display(contraction_plan)
-
   contraction_plan_blocks = Vector{Tuple{Tensor, Tensor, Tensor}}(undef, length(contraction_plan))
-
   for ncontracted in 1:length(contraction_plan)
     pos1, pos2, posR = contraction_plan[ncontracted]
     blockT1 = blockview(T1, pos1)
@@ -850,7 +843,6 @@ function _threaded_contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
   end
 
   α = one(ElR)
-  #β = one(ElR)
   Threads.@sync for ncontracted_range in repeats
     # Overwrite the block since it hasn't been written to
     # R .= α .* (T1 * T2)
@@ -874,7 +866,7 @@ function contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
                    T2::BlockSparseTensor{ElT2, N2}, labelsT2,
                    contraction_plan) where {ElR, ElT1, ElT2,
                                             N1, N2, NR}
-  if use_threaded_blocksparse()
+  if use_threaded_blocksparse() && Threads.nthreads() > 1
     _threaded_contract!(R, labelsR, T1, labelsT1, T2, labelsT2, contraction_plan)
     return R
   end
