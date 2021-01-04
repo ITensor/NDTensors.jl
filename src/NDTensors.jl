@@ -76,38 +76,40 @@ const timer = TimerOutput()
 # Optional block sparse multithreading
 #
 
-const _use_threaded_blocksparse = Ref(false)
+const _using_threaded_blocksparse = Ref(false)
 
-use_threaded_blocksparse() = _use_threaded_blocksparse[]
+using_threaded_blocksparse() = _using_threaded_blocksparse[]
 
 function enable_threaded_blocksparse()
-  _use_threaded_blocksparse[] = true
+  _using_threaded_blocksparse[] = true
   return nothing
 end
 
 function disable_threaded_blocksparse()
-  _use_threaded_blocksparse[] = false
+  _using_threaded_blocksparse[] = false
   return nothing
 end
+
 #####################################
 # Optional TBLIS contraction backend
 #
-const _use_tblis = Ref(false)
+const _using_tblis = Ref(false)
 
-use_tblis() = _use_tblis[]
+using_tblis() = _using_tblis[]
 
 function enable_tblis()
-  _use_tblis[] = true
+  _using_tblis[] = true
   return nothing
 end
 
 function disable_tblis()
-  _use_tblis[] = false
+  _using_tblis[] = false
   return nothing
 end
 
 # For backwards compatibility
 # XXX: deprecate
+use_tblis() = using_tblis()
 enable_tblis!() = enable_tblis()
 disable_tblis!() = disable_tblis()
 
