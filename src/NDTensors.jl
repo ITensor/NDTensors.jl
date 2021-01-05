@@ -93,6 +93,7 @@ end
 #####################################
 # Optional TBLIS contraction backend
 #
+
 const _using_tblis = Ref(false)
 
 using_tblis() = _using_tblis[]
@@ -106,12 +107,6 @@ function disable_tblis()
   _using_tblis[] = false
   return nothing
 end
-
-# For backwards compatibility
-# XXX: deprecate
-use_tblis() = using_tblis()
-enable_tblis!() = enable_tblis()
-disable_tblis!() = disable_tblis()
 
 function __init__()
   @require TBLIS="48530278-0828-4a49-9772-0f3830dfa1e9" begin

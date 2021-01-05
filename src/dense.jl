@@ -792,19 +792,13 @@ function contract!(R::DenseTensor{ElR, NR}, labelsR,
                    T1::DenseTensor{ElT1, N1}, labelsT1,
                    T2::DenseTensor{ElT2, N2}, labelsT2,
                    α::Elα = one(ElR), β::Elβ = zero(ElR)) where {Elα, Elβ, ElR, ElT1, ElT2, NR, N1, N2}
-  #@timeit_debug timer "dense contract!" begin
   # Special case for scalar tensors
-  #@show nnz(T1), nnz(T2)
-  #if nnz(T1) == 1 || nnz(T2) == 1
-  #  #@timeit_debug timer "special length 1 cases" begin
-  #  println("Use _contract_scalar!")
-  #  @show nnz(T1), nnz(T2), nnz(R)
-  #  _contract_scalar!(R, labelsR, T1, labelsT1, T2, labelsT2, α, β)
-  #  #end
-  #  return R
-  #end
+  if nnz(T1) == 1 || nnz(T2) == 1
+    _contract_scalar!(R, labelsR, T1, labelsT1, T2, labelsT2, α, β)
+    return R
+  end
 
-  if use_tblis() && ElR <: LinearAlgebra.BlasReal && (ElR == ElT1 == ElT2 == Elα == Elβ)
+  if using_tblis() && ElR <: LinearAlgebra.BlasReal && (ElR == ElT1 == ElT2 == Elα == Elβ)
     #@timeit_debug timer "TBLIS contract!" begin
     contract!(Val(:TBLIS), R, labelsR, T1, labelsT1, T2, labelsT2, α, β)
     #end
