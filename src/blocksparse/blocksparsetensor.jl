@@ -659,7 +659,7 @@ end
 # <fermions>
 function scale_blocks!(T::BlockSparseTensor{<:Number,N},
                        compute_fac::Function=(b)->1) where {N}
-  for (blockT,_) in blockoffsets(T)
+  for blockT in keys(blockoffsets(T))
     fac = compute_fac(blockT)
     if fac != 1
       Tblock = blockview(T,blockT)
