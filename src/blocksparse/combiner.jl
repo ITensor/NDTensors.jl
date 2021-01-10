@@ -5,7 +5,7 @@ function contract(T::BlockSparseTensor,
                   labelsT,
                   C::CombinerTensor,
                   labelsC)
-  println("----------------- in contract BlockSparse, Combiner ----")
+  #println("----------------- in contract BlockSparse, Combiner ----")
   @timeit_debug timer "Block sparse (un)combiner" begin
   # Get the label marking the combined index
   # By convention the combined index is the first one
