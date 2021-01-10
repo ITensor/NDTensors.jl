@@ -669,7 +669,7 @@ function scale_blocks!(T::BlockSparseTensor{<:Number,N},
 end
 
 # <fermions>
-permfactor(perm,block::NTuple{N,Int},inds) where {N} = 1
+permfactor(perm,block::Block{N},inds) where {N} = 1
 
 
 # Version where it is known that R has the same blocks
@@ -855,13 +855,10 @@ function contract!(R::BlockSparseTensor{ElR, NR},
   already_written_to = Dict{Block{NR}, Bool}()
   # In R .= α .* (T1 * T2) .+ β .* R
   for (pos1,pos2,posR) in contraction_plan
-    bT1 = block(blockoffsets(T1)[pos1])
-    bT2 = block(blockoffsets(T2)[pos2])
-    bR = block(blockoffsets(R)[posR])
+    α = compute_alpha(ElR,labelsR,posR,inds(R),labelsT1,pos1,inds(T1),labelsT2,pos2,inds(T2))
     blockT1 = blockview(T1,pos1)
     blockT2 = blockview(T2,pos2)
     blockR = blockview(R,posR)
-    α = compute_alpha(ElR,labelsR,bR,inds(R),labelsT1,bT1,inds(T1),labelsT2,bT2,inds(T2))
     β = one(ElR)
     if !haskey(already_written_to, posR)
       already_written_to[posR] = true
