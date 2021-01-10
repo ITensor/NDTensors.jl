@@ -33,22 +33,22 @@ mindim(::Tuple{}) = 1
 diaglength(inds::Tuple) = mindim(inds)
 
 """
-    strides(ds)
+    dim_to_strides(ds)
 
 Get the strides from the dimensions.
 
-This is unexported, call with NDTensors.strides.
+This is unexported, call with NDTensors.dim_to_strides.
 """
-strides(ds) = Base.size_to_strides(1, dims(ds)...)
+dim_to_strides(ds) = Base.size_to_strides(1, dims(ds)...)
 
 """
-    stride(ds, k::Int)
+    dim_to_stride(ds, k::Int)
 
 Get the stride of the dimension k from the dimensions.
 
 This is unexported, call with NDTensors.stride.
 """
-stride(ds, k::Int) = strides(ds)[k]
+dim_to_stride(ds, k::Int) = dim_to_strides(ds)[k]
 
 # This is to help with some generic programming in the Tensor
 # code (it helps to construct a Tuple(::NTuple{N,Int}) where the 
@@ -68,4 +68,27 @@ dag(i::Int) = i
 
 # This is to help with ITensor compatibility
 sim(i::Int) = i
+
+#
+# Order value type
+#
+
+# More complicated definition makes Order(Ref(2)[]) faster
+@eval struct Order{N}
+  (OrderT::Type{ <: Order})() = $(Expr(:new, :OrderT))
+end
+
+@doc """
+    Order{N}
+
+A value type representing the order of an ITensor.
+""" Order
+
+"""
+    Order(N) = Order{N}()
+
+Create an instance of the value type Order representing
+the order of an ITensor.
+"""
+Order(N) = Order{N}()
 

@@ -9,6 +9,10 @@ ValLength(::Type{NTuple{N,T}}) where {N,T} = Val{N}
 """
 ValLength(::NTuple{N}) where {N} = Val(N)
 
+ValLength(::Tuple{Vararg{<:Any, N}}) where {N} = Val(N)
+
+ValLength(::Type{<:Tuple{Vararg{<:Any, N}}}) where {N} = Val{N}
+
 ValLength(::CartesianIndex{N}) where {N} = Val(N)
 ValLength(::Type{CartesianIndex{N}}) where {N} = Val{N}
 
@@ -25,8 +29,18 @@ popfirst(s::NTuple{N}) where {N} = ntuple(i -> s[i+1],
 # Permute some other type by perm
 # (for example, tuple, MVector, etc.)
 # as long as the constructor accepts a tuple
-function permute(s::T,perm) where {T}
-  return T(ntuple(i->s[perm[i]], ValLength(T)()))
+function _permute(s::T, perm) where {T}
+  return ntuple(i->s[perm[i]], ValLength(T)())
+end
+
+permute(s::Tuple, perm) = _permute(s, perm)
+
+function permute(s::T, perm) where {T <: NTuple}
+  return T(_permute(s, perm))
+end
+
+function permute(s::T, perm) where {T}
+  return T(_permute(s, perm))
 end
 
 sim(s::NTuple) = s
@@ -76,6 +90,18 @@ function invperm(perm)
   return permres
 end
 
+# Override TupleTools.isperm to speed up
+# Strided.permutedims a bit (see:
+# https://github.com/Jutho/Strided.jl/issues/15)
+function isperm(p::NTuple{N}) where {N}
+  N < 6 && return Base.isperm(p)
+  used = @MVector zeros(Bool, N)
+  for a in p
+    (0 < a <= N) && (used[a] ⊻= true) || return false
+  end
+  true
+end
+
 """
     is_trivial_permutation(P)
 
@@ -86,7 +112,7 @@ function is_trivial_permutation(P)
   # TODO: use `all(n->P[n]==n,1:length(P))`?
   N = length(P)
   for n in 1:N
-    P[n]!=n && return false
+    @inbounds P[n] != n && return false
   end
   return true
 end
@@ -116,8 +142,7 @@ deleteat_sorted(t::Tuple,pos::NTuple{N,Int}) where {N} = deleteat_sorted(deletea
 
 # Make a slice of the block on the specified dimensions
 # Make this a generic tupletools function (TupleTools.jl calls it getindices)
-function getindices(t::Tuple,
-                    I::NTuple{N,Int}) where {N}
+function getindices(t::Tuple, I::NTuple{N,Int}) where {N}
   return ntuple(i->t[I[i]],Val(N))
 end
 

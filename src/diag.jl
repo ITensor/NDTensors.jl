@@ -1,5 +1,3 @@
-export Diag,
-       DiagTensor
 
 # Diag can have either Vector storage, in which case
 # it is a general Diag tensor, or scalar storage,
@@ -22,97 +20,95 @@ function Diag{ElR}(data::AbstractVector{ElT}) where {ElR<:Number,ElT<:Number}
   ElT == ElR ? Diag(data) : Diag(ElR.(data))
 end
 
-Diag(::Type{ElT},
-     n::Integer) where {ElT<:Number} = Diag(zeros(ElT,n))
+Diag(::Type{ElT}, n::Integer) where {ElT<:Number} = Diag(zeros(ElT,n))
 
-Diag(x::ElT,
-     n::Integer) where {ElT<:Number} = Diag(fill(x,n))
+Diag(x::ElT, n::Integer) where {ElT<:Number} = Diag(fill(x,n))
 
-Base.copy(D::Diag) = Diag(copy(data(D)))
+copy(D::Diag) = Diag(copy(data(D)))
 
 const NonuniformDiag{ElT,VecT} = Diag{ElT,VecT} where {VecT<:AbstractVector}
 
 const UniformDiag{ElT,VecT} = Diag{ElT,VecT} where {VecT<:Number}
 
-Base.getindex(D::UniformDiag,i::Int) = data(D)
+getindex(D::UniformDiag,i::Int) = data(D)
 
-Base.setindex!(D::UniformDiag,val,i::Int) = error("Cannot set elements of a uniform Diag storage")
+setindex!(D::UniformDiag,val,i::Int) = error("Cannot set elements of a uniform Diag storage")
 
-Base.complex(::Type{Diag{ElT,Vector{ElT}}}) where {ElT} = Diag{complex(ElT),Vector{complex(ElT)}}
-Base.complex(::Type{Diag{ElT,ElT}}) where {ElT} = Diag{complex(ElT),complex(ElT)}
+complex(::Type{Diag{ElT,Vector{ElT}}}) where {ElT} = Diag{complex(ElT),Vector{complex(ElT)}}
+complex(::Type{Diag{ElT,ElT}}) where {ElT} = Diag{complex(ElT),complex(ElT)}
 
 # Deal with uniform Diag conversion
-Base.convert(::Type{<:Diag{ElT,VecT}},D::Diag) where {ElT,VecT} = Diag(convert(VecT,data(D)))
+convert(::Type{<:Diag{ElT,VecT}},D::Diag) where {ElT,VecT} = Diag(convert(VecT,data(D)))
 
 # TODO: write in terms of ::Int, not inds
-Base.similar(D::NonuniformDiag) = Diag(similar(data(D)))
-#Base.similar(D::NonuniformDiag,inds) = Diag(similar(data(D),minimum(dims(inds))))
-#function Base.similar(D::Type{<:NonuniformDiag{ElT,VecT}},inds) where {ElT,VecT}
+similar(D::NonuniformDiag) = Diag(similar(data(D)))
+#similar(D::NonuniformDiag,inds) = Diag(similar(data(D),minimum(dims(inds))))
+#function similar(D::Type{<:NonuniformDiag{ElT,VecT}},inds) where {ElT,VecT}
 #  return Diag(similar(VecT,diaglength(inds)))
 #end
 
-Base.similar(D::UniformDiag{ElT}) where {ElT} = Diag(zero(ElT))
-Base.similar(D::UniformDiag,inds) = similar(D)
-Base.similar(::Type{<:UniformDiag{ElT}},inds) where {ElT} = Diag(zero(ElT))
+similar(D::UniformDiag{ElT}) where {ElT} = Diag(zero(ElT))
+similar(D::UniformDiag,inds) = similar(D)
+similar(::Type{<:UniformDiag{ElT}},inds) where {ElT} = Diag(zero(ElT))
 
-Base.similar(D::Diag,n::Int) = Diag(similar(data(D),n))
+similar(D::Diag,n::Int) = Diag(similar(data(D),n))
 
-Base.similar(D::Diag,::Type{ElR},n::Int) where {ElR} = Diag(similar(data(D),ElR,n))
+similar(D::Diag,::Type{ElR},n::Int) where {ElR} = Diag(similar(data(D),ElR,n))
 
 # TODO: make this work for other storage besides Vector
-Base.zeros(::Type{<:NonuniformDiag{ElT}},dim::Int64) where {ElT} = Diag(zeros(ElT,dim))
-Base.zeros(::Type{<:UniformDiag{ElT}},dim::Int64) where {ElT} = Diag(zero(ElT))
+zeros(::Type{<:NonuniformDiag{ElT}},dim::Int64) where {ElT} = Diag(zeros(ElT,dim))
+zeros(::Type{<:UniformDiag{ElT}},dim::Int64) where {ElT} = Diag(zero(ElT))
 
-Base.:*(D::Diag,x::Number) = Diag(x*data(D))
-Base.:*(x::Number,D::Diag) = D*x
+(D::Diag * x::Number) = Diag(x * data(D))
+(x::Number * D::Diag) = D * x
 
 #
 # Type promotions involving Diag
 # Useful for knowing how conversions should work when adding and contracting
 #
 
-function Base.promote_rule(::Type{<:UniformDiag{ElT1}},
-                           ::Type{<:UniformDiag{ElT2}}) where {ElT1,ElT2}
+function promote_rule(::Type{<:UniformDiag{ElT1}},
+                      ::Type{<:UniformDiag{ElT2}}) where {ElT1,ElT2}
   ElR = promote_type(ElT1,ElT2)
   return Diag{ElR,ElR}
 end
 
-function Base.promote_rule(::Type{<:NonuniformDiag{ElT1,VecT1}},
-                           ::Type{<:NonuniformDiag{ElT2,VecT2}}) where {ElT1,VecT1<:AbstractVector,
-                                                                        ElT2,VecT2<:AbstractVector}
+function promote_rule(::Type{<:NonuniformDiag{ElT1,VecT1}},
+                      ::Type{<:NonuniformDiag{ElT2,VecT2}}) where {ElT1,VecT1<:AbstractVector,
+                                                                   ElT2,VecT2<:AbstractVector}
   ElR = promote_type(ElT1,ElT2)
   VecR = promote_type(VecT1,VecT2)
   return Diag{ElR,VecR}
 end
 
 # This is an internal definition, is there a more general way?
-#Base.promote_type(::Type{Vector{ElT1}},
+#promote_type(::Type{Vector{ElT1}},
 #                  ::Type{ElT2}) where {ElT1<:Number,
 #                                       ElT2<:Number} = Vector{promote_type(ElT1,ElT2)}
 #
-#Base.promote_type(::Type{ElT1},
+#promote_type(::Type{ElT1},
 #                  ::Type{Vector{ElT2}}) where {ElT1<:Number,
 #                                               ElT2<:Number} = promote_type(Vector{ElT2},ElT1)
 
 # TODO: how do we make this work more generally for T2<:AbstractVector{S2}?
 # Make a similar_type(AbstractVector{S2},T1) -> AbstractVector{T1} function?
-function Base.promote_rule(::Type{<:UniformDiag{ElT1,VecT1}},
-                           ::Type{<:NonuniformDiag{ElT2,Vector{ElT2}}}) where {ElT1,VecT1<:Number,
-                                                                               ElT2}
+function promote_rule(::Type{<:UniformDiag{ElT1,VecT1}},
+                      ::Type{<:NonuniformDiag{ElT2,Vector{ElT2}}}) where {ElT1,VecT1<:Number,
+                                                                          ElT2}
   ElR = promote_type(ElT1,ElT2)
   VecR = Vector{ElR}
   return Diag{ElR,VecR}
 end
 
-function Base.promote_rule(::Type{DenseT1},
-                           ::Type{<:NonuniformDiag{ElT2,VecT2}}) where {DenseT1<:Dense,
-                                                                        ElT2,VecT2<:AbstractVector}
+function promote_rule(::Type{DenseT1},
+                      ::Type{<:NonuniformDiag{ElT2,VecT2}}) where {DenseT1<:Dense,
+                                                                   ElT2,VecT2<:AbstractVector}
   return promote_type(DenseT1,Dense{ElT2,VecT2})
 end
 
-function Base.promote_rule(::Type{DenseT1},
-                           ::Type{<:UniformDiag{ElT2,VecT2}}) where {DenseT1<:Dense,
-                                                                     ElT2,VecT2<:Number}
+function promote_rule(::Type{DenseT1},
+                      ::Type{<:UniformDiag{ElT2,VecT2}}) where {DenseT1<:Dense,
+                                                                ElT2,VecT2<:Number}
   return promote_type(DenseT1,ElT2)
 end
 
@@ -126,13 +122,16 @@ const NonuniformDiagTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} wher
 const UniformDiagTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where 
                                                {StoreT<:UniformDiag}
 
-Base.IndexStyle(::Type{<:DiagTensor}) = IndexCartesian()
+IndexStyle(::Type{<:DiagTensor}) = IndexCartesian()
 
 # TODO: this needs to be better (promote element type, check order compatibility,
 # etc.
-function Base.convert(::Type{<:DenseTensor{ElT,N}}, T::DiagTensor{ElT,N}) where {ElT<:Number,N}
+function convert(::Type{<:DenseTensor{ElT,N}}, T::DiagTensor{ElT,N}) where {ElT<:Number,N}
   return dense(T)
 end
+
+convert(::Type{Diagonal}, D::DiagTensor{<:Number, 2}) =
+  Diagonal(data(D))
 
 # These are rules for determining the output of a pairwise contraction of NDTensors
 # (given the indices of the output tensors)
@@ -178,26 +177,26 @@ end
 matrix(T::DiagTensor{<:Number,2}) = array(T)
 vector(T::DiagTensor{<:Number,1}) = array(T)
 
-function Base.Array{ElT,N}(T::DiagTensor{ElT,N}) where {ElT,N}
+function Array{ElT,N}(T::DiagTensor{ElT,N}) where {ElT,N}
   return array(T)
 end
 
-function Base.Array(T::DiagTensor{ElT,N}) where {ElT,N}
+function Array(T::DiagTensor{ElT,N}) where {ElT,N}
   return Array{ElT,N}(T)
 end
 
-function Base.zeros(TensorT::Type{<: DiagTensor},
+function zeros(TensorT::Type{<: DiagTensor},
                     inds)
   return tensor(zeros(storetype(TensorT), mindim(inds)), inds)
 end
 
-function Base.zeros(TensorT::Type{<: DiagTensor},
+function zeros(TensorT::Type{<: DiagTensor},
                     inds::Tuple{})
   return tensor(zeros(storetype(TensorT), mindim(inds)), inds)
 end
 
 # Needed to get slice of DiagTensor like T[1:3,1:3]
-function Base.similar(T::DiagTensor{<:Number,N},
+function similar(T::DiagTensor{<:Number,N},
                       ::Type{ElR},
                       inds::Dims{N}) where {ElR<:Number,N}
   return tensor(similar(store(T),ElR,minimum(inds)),inds)
@@ -224,7 +223,7 @@ Set the entire diagonal of a uniform DiagTensor.
 """
 setdiag(T::UniformDiagTensor,val) = tensor(Diag(val),inds(T))
 
-Base.@propagate_inbounds function Base.getindex(T::DiagTensor{ElT,N},
+@propagate_inbounds function getindex(T::DiagTensor{ElT,N},
                                                 inds::Vararg{Int,N}) where {ElT,N}
   if all(==(inds[1]),inds)
     return getdiagindex(T,inds[1])
@@ -232,26 +231,26 @@ Base.@propagate_inbounds function Base.getindex(T::DiagTensor{ElT,N},
     return zero(eltype(ElT))
   end
 end
-Base.@propagate_inbounds Base.getindex(T::DiagTensor{<:Number,1},ind::Int) = store(T)[ind]
-Base.@propagate_inbounds Base.getindex(T::DiagTensor{<:Number,0}) = store(T)[1]
+@propagate_inbounds getindex(T::DiagTensor{<:Number,1},ind::Int) = store(T)[ind]
+@propagate_inbounds getindex(T::DiagTensor{<:Number,0}) = store(T)[1]
 
 # Set diagonal elements
 # Throw error for off-diagonal
-Base.@propagate_inbounds function Base.setindex!(T::DiagTensor{<:Number,N},
+@propagate_inbounds function setindex!(T::DiagTensor{<:Number,N},
                                                  val,inds::Vararg{Int,N}) where {N}
   all(==(inds[1]),inds) || error("Cannot set off-diagonal element of Diag storage")
   setdiagindex!(T,val,inds[1])
   return T
 end
-Base.@propagate_inbounds Base.setindex!(T::DiagTensor{<:Number,1},val,ind::Int) = ( store(T)[ind] = val )
-Base.@propagate_inbounds Base.setindex!(T::DiagTensor{<:Number,0},val) = ( store(T)[1] = val )
+@propagate_inbounds setindex!(T::DiagTensor{<:Number,1},val,ind::Int) = ( store(T)[ind] = val )
+@propagate_inbounds setindex!(T::DiagTensor{<:Number,0},val) = ( store(T)[1] = val )
 
-function Base.setindex!(T::UniformDiagTensor{<:Number,N},val,inds::Vararg{Int,N}) where {N}
+function setindex!(T::UniformDiagTensor{<:Number,N},val,inds::Vararg{Int,N}) where {N}
   error("Cannot set elements of a uniform Diag storage")
 end
 
 # TODO: make a fill!! that works for uniform and non-uniform
-#Base.fill!(T::DiagTensor,v) = fill!(store(T),v)
+#fill!(T::DiagTensor,v) = fill!(store(T),v)
 
 function dense(::Type{<:Tensor{ElT,N,StoreT,IndsT}}) where {ElT,N,
                                                             StoreT<:Diag,IndsT}
@@ -303,7 +302,7 @@ function outer(T1::DiagTensor{ElT1,N1},
   return R
 end
 
-function Base.permutedims!(R::DiagTensor{<:Number,N},
+function permutedims!(R::DiagTensor{<:Number,N},
                            T::DiagTensor{<:Number,N},
                            perm::NTuple{N,Int},f::Function=(r,t)->t) where {N}
   # TODO: check that inds(R)==permute(inds(T),perm)?
@@ -313,14 +312,14 @@ function Base.permutedims!(R::DiagTensor{<:Number,N},
   return R
 end
 
-function Base.permutedims(T::DiagTensor{<:Number,N},
+function permutedims(T::DiagTensor{<:Number,N},
                           perm::NTuple{N,Int},f::Function=identity) where {N}
   R = similar(T,permute(inds(T),perm))
   permutedims!(R,T,perm,f)
   return R
 end
 
-function Base.permutedims(T::UniformDiagTensor{ElT,N},
+function permutedims(T::UniformDiagTensor{ElT,N},
                           perm::NTuple{N,Int},
                           f::Function=identity) where {ElR,ElT,N}
   R = tensor(Diag(f(getdiagindex(T,1))),permute(inds(T),perm))
@@ -344,7 +343,7 @@ function permutedims!!(R::UniformDiagTensor{ElR,N},
   return R
 end
 
-function Base.permutedims!(R::DenseTensor{ElR,N},
+function permutedims!(R::DenseTensor{ElR,N},
                            T::DiagTensor{ElT,N},
                            perm::NTuple{N,Int},
                            f::Function = (r,t)->t) where {ElR,ElT,N}
@@ -400,9 +399,11 @@ end
 
 function contract!(C::DenseTensor{ElC,NC},Clabels,
                    A::DiagTensor{ElA,NA},Alabels,
-                   B::DenseTensor{ElB,NB},Blabels) where {ElA,NA,
-                                                          ElB,NB,
-                                                          ElC,NC}
+                   B::DenseTensor{ElB,NB},Blabels;
+                   convert_to_dense::Bool = true) where {ElA,NA,
+                                                         ElB,NB,
+                                                         ElC,NC}
+  @timeit_debug timer "diag-dense contract!" begin 
   if all(i -> i < 0, Blabels)
     # If all of B is contracted
     # TODO: can also check NC+NB==NA
@@ -422,75 +423,77 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
       end
     end
   else
-    astarts = zeros(Int,length(Alabels))
-    bstart = 0
-    cstart = 0
-    b_cstride = 0
-    nbu = 0
-    for ib = 1:length(Blabels)
-      ia = findfirst(==(Blabels[ib]),Alabels)
-      if !isnothing(ia)
-        b_cstride += Base.stride(B,ib)
-        bstart += astarts[ia]*Base.stride(B,ib)
-      else
-        nbu += 1
+    if convert_to_dense
+      contract!(C, Clabels, dense(A), Alabels, B, Blabels)
+    else
+      astarts = zeros(Int,length(Alabels))
+      bstart = 0
+      cstart = 0
+      b_cstride = 0
+      nbu = 0
+      for ib = 1:length(Blabels)
+        ia = findfirst(==(Blabels[ib]),Alabels)
+        if !isnothing(ia)
+          b_cstride += stride(B,ib)
+          bstart += astarts[ia]*stride(B,ib)
+        else
+          nbu += 1
+        end
       end
-    end
 
-    c_cstride = 0
-    for ic = 1:length(Clabels)
-      ia = findfirst(==(Clabels[ic]),Alabels)
-      if !isnothing(ia)
-        c_cstride += Base.stride(C,ic)
-        cstart += astarts[ia]*Base.stride(C,ic)
+      c_cstride = 0
+      for ic = 1:length(Clabels)
+        ia = findfirst(==(Clabels[ic]),Alabels)
+        if !isnothing(ia)
+          c_cstride += stride(C,ic)
+          cstart += astarts[ia]*stride(C,ic)
+        end
       end
-    end
 
-    # strides of the uncontracted dimensions of
-    # B
-    bustride = zeros(Int,nbu)
-    custride = zeros(Int,nbu)
-    # size of the uncontracted dimensions of
-    # B, to be used in CartesianIndices
-    busize = zeros(Int,nbu)
-    n = 1
-    for ib = 1:length(Blabels)
-      if Blabels[ib] > 0
-        bustride[n] = Base.stride(B,ib)
-        busize[n] = size(B,ib)
-        ic = findfirst(==(Blabels[ib]),Clabels)
-        custride[n] = Base.stride(C,ic)
-        n += 1
+      # strides of the uncontracted dimensions of
+      # B
+      bustride = zeros(Int,nbu)
+      custride = zeros(Int,nbu)
+      # size of the uncontracted dimensions of
+      # B, to be used in CartesianIndices
+      busize = zeros(Int,nbu)
+      n = 1
+      for ib = 1:length(Blabels)
+        if Blabels[ib] > 0
+          bustride[n] = stride(B,ib)
+          busize[n] = size(B,ib)
+          ic = findfirst(==(Blabels[ib]),Clabels)
+          custride[n] = stride(C,ic)
+          n += 1
+        end
       end
-    end
 
-    boffset_orig = 1-sum(Base.strides(B))
-    coffset_orig = 1-sum(Base.strides(C))
-    cartesian_inds = CartesianIndices(Tuple(busize))
-    for inds in cartesian_inds
-      boffset = boffset_orig
-      coffset = coffset_orig
-      for i in 1:nbu
-        ii = inds[i]
-        boffset += ii*bustride[i]
-        coffset += ii*custride[i]
-      end
-      for j in 1:diaglength(A)
-        C[cstart+j*c_cstride+coffset] += getdiagindex(A,j)*
-                                         B[bstart+j*b_cstride+boffset]
+      boffset_orig = 1-sum(strides(B))
+      coffset_orig = 1-sum(strides(C))
+      cartesian_inds = CartesianIndices(Tuple(busize))
+      for inds in cartesian_inds
+        boffset = boffset_orig
+        coffset = coffset_orig
+        for i in 1:nbu
+          ii = inds[i]
+          boffset += ii*bustride[i]
+          coffset += ii*custride[i]
+        end
+        for j in 1:diaglength(A)
+          C[cstart+j*c_cstride+coffset] += getdiagindex(A,j)*
+                                           B[bstart+j*b_cstride+boffset]
+        end
       end
     end
   end
+  end
 end
-contract!(C::DenseTensor,Clabels,
-          A::DenseTensor,Alabels,
-          B::DiagTensor,Blabels) = contract!(C,Clabels,
-                                             B,Blabels,
-                                             A,Alabels)
 
-function Base.show(io::IO,
-                   mime::MIME"text/plain",
-                   T::DiagTensor)
+contract!(C::DenseTensor, Clabels, A::DenseTensor, Alabels,
+          B::DiagTensor, Blabels) =
+  contract!(C, Clabels, B, Blabels, A, Alabels)
+
+function show(io::IO, mime::MIME"text/plain", T::DiagTensor)
   summary(io,T)
   print_tensor(io,T)
 end

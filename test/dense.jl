@@ -148,4 +148,49 @@ end
 
 end
 
+@testset "generic contraction" begin
+    # correctness of _gemm!
+    for alpha in [0.0, 1.0, 2.0]
+        for beta in [0.0, 1.0, 2.0]
+            for tA in ['N', 'T']
+                for tB in ['N', 'T']
+                    A = randn(4, 4)
+                    B = randn(4, 4)
+                    C = randn(4, 4)
+                    A = BigFloat.(A)
+                    B = BigFloat.(B)
+                    C2 = BigFloat.(C)
+                    NDTensors._gemm!(tA, tB, alpha, A, B, beta, C)
+                    NDTensors._gemm!(tA, tB, alpha, A, B, beta, C2)
+                    @test C ≈ C2
+                end
+            end
+        end
+    end
+end
+
+@testset "Contraction with size 1 block and NaN" begin
+  @testset "No permutation" begin
+    R = Tensor(ComplexF64, 2, 2, 1)
+    fill!(R, NaN)
+    @test any(isnan, R)
+    T1 = randomTensor(2, 2, 1)
+    T2 = randomTensor(ComplexF64, 1, 1)
+    NDTensors.contract!(R, (1, 2, 3), T1, (1, 2, -1), T2, (-1, 1))
+    @test !any(isnan, R)
+    @test convert(Array, R) ≈ convert(Array, T1) * T2[1]
+  end
+
+  @testset "Permutation" begin
+    R = Tensor(ComplexF64, 2, 2, 1)
+    fill!(R, NaN)
+    @test any(isnan, R)
+    T1 = randomTensor(2, 2, 1)
+    T2 = randomTensor(ComplexF64, 1, 1)
+    NDTensors.contract!(R, (2, 1, 3), T1, (1, 2, -1), T2, (-1, 1))
+    @test !any(isnan, R)
+    @test convert(Array, R) ≈ permutedims(convert(Array, T1), (2, 1, 3)) * T2[1]
+  end
+end
+
 nothing

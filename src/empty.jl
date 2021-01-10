@@ -18,26 +18,26 @@ end
 
 Empty() = Empty(Float64)
 
-Base.copy(S::Empty) = S
+copy(S::Empty) = S
 
-Base.isempty(::Empty) = true
+isempty(::Empty) = true
 
 nnzblocks(::Empty) = 0
 
 nnz(::Empty) = 0
 
-function Base.complex(::Type{<: Empty{ElT, StoreT}}) where {ElT,
+function complex(::Type{<: Empty{ElT, StoreT}}) where {ElT,
                                                             StoreT}
   return Empty{complex(ElT), complex(StoreT)}
 end
 
-function Base.complex(S::Empty)
+function complex(S::Empty)
   return complex(typeof(S))()
 end
 
-#Base.size(::Empty) = 0
+#size(::Empty) = 0
 
-function Base.show(io::IO,
+function show(io::IO,
                    mime::MIME"text/plain",
                    S::Empty)
   println(io, typeof(S))
@@ -55,7 +55,7 @@ const EmptyTensor{ElT,
                                   StoreT,
                                   IndsT} where {StoreT <: Empty}
 
-Base.isempty(::EmptyTensor) = true
+isempty(::EmptyTensor) = true
 
 function EmptyTensor(::Type{ElT}, inds) where {ElT <: Number}
   return tensor(Empty(ElT), inds)
@@ -71,7 +71,7 @@ function EmptyBlockSparseTensor(::Type{ElT}, inds) where {ElT <: Number}
 end
 
 # From an EmptyTensor, return the closest Tensor type
-function Base.fill(::Type{<: Tensor{ElT,
+function fill(::Type{<: Tensor{ElT,
                                     N,
                                     EStoreT,
                                     IndsT}}) where {ElT <: Number,
@@ -82,40 +82,38 @@ function Base.fill(::Type{<: Tensor{ElT,
   return Tensor{ElT, N, StoreT, IndsT}
 end
 
-function Base.zeros(T::TensorT) where {TensorT <: EmptyTensor}
+function zeros(T::TensorT) where {TensorT <: EmptyTensor}
   TensorR = fill(TensorT)
   return zeros(TensorR, inds(T))
 end
 
-function addblock(T::EmptyTensor{<: Number, N},
-                  block::Block{N}) where {N}
+function insertblock(T::EmptyTensor{<: Number, N}, block) where {N}
   R = zeros(T)
-  addblock!(R, block)
+  insertblock!(R, Block(block))
   return R
 end
 
-addblock!!(T::EmptyTensor{<: Number, N},
-           block::Block{N}) where {N} = addblock(T, block)
+insertblock!!(T::EmptyTensor{<: Number, N}, block) where {N} =
+  insertblock(T, block)
 
-Base.@propagate_inbounds function Base.setindex(T::EmptyTensor{<: Number, N},
-                                                x::Number,
-                                                I::Vararg{Int, N}) where {N}
+@propagate_inbounds function setindex(T::EmptyTensor{<: Number, N},
+                                      x, I...) where {N}
   R = zeros(T)
   R[I...] = x
   return R
 end
 
-function Base.setindex(T::EmptyTensor{<: Number, Any},
-                                      x::Number,
-                                      I::Int...)
-  error("Setting element of EmptyTensor with Any number of dimensions not defined")
+setindex!!(T::EmptyTensor, x, I...) = setindex(T, x, I...)
+
+# Version of contraction where output storage is empty
+function contract!!(R::EmptyTensor{<:Number, NR}, labelsR::NTuple{NR},
+                    T1::Tensor{<:Number, N1}, labelsT1::NTuple{N1},
+                    T2::Tensor{<:Number, N2}, labelsT2::NTuple{N2}) where {NR, N1, N2}
+  RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
+  return RR
 end
 
-setindex!!(T::EmptyTensor,
-           x::Number,
-           I::Int...) = setindex(T, x, I...)
-
-function Base.show(io::IO,
+function show(io::IO,
                    mime::MIME"text/plain",
                    T::EmptyTensor)
   summary(io, T)

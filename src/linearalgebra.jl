@@ -14,10 +14,7 @@ export eigs,
 # and passable to BLAS/LAPACK, it cannot
 # be made <: StridedArray
 
-function Base.:*(T1::Tensor{ElT1,2,StoreT1},
-                 T2::Tensor{ElT2,2,StoreT2}) where
-                                       {ElT1,StoreT1<:Dense,IndsT1,
-                                        ElT2,StoreT2<:Dense,IndsT2}
+function (T1::Tensor{ElT1,2,StoreT1} * T2::Tensor{ElT2,2,StoreT2}) where {ElT1, StoreT1 <: Dense,IndsT1, ElT2, StoreT2 <: Dense, IndsT2}
   RM = matrix(T1)*matrix(T2)
   indsR = (ind(T1,1), ind(T2,2))
   return tensor(Dense(vec(RM)), indsR)
@@ -28,8 +25,7 @@ function LinearAlgebra.exp(T::DenseTensor{ElT,2}) where {ElT<:Union{Real,Complex
   return tensor(Dense(vec(expTM)),inds(T))
 end
 
-function LinearAlgebra.exp(T::Hermitian{ElT,
-                                        <:DenseTensor{ElT,2}}) where {ElT<:Union{Real,Complex}}
+function LinearAlgebra.exp(T::Hermitian{ElT, <: DenseTensor{ElT,2}}) where {ElT<:Union{Real,Complex}}
   # exp(::Hermitian/Symmetric) returns Hermitian/Symmetric,
   # so extract the parent matrix
   expTM = parent(exp(matrix(T)))
@@ -57,6 +53,41 @@ function entropy(s::Spectrum)
     p > 1e-13 && (S -= p*log(p))
   end
   return S
+end
+
+function svd_catch_error(A; kwargs...)
+  USV = try
+    svd(A; kwargs...)
+  catch
+    return nothing
+  end
+  return USV
+end
+
+function lapack_svd_error_message(alg)
+  return "The SVD algorithm `\"$alg\"` has thrown an error,\n" *
+  "likely because of a convergance failure. You can try\n" *
+  "other SVD algorithms that may converge better using the\n" *
+  "`alg` (or `svd_alg` if called through `factorize` or MPS/MPO functionality) keyword argument:\n\n" *
+  " - \"divide_and_conquer\" is a divide-and-conquer algorithm\n" *
+  "   (LAPACK's `gesdd`). It is fast, but may lead to some innacurate\n" *
+  "   singular values for very ill-conditioned matrices.\n" *
+  "   It also may sometimes fail to converge, leading to errors\n" *
+  "   (in which case `\"qr_iteration\"` or `\"recursive\"` can be tried).\n\n" *
+  " - `\"qr_iteration\"` (LAPACK's `gesvd`) is typically slower \n" *
+  "   than \"divide_and_conquer\", especially for large matrices,\n" *
+  "   but is more accurate for very ill-conditioned matrices \n" *
+  "   compared to `\"divide_and_conquer\"`.\n\n" *
+  " - `\"recursive\"` is ITensor's custom SVD algorithm. It is very\n" *
+  "   reliable, but may be slow if high precision is needed.\n" *
+  "   To get an `svd` of a matrix `A`, an eigendecomposition of\n" *
+  "   ``A^{\\dagger} A`` is used to compute `U` and then a `qr` of\n" *
+  "   ``A^{\\dagger} U`` is used to compute `V`. This is performed\n" *
+  "   recursively to compute small singular values.\n\n" *
+  "Returning `nothing`. For an output `F = svd(A, ...)` you can check if\n" *
+  "`isnothing(F)` in your code and try a different algorithm.\n\n" *
+  "To suppress this message in the future, you can wrap the `svd` call in the\n" *
+  "`@suppress` macro from the `Suppressor` package.\n"
 end
 
 """
@@ -100,18 +131,29 @@ function LinearAlgebra.svd(T::DenseTensor{ElT,2,IndsT};
   use_relative_cutoff::Bool = get(kwargs,
                                   :use_relative_cutoff,
                                   use_relative_cutoff)
-  alg::String = get(kwargs, :alg, "recursive")
+  alg::String = get(kwargs, :alg, "divide_and_conquer")
 
+  @timeit_debug timer "dense svd" begin
   if alg == "divide_and_conquer"
-    MU,MS,MV = svd(matrix(T); alg = LinearAlgebra.DivideAndConquer())
+    MUSV = svd_catch_error(matrix(T); alg = LinearAlgebra.DivideAndConquer())
   elseif alg == "qr_iteration"
-    MU,MS,MV = svd(matrix(T); alg = LinearAlgebra.QRIteration())
+    MUSV = svd_catch_error(matrix(T); alg = LinearAlgebra.QRIteration())
   elseif alg == "recursive"
-    MU,MS,MV = svd_recursive(matrix(T))
+    MUSV = svd_recursive(matrix(T))
   else
     error("svd algorithm $alg is not currently supported. Please see the documentation for currently supported algorithms.")
   end
+  if isnothing(MUSV)
+    if any(isnan, T)
+      println("SVD failed, the matrix you were trying to SVD contains NaNs.")
+    else
+      println(lapack_svd_error_message(alg))
+    end
+    return nothing
+  end
+  MU, MS, MV = MUSV
   conj!(MV)
+  end # @timeit_debug
 
   P = MS .^ 2
   if truncate
