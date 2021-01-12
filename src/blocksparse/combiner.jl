@@ -43,11 +43,26 @@ function contract(T::BlockSparseTensor,
     end
     labelsRuc = insertat(labelsRc,labels_uc,cpos_in_labelsRc)
     indsRuc = contract_inds(inds(C),labelsC,inds(T),labelsT,labelsRuc)
+
     #<fermions>:
     T = mult_combiner_signs(C,labelsC,inds(C),T,labelsT,inds(T),labelsRuc)
+
     Ruc = uncombine(T,indsRuc,cpos_in_labelsRc,blockperm(C),blockcomb(C))
-    #<fermions>: if calling after:
-    #Ruc = mult_combiner_signs(C,labelsC,inds(C),Ruc,labelsT,inds(T),labelsRuc)
+
+    #<fermions>:
+    if isconj(store(C))
+      #
+      # Post-process Ruc for the case of a conjugate uncombiner
+      #
+      Nuc = count(l->(l>0),labelsC)
+      rperm = ntuple(i->(Nuc-i+1),Nuc) # reverse permutation
+      #fac_function = block->begin
+      #  fac = permfactor(rperm,block[1:Nuc],inds(Ruc)[1:Nuc])
+      #  return fac
+      #end
+      scale_blocks!(Ruc,block->permfactor(rperm,block[1:Nuc],inds(Ruc)[1:Nuc]))
+    end
+
     return Ruc
   end
   end
