@@ -63,6 +63,8 @@ convert(::Type{Block{N}}, t::Tuple) where {N} = Block{N}(t)
 
 (::Type{IntT})(b::Block{1}) where {IntT <: Integer}= IntT(only(b))
 
+getindex(B::Block{N}, R::UnitRange{Int64}) where {N} = Block(B.data[R])
+
 #
 # Getting and setting fields
 #
