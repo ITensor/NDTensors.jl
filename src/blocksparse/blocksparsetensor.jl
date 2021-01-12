@@ -669,7 +669,10 @@ function scale_blocks!(T::BlockSparseTensor{<:Number,N},
 end
 
 # <fermions>
-permfactor(perm,block::Block{N},inds) where {N} = 1
+function permfactor(perm,block::Block{N},inds) where {N} 
+  #println("In default permfactor")
+  return 1
+end
 
 
 # Version where it is known that R has the same blocks
