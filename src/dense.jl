@@ -846,9 +846,6 @@ function _contract!(CT::DenseTensor{El, NC},
                     props::ContractionProperties,
                     α::Number = one(El),
                     β::Number = zero(El)) where {El, NC, NA, NB}
-  # Disable Strided threading (it seems to conflict with BLAS threading?)
-  original_strided_num_threads = Strided.disable_threads()
-
   # TODO: directly use Tensor instead of Array
   C = ReshapedArray(data(store(CT)), dims(inds(CT)), ())
   A = ReshapedArray(data(store(AT)), dims(inds(AT)), ())
@@ -915,9 +912,6 @@ function _contract!(CT::DenseTensor{El, NC},
     @strided C .= permutedims(Cr, pC)
     #end # @timeit
   end
-
-  # Reenable Strided threading (it seems to conflict with BLAS threading?)
-  Strided.set_num_threads(original_strided_num_threads)
 
   return CT
 end

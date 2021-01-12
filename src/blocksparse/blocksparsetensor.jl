@@ -4,6 +4,8 @@
 
 const BlockSparseTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where {StoreT<:BlockSparse}
 
+nonzeros(T::Tensor) = data(T)
+
 # Special version for BlockSparseTensor
 # Generic version doesn't work since BlockSparse us parametrized by
 # the Tensor order
@@ -236,11 +238,11 @@ insertblock!(T::BlockSparseTensor, block) = insertblock!(T, Block(block))
   return T
 end
 
-hasblock(T::Tensor, block::Block) = isassigned(blockoffsets(T), block)
+hasblock(T::Tensor, block::Block) =
+  isassigned(blockoffsets(T), block)
 
 @propagate_inbounds function setindex!(T::BlockSparseTensor{ElT,N},
-                                       val,
-                                       b::Block{N}) where {ElT,N}
+                                       val, b::Block{N}) where {ElT,N}
   if !hasblock(T, b)
     insertblock!(T, b)
   end
@@ -835,15 +837,15 @@ function _threaded_contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
 
   contraction_plan_blocks = Vector{Tuple{Tensor, Tensor, Tensor}}(undef, length(contraction_plan))
   for ncontracted in 1:length(contraction_plan)
-    pos1, pos2, posR = contraction_plan[ncontracted]
-    blockT1 = blockview(T1, pos1)
-    blockT2 = blockview(T2, pos2)
-    blockR = blockview(R, posR)
-    contraction_plan_blocks[ncontracted] = (blockT1, blockT2, blockR)
+    block1, block2, blockR = contraction_plan[ncontracted]
+    T1block = T1[block1]
+    T2block = T2[block2]
+    Rblock = R[blockR]
+    contraction_plan_blocks[ncontracted] = (T1block, T2block, Rblock)
   end
 
   α = one(ElR)
-  Threads.@sync for ncontracted_range in repeats
+  @sync for ncontracted_range in repeats
     # Overwrite the block since it hasn't been written to
     # R .= α .* (T1 * T2)
     β = zero(ElR)
@@ -879,7 +881,8 @@ end
 
 _tryparse_env_int(key) = tryparse(Int, get(ENV, key, ""))
 
-blas_get_num_threads(;_blas=guess_vendor())::Union{Int, Nothing} = _get_num_threads()
+blas_get_num_threads(;_blas=guess_vendor())::Union{Int, Nothing} =
+  _get_num_threads()
 
 function _get_num_threads(; _blas = guess_vendor())::Union{Int, Nothing}
   if _blas === :openblas || _blas === :openblas64
@@ -907,36 +910,25 @@ function contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
                    contraction_plan) where {ElR, ElT1, ElT2,
                                             N1, N2, NR}
   if using_threaded_blocksparse() && Threads.nthreads() > 1
-    # Disable BLAS and Strided threading since they can conflict with the
-    # block sparse threading
-    # VERSION > v"1.5": use BLAS.get_num_threads()
-    original_blas_num_threads = blas_get_num_threads()
-    BLAS.set_num_threads(1)
-    original_strided_num_threads = Strided.disable_threads()
-
-    _threaded_contract!(R, labelsR, T1, labelsT1, T2, labelsT2, contraction_plan)
-
-    # Reenable BLAS and Strided threading since they can conflict with the
-    BLAS.set_num_threads(original_blas_num_threads)
-    Strided.set_num_threads(original_strided_num_threads)
-
+    _threaded_contract!(R, labelsR, T1, labelsT1, T2, labelsT2,
+                        contraction_plan)
     return R
   end
   already_written_to = Dict{Block{NR}, Bool}()
   # In R .= α .* (T1 * T2) .+ β .* R
   α = one(ElR)
-  for (pos1, pos2, posR) in contraction_plan
-    blockT1 = blockview(T1, pos1)
-    blockT2 = blockview(T2, pos2)
-    blockR = blockview(R, posR)
+  for (block1, block2, blockR) in contraction_plan
+    T1block = T1[block1]
+    T2block = T2[block2]
+    Rblock = R[blockR]
     β = one(ElR)
-    if !haskey(already_written_to, posR)
-      already_written_to[posR] = true
+    if !haskey(already_written_to, blockR)
+      already_written_to[blockR] = true
       # Overwrite the block of R
       β = zero(ElR)
     end
-    contract!(blockR, labelsR, blockT1, labelsT1,
-              blockT2, labelsT2, α, β)
+    contract!(Rblock, labelsR, T1block, labelsT1,
+              T2block, labelsT2, α, β)
   end
   return R
 end
@@ -967,8 +959,7 @@ end
 Indices are combined according to the grouping of the input,
 for example (1,2),3 will combine the first two indices.
 """
-function combine(inds::IndsT,
-                 com::Vararg{IntOrIntTuple,N}) where {IndsT,N}
+function combine(inds::IndsT, com::Vararg{IntOrIntTuple,N}) where {IndsT,N}
   IndT = eltype(IndsT)
   # Using SizedVector since setindex! doesn't
   # work for MVector when eltype not isbitstype
@@ -988,8 +979,7 @@ function combine(inds::IndsT,
   return indsR
 end
 
-function permute_combine(boffs::BlockOffsets,
-                         inds::IndsT,
+function permute_combine(boffs::BlockOffsets, inds::IndsT,
                          pos::Vararg{IntOrIntTuple,N}) where {IndsT,N}
   perm = flatten(pos...)
   boffsp,indsp = permutedims(boffs,inds,perm)
@@ -998,9 +988,7 @@ function permute_combine(boffs::BlockOffsets,
   return boffsR,indsR
 end
 
-function reshape(boffsT::BlockOffsets{NT},
-                      indsT,
-                      indsR) where {NT}
+function reshape(boffsT::BlockOffsets{NT}, indsT, indsR) where {NT}
   NR = length(indsR)
   boffsR = BlockOffsets{NR}()
   nblocksT = nblocks(indsT)
@@ -1024,20 +1012,16 @@ function reshape(boffsT::BlockOffsets{NT},
   return boffsR
 end
 
-function reshape(T::BlockSparse,
-                 boffsR::BlockOffsets)
-  return BlockSparse(data(T),boffsR)
-end
+reshape(T::BlockSparse, boffsR::BlockOffsets) =
+  BlockSparse(data(T),boffsR)
 
-function reshape(T::BlockSparseTensor,
-                 boffsR::BlockOffsets,
+function reshape(T::BlockSparseTensor, boffsR::BlockOffsets,
                  indsR)
   storeR = reshape(store(T),boffsR)
   return tensor(storeR,indsR)
 end
 
-function reshape(T::BlockSparseTensor,
-                 indsR)
+function reshape(T::BlockSparseTensor, indsR)
   # TODO: add some checks that the block dimensions
   # are consistent (e.g. nnzblocks(T) == nnzblocks(R), etc.)
   boffsR = reshape(blockoffsets(T),inds(T),indsR)
@@ -1099,9 +1083,7 @@ function _range2string(rangestart::NTuple{N,Int},
   return s
 end
 
-function show(io::IO,
-              mime::MIME"text/plain",
-              T::BlockSparseTensor)
+function show(io::IO, mime::MIME"text/plain", T::BlockSparseTensor)
   summary(io, T)
   for (n, block) in enumerate(keys(blockoffsets(T)))
     blockdimsT = blockdims(T,block)

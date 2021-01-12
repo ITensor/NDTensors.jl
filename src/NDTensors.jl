@@ -18,9 +18,7 @@ using Base:
 using Base.Cartesian:
   @nexprs
 
-using Base.Threads:
-  @threads,
-  nthreads
+using Base.Threads
 
 #####################################
 # Imports and exports
