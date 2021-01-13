@@ -1,5 +1,6 @@
 module NDTensors
 
+using Base.Threads
 using Compat
 using Dictionaries
 using Random
@@ -18,7 +19,8 @@ using Base:
 using Base.Cartesian:
   @nexprs
 
-using Base.Threads
+using Base.Threads:
+  @spawn
 
 #####################################
 # Imports and exports

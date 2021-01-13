@@ -749,9 +749,9 @@ function contract_blocks(block1::Block{N1},
   return Block{NR}(blockR)
 end
 
-function contract_blockoffsets(boffs1::BlockOffsets{N1},inds1,labels1,
-                               boffs2::BlockOffsets{N2},inds2,labels2,
-                               indsR,labelsR) where {N1,N2}
+function _contract_blockoffsets(boffs1::BlockOffsets{N1}, inds1, labels1,
+                                boffs2::BlockOffsets{N2}, inds2, labels2,
+                                indsR, labelsR) where {N1, N2}
   NR = length(labelsR)
   ValNR = ValLength(labelsR)
   labels1_to_labels2,labels1_to_labelsR,labels2_to_labelsR = contract_labels(labels1,labels2,labelsR)
@@ -776,21 +776,83 @@ function contract_blockoffsets(boffs1::BlockOffsets{N1},inds1,labels1,
       end
     end
   end
-  return blockoffsetsR,contraction_plan
+  return blockoffsetsR, contraction_plan
 end
 
-function contraction_output(T1::TensorT1,
-                            labelsT1,
-                            T2::TensorT2,
-                            labelsT2,
+function _threaded_contract_blockoffsets(boffs1::BlockOffsets{N1}, inds1,labels1,
+                                         boffs2::BlockOffsets{N2}, inds2,labels2,
+                                         indsR, labelsR) where {N1,N2}
+  NR = length(labelsR)
+  ValNR = ValLength(labelsR)
+  labels1_to_labels2,labels1_to_labelsR,labels2_to_labelsR = contract_labels(labels1,labels2,labelsR)
+  contraction_plans = [Tuple{Block{N1}, Block{N2}, Block{NR}}[] for _ in 1:nthreads()]
+
+  #
+  # Reserve some capacity
+  # In theory the maximum is length(boffs1) * length(boffs2)
+  # but in practice that is too much
+  #for contraction_plan in contraction_plans
+  #  sizehint!(contraction_plan, max(length(boffs1), length(boffs2)))
+  #end
+  #
+
+  blocks1 = keys(boffs1)
+  blocks2 = keys(boffs2)
+  if length(blocks1) > length(blocks2)
+    @sync for blocks1_partition in Iterators.partition(blocks1, max(1, length(blocks1) ÷ nthreads()))
+      @spawn for block1 in blocks1_partition
+        for block2 in blocks2
+          if are_blocks_contracted(block1, block2, labels1_to_labels2)
+            blockR = contract_blocks(block1, labels1_to_labelsR,
+                                     block2, labels2_to_labelsR, ValNR)
+            push!(contraction_plans[threadid()], (block1, block2, blockR))
+          end
+        end
+      end
+    end
+  else
+    @sync for blocks2_partition in Iterators.partition(blocks2, max(1, length(blocks2) ÷ nthreads()))
+      @spawn for block2 in blocks2_partition
+        for block1 in blocks1
+          if are_blocks_contracted(block1, block2, labels1_to_labels2)
+            blockR = contract_blocks(block1, labels1_to_labelsR,
+                                     block2, labels2_to_labelsR, ValNR)
+            push!(contraction_plans[threadid()], (block1, block2, blockR))
+          end
+        end
+      end
+    end
+  end
+
+  contraction_plan = vcat(contraction_plans...)
+  blockoffsetsR = BlockOffsets{NR}()
+  nnzR = 0
+  for (_, _, blockR) in contraction_plan
+    if !isassigned(blockoffsetsR, blockR)
+      insert!(blockoffsetsR, blockR, nnzR)
+      nnzR += blockdim(indsR, blockR)
+    end
+  end
+
+  return blockoffsetsR, contraction_plan
+end
+
+function contract_blockoffsets(args...)
+  if using_threaded_blocksparse() && nthreads() > 1
+    return _threaded_contract_blockoffsets(args...)
+  end
+  return _contract_blockoffsets(args...)
+end
+
+function contraction_output(T1::TensorT1, labelsT1, T2::TensorT2, labelsT2,
                             labelsR) where {TensorT1<:BlockSparseTensor,
                                             TensorT2<:BlockSparseTensor}
 
   indsR = contract_inds(inds(T1),labelsT1,inds(T2),labelsT2,labelsR)
   TensorR = contraction_output_type(TensorT1,TensorT2,typeof(indsR))
-  blockoffsetsR,contraction_plan = contract_blockoffsets(blockoffsets(T1),inds(T1),labelsT1,
-                                                         blockoffsets(T2),inds(T2),labelsT2,
-                                                         indsR,labelsR)
+  blockoffsetsR, contraction_plan = contract_blockoffsets(blockoffsets(T1), inds(T1), labelsT1,
+                                                          blockoffsets(T2), inds(T2), labelsT2,
+                                                          indsR, labelsR)
   R = similar(TensorR,blockoffsetsR,indsR)
   return R,contraction_plan
 end
@@ -849,7 +911,7 @@ function _threaded_contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
     # Overwrite the block since it hasn't been written to
     # R .= α .* (T1 * T2)
     β = zero(ElR)
-    Threads.@spawn for ncontracted in ncontracted_range
+    @spawn for ncontracted in ncontracted_range
       blockT1, blockT2, blockR = contraction_plan_blocks[ncontracted]
       # R .= α .* (T1 * T2) .+ β .* R
       contract!(blockR, labelsR, blockT1, labelsT1,
@@ -863,53 +925,12 @@ function _threaded_contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
   return R
 end
 
-#
-# blas_get_num_threads()
-# Get the number of BLAS threads
-# This can be replaced by BLAS.get_num_threads() in Julia v1.6
-#
-
-function guess_vendor()
-  # like determine_vendor, but guesses blas in some cases
-  # where determine_vendor returns :unknown
-  ret = BLAS.vendor()
-  if Sys.isapple() && (ret == :unknown)
-    ret = :osxblas
-  end
-  ret
-end
-
-_tryparse_env_int(key) = tryparse(Int, get(ENV, key, ""))
-
-blas_get_num_threads(;_blas=guess_vendor())::Union{Int, Nothing} =
-  _get_num_threads()
-
-function _get_num_threads(; _blas = guess_vendor())::Union{Int, Nothing}
-  if _blas === :openblas || _blas === :openblas64
-    return Int(ccall((BLAS.@blasfunc(openblas_get_num_threads), BLAS.libblas), Cint, ()))
-  elseif _blas === :mkl
-    return Int(ccall((:mkl_get_max_threads, BLAS.libblas), Cint, ()))
-  elseif _blas === :osxblas
-    key = "VECLIB_MAXIMUM_THREADS"
-    nt = _tryparse_env_int(key)
-    if nt === nothing
-      @warn "Failed to read environment variable $key" maxlog=1
-    else
-      return nt
-    end
-  else
-    @assert _blas === :unknown
-  end
-  @warn "Could not get number of BLAS threads. Returning `nothing` instead." maxlog=1
-  return nothing
-end
-
 function contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
                    T1::BlockSparseTensor{ElT1, N1}, labelsT1,
                    T2::BlockSparseTensor{ElT2, N2}, labelsT2,
                    contraction_plan) where {ElR, ElT1, ElT2,
                                             N1, N2, NR}
-  if using_threaded_blocksparse() && Threads.nthreads() > 1
+  if using_threaded_blocksparse() && nthreads() > 1
     _threaded_contract!(R, labelsR, T1, labelsT1, T2, labelsT2,
                         contraction_plan)
     return R
