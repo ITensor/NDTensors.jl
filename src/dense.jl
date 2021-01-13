@@ -1047,25 +1047,25 @@ function LinearAlgebra.exp(T::DenseTensor{ElT,N},
   end
 end
 
-function HDF5.write(parent::Union{HDF5File, HDF5Group}, 
+function HDF5.write(parent::Union{HDF5.File, HDF5.Group}, 
                     name::String, 
                     D::Store) where {Store <: Dense}
-  g = g_create(parent,name)
-  attrs(g)["type"] = "Dense{$(eltype(Store))}"
-  attrs(g)["version"] = 1
+  g = create_group(parent,name)
+  attributes(g)["type"] = "Dense{$(eltype(Store))}"
+  attributes(g)["version"] = 1
   if eltype(D) != Nothing
     write(g,"data",D.data)
   end
 end
 
 
-function HDF5.read(parent::Union{HDF5File,HDF5Group},
+function HDF5.read(parent::Union{HDF5.File,HDF5.Group},
                    name::AbstractString,
                    ::Type{Store}) where {Store <: Dense}
-  g = g_open(parent,name)
+  g = open_group(parent,name)
   ElT = eltype(Store)
   typestr = "Dense{$ElT}"
-  if read(attrs(g)["type"]) != typestr
+  if read(attributes(g)["type"]) != typestr
     error("HDF5 group or file does not contain $typestr data")
   end
   if ElT == Nothing
