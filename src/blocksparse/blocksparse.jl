@@ -211,12 +211,12 @@ function array_to_offsets(a,N::Int)
   return boff
 end
 
-function HDF5.write(parent::Union{HDF5File, HDF5Group},
+function HDF5.write(parent::Union{HDF5.File, HDF5.Group},
                     name::String,
                     B::BlockSparse)
-  g = g_create(parent,name)
-  attrs(g)["type"] = "BlockSparse{$(eltype(B))}"
-  attrs(g)["version"] = 1
+  g = create_group(parent,name)
+  attributes(g)["type"] = "BlockSparse{$(eltype(B))}"
+  attributes(g)["version"] = 1
   if eltype(B) != Nothing
     write(g,"ndims",ndims(B))
     write(g,"data",data(B))
@@ -225,13 +225,13 @@ function HDF5.write(parent::Union{HDF5File, HDF5Group},
   end
 end
 
-function HDF5.read(parent::Union{HDF5File,HDF5Group},
+function HDF5.read(parent::Union{HDF5.File,HDF5.Group},
                    name::AbstractString,
                    ::Type{Store}) where {Store <: BlockSparse}
-  g = g_open(parent,name)
+  g = open_group(parent,name)
   ElT = eltype(Store)
   typestr = "BlockSparse{$ElT}"
-  if read(attrs(g)["type"]) != typestr
+  if read(attributes(g)["type"]) != typestr
     error("HDF5 group or file does not contain $typestr data")
   end
   N = read(g,"ndims")
