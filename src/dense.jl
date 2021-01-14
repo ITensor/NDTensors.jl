@@ -458,9 +458,9 @@ function _gemm!(tA, tB, alpha,
                 A::AbstractVecOrMat{<:LinearAlgebra.BlasFloat},
                 B::AbstractVecOrMat{<:LinearAlgebra.BlasFloat},
                 beta, C::AbstractVecOrMat{<:LinearAlgebra.BlasFloat})
-  @timeit_debug timer "BLAS.gemm!" begin
+  #@timeit_debug timer "BLAS.gemm!" begin
   BLAS.gemm!(tA, tB, alpha, A, B, beta, C)
-  end
+  #end # @timeit
 end
 
 # generic matmul
@@ -538,7 +538,7 @@ end
 # TODO: move to tensor.jl?
 function contract(T1::Tensor, labelsT1, T2::Tensor,
                   labelsT2, labelsR = contract_labels(labelsT1, labelsT2))
-  @timeit_debug timer "dense contract" begin
+  #@timeit_debug timer "dense contract" begin
   # TODO: put the contract_inds logic into contraction_output,
   # call like R = contraction_ouput(T1,labelsT1,T2,labelsT2)
   #indsR = contract_inds(inds(T1),labelsT1,inds(T2),labelsT2,labelsR)
@@ -551,7 +551,7 @@ function contract(T1::Tensor, labelsT1, T2::Tensor,
                  T1, labelsT1,
                  T2, labelsT2)
   return R
-  end
+  #end @timeit
 end
 
 # Move to tensor.jl? Is this generic for all storage types?
@@ -792,20 +792,16 @@ function contract!(R::DenseTensor{ElR, NR}, labelsR,
                    T1::DenseTensor{ElT1, N1}, labelsT1,
                    T2::DenseTensor{ElT2, N2}, labelsT2,
                    α::Elα = one(ElR), β::Elβ = zero(ElR)) where {Elα, Elβ, ElR, ElT1, ElT2, NR, N1, N2}
-  @timeit_debug timer "dense contract!" begin
-
   # Special case for scalar tensors
   if nnz(T1) == 1 || nnz(T2) == 1
-    @timeit_debug timer "special length 1 cases" begin
     _contract_scalar!(R, labelsR, T1, labelsT1, T2, labelsT2, α, β)
-    end
     return R
   end
 
-  if use_tblis() && ElR <: LinearAlgebra.BlasReal && (ElR == ElT1 == ElT2 == Elα == Elβ)
-    @timeit_debug timer "TBLIS contract!" begin
+  if using_tblis() && ElR <: LinearAlgebra.BlasReal && (ElR == ElT1 == ElT2 == Elα == Elβ)
+    #@timeit_debug timer "TBLIS contract!" begin
     contract!(Val(:TBLIS), R, labelsR, T1, labelsT1, T2, labelsT2, α, β)
-    end
+    #end
     return R
   end
 
@@ -841,7 +837,7 @@ function contract!(R::DenseTensor{ElR, NR}, labelsR,
 
   _contract!(R,T1,T2,props,α,β)
   return R
-  end
+  #end
 end
 
 function _contract!(CT::DenseTensor{El, NC},
@@ -858,9 +854,9 @@ function _contract!(CT::DenseTensor{El, NC},
   tA = 'N'
   if props.permuteA
     pA = NTuple{NA, Int}(props.PA)
-    @timeit_debug timer "_contract!: permutedims A" begin
+    #@timeit_debug timer "_contract!: permutedims A" begin
     @strided Ap = permutedims(A, pA)
-    end
+    #end # @timeit
     AM = ReshapedArray(Ap, (props.dmid, props.dleft), ())
     tA = 'T'
   else
@@ -876,9 +872,9 @@ function _contract!(CT::DenseTensor{El, NC},
   tB = 'N'
   if props.permuteB
     pB = NTuple{NB, Int}(props.PB)
-    @timeit_debug timer "_contract!: permutedims B" begin
+    #@timeit_debug timer "_contract!: permutedims B" begin
     @strided Bp = permutedims(B, pB)
-    end
+    #end # @timeit
     BM = ReshapedArray(Bp, (props.dmid, props.dright), ())
   else
     if Btrans(props)
@@ -912,10 +908,11 @@ function _contract!(CT::DenseTensor{El, NC},
     pC = NTuple{NC, Int}(props.PC)
     Cr = ReshapedArray(CM.parent, props.newCrange, ())
     # TODO: use invperm(pC) here?
-    @timeit_debug timer "_contract!: permutedims C" begin
+    #@timeit_debug timer "_contract!: permutedims C" begin
     @strided C .= permutedims(Cr, pC)
-    end
+    #end # @timeit
   end
+
   return CT
 end
 
@@ -1047,25 +1044,25 @@ function LinearAlgebra.exp(T::DenseTensor{ElT,N},
   end
 end
 
-function HDF5.write(parent::Union{HDF5File, HDF5Group}, 
+function HDF5.write(parent::Union{HDF5.File, HDF5.Group}, 
                     name::String, 
                     D::Store) where {Store <: Dense}
-  g = g_create(parent,name)
-  attrs(g)["type"] = "Dense{$(eltype(Store))}"
-  attrs(g)["version"] = 1
+  g = create_group(parent,name)
+  attributes(g)["type"] = "Dense{$(eltype(Store))}"
+  attributes(g)["version"] = 1
   if eltype(D) != Nothing
     write(g,"data",D.data)
   end
 end
 
 
-function HDF5.read(parent::Union{HDF5File,HDF5Group},
+function HDF5.read(parent::Union{HDF5.File,HDF5.Group},
                    name::AbstractString,
                    ::Type{Store}) where {Store <: Dense}
-  g = g_open(parent,name)
+  g = open_group(parent,name)
   ElT = eltype(Store)
   typestr = "Dense{$ElT}"
-  if read(attrs(g)["type"]) != typestr
+  if read(attributes(g)["type"]) != typestr
     error("HDF5 group or file does not contain $typestr data")
   end
   if ElT == Nothing

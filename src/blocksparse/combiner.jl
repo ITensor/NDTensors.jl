@@ -6,7 +6,7 @@ function contract(T::BlockSparseTensor,
                   C::CombinerTensor,
                   labelsC)
   #println("----------------- in contract BlockSparse, Combiner ----")
-  @timeit_debug timer "Block sparse (un)combiner" begin
+  #@timeit_debug timer "Block sparse (un)combiner" begin
   # Get the label marking the combined index
   # By convention the combined index is the first one
   # TODO: consider storing the location of the combined
@@ -65,7 +65,7 @@ function contract(T::BlockSparseTensor,
 
     return Ruc
   end
-  end
+  #end # @timeit
 end
 
 contract(C::CombinerTensor, labelsC, T::BlockSparseTensor, labelsT) =

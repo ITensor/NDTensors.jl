@@ -1,7 +1,5 @@
 export 
 # NDTensors.jl
-  disable_tblis!,
-  enable_tblis!,
   insertblock!!,
   setindex,
   setindex!!,
