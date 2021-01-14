@@ -107,7 +107,7 @@ Note that you need to start Julia with multiple threads. For example, to start J
 
 In addition, we have found that it is best to disable `BLAS` and `Strided` multithreading when using block sparse multithreading. You can do that with the commands `using LinearAlgebra; BLAS.set_num_threads(1)` and `$(module_name).Strided.disable_threads()`.
 
-See also: [`$(module_name).enable_threaded_blocksparse`](@ref), [`$(module_name).disable_threaded_blocksparse`](@ref), [`$(module_name).using_threaded_blocksparse`](@ref).
+See also: `$(module_name).enable_threaded_blocksparse`, `$(module_name).disable_threaded_blocksparse`, `$(module_name).using_threaded_blocksparse`.
 """
 
 function _enable_threaded_blocksparse()
