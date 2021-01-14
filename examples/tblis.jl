@@ -24,7 +24,7 @@ let
   # Use BLAS
   #
 
-  disable_tblis!()
+  NDTensors.disable_tblis()
   BLAS.set_num_threads(nthreads)
 
   println()
@@ -39,7 +39,7 @@ let
   # Use TBLIS
   #
 
-  enable_tblis!()
+  NDTensors.enable_tblis()
   TBLIS.set_num_threads(nthreads)
 
   println()
