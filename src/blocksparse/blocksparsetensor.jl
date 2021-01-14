@@ -907,19 +907,21 @@ function _threaded_contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
   end
 
   α = one(ElR)
-  @sync for ncontracted_range in repeats
-    # Overwrite the block since it hasn't been written to
-    # R .= α .* (T1 * T2)
-    β = zero(ElR)
-    @spawn for ncontracted in ncontracted_range
-      blockT1, blockT2, blockR = contraction_plan_blocks[ncontracted]
-      # R .= α .* (T1 * T2) .+ β .* R
-      contract!(blockR, labelsR, blockT1, labelsT1,
-                blockT2, labelsT2, α, β)
-      # Now keep adding to the block, since it has
-      # been written to
-      # R .= α .* (T1 * T2) .+ R
-      β = one(ElR)
+  @sync for repeats_partition in Iterators.partition(repeats, max(1, length(repeats) ÷ nthreads()))
+    @spawn for ncontracted_range in repeats_partition
+      # Overwrite the block since it hasn't been written to
+      # R .= α .* (T1 * T2)
+      β = zero(ElR)
+      for ncontracted in ncontracted_range
+        blockT1, blockT2, blockR = contraction_plan_blocks[ncontracted]
+        # R .= α .* (T1 * T2) .+ β .* R
+        contract!(blockR, labelsR, blockT1, labelsT1,
+                  blockT2, labelsT2, α, β)
+        # Now keep adding to the block, since it has
+        # been written to
+        # R .= α .* (T1 * T2) .+ R
+        β = one(ElR)
+      end
     end
   end
   return R

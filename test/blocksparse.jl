@@ -292,7 +292,7 @@ using LinearAlgebra
     A = BlockSparseTensor([(1,1),(2,2)],[2,4],[2,4])
     randn!(A)
     expT = exp(A)
-    @test isapprox(norm(array(expT) - exp(array(A))), 0.0; atol=1e-14)
+    @test isapprox(norm(array(expT) - exp(array(A))), 0.0; atol=1e-13)
 
     # Hermitian case
     A = BlockSparseTensor(ComplexF64,[(1,1),(2,2)],([2,2],[2,2]))
