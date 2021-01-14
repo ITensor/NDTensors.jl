@@ -949,6 +949,11 @@ function _threaded_contract!(R::BlockSparseTensor{ElR, NR}, labelsR,
         blockT1, blockT2, blockR = contraction_plan_blocks[ncontracted]
         # R .= α .* (T1 * T2) .+ β .* R
 
+        # <fermions>:
+        α = compute_alpha(ElR,labelsR,blockR,inds(R),
+                          labelsT1,block1,inds(T1),
+                          labelsT2,block2,inds(T2))
+
         contract!(blockR, labelsR, blockT1, labelsT1,
                   blockT2, labelsT2, α, β)
         # Now keep adding to the block, since it has
