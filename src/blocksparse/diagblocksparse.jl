@@ -538,20 +538,31 @@ contract(T1::DiagBlockSparseTensor,
          labelsT2,
          labelsR = contract_labels(labelsT2,labelsT1)) = contract(T2,labelsT2,T1,labelsT1,labelsR)
 
-function contract!(R::BlockSparseTensor,
+function contract!(R::BlockSparseTensor{ElR,NR},
                    labelsR,
                    T1::BlockSparseTensor,
                    labelsT1,
                    T2::DiagBlockSparseTensor,
                    labelsT2,
-                   contraction_plan)
+                   contraction_plan) where {ElR,NR}
   for (pos1,pos2,posR) in contraction_plan
     blockT1 = blockview(T1,pos1)
     blockT2 = blockview(T2,pos2)
     blockR = blockview(R,posR)
+    #@show typeof(blockT1)
+    #@show typeof(blockT2)
+    #@show typeof(blockR)
+    α = compute_alpha(ElR,labelsR,posR,inds(R),
+                      labelsT1,pos1,inds(T1),
+                      labelsT2,pos2,inds(T2))
+    scale!(blockT2,α)
+    #contract!(blockR,labelsR,
+    #          blockT1,labelsT1,
+    #          blockT2,labelsT2)
     contract!(blockR,labelsR,
               blockT1,labelsT1,
               blockT2,labelsT2)
+    scale!(blockT2,α)
   end
   return R
 end
