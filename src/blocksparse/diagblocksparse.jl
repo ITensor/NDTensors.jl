@@ -549,20 +549,15 @@ function contract!(R::BlockSparseTensor{ElR,NR},
     blockT1 = blockview(T1,pos1)
     blockT2 = blockview(T2,pos2)
     blockR = blockview(R,posR)
-    #@show typeof(blockT1)
-    #@show typeof(blockT2)
-    #@show typeof(blockR)
+
+    # <fermions>
     α = compute_alpha(ElR,labelsR,posR,inds(R),
                       labelsT1,pos1,inds(T1),
                       labelsT2,pos2,inds(T2))
-    scale!(blockT2,α)
-    #contract!(blockR,labelsR,
-    #          blockT1,labelsT1,
-    #          blockT2,labelsT2)
+
     contract!(blockR,labelsR,
               blockT1,labelsT1,
-              blockT2,labelsT2)
-    scale!(blockT2,α)
+              blockT2,labelsT2,α)
   end
   return R
 end

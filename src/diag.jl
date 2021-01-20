@@ -399,7 +399,8 @@ end
 
 function contract!(C::DenseTensor{ElC,NC},Clabels,
                    A::DiagTensor{ElA,NA},Alabels,
-                   B::DenseTensor{ElB,NB},Blabels;
+                   B::DenseTensor{ElB,NB},Blabels,
+                   α::ElC = one(ElC);
                    convert_to_dense::Bool = true) where {ElA,NA,
                                                          ElB,NB,
                                                          ElC,NC}
@@ -412,19 +413,19 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
       # all indices are summed over, just add the product of the diagonal
       # elements of A and B
       for i = 1:min_dim
-        setdiagindex!(C,getdiagindex(C,1)+getdiagindex(A,i)*getdiagindex(B,i),1)
+        setdiagindex!(C,getdiagindex(C,1)+α*getdiagindex(A,i)*getdiagindex(B,i),1)
       end
     else
       # not all indices are summed over, set the diagonals of the result
       # to the product of the diagonals of A and B
       # TODO: should we make this return a Diag storage?
       for i = 1:min_dim
-        setdiagindex!(C,getdiagindex(A,i)*getdiagindex(B,i),i)
+        setdiagindex!(C,α*getdiagindex(A,i)*getdiagindex(B,i),i)
       end
     end
   else
     if convert_to_dense
-      contract!(C, Clabels, dense(A), Alabels, B, Blabels)
+      contract!(C, Clabels, dense(A), Alabels, B, Blabels,α)
     else
       astarts = zeros(Int,length(Alabels))
       bstart = 0
@@ -480,7 +481,7 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
           coffset += ii*custride[i]
         end
         for j in 1:diaglength(A)
-          C[cstart+j*c_cstride+coffset] += getdiagindex(A,j)*
+          C[cstart+j*c_cstride+coffset] += α*getdiagindex(A,j)*
                                            B[bstart+j*b_cstride+boffset]
         end
       end
@@ -489,9 +490,11 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
   #end # @timeit
 end
 
-contract!(C::DenseTensor, Clabels, A::DenseTensor, Alabels,
-          B::DiagTensor, Blabels) =
-  contract!(C, Clabels, B, Blabels, A, Alabels)
+contract!(C::DenseTensor, Clabels, 
+          A::DenseTensor, Alabels,
+          B::DiagTensor, Blabels,
+          α=1.0) =
+  contract!(C, Clabels, B, Blabels, A, Alabels,α)
 
 function show(io::IO, mime::MIME"text/plain", T::DiagTensor)
   summary(io,T)
