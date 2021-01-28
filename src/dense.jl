@@ -525,33 +525,23 @@ function contraction_output(::TensorT1,
 end
 
 # TODO: move to tensor.jl?
-function contraction_output(T1::Tensor,
-                            labelsT1,
-                            T2::Tensor,
-                            labelsT2,
-                            labelsR) 
+function contraction_output(T1::Tensor, labelsT1, T2::Tensor, labelsT2, labelsR) 
   indsR = contract_inds(inds(T1),labelsT1,inds(T2),labelsT2,labelsR)
   R = contraction_output(T1,T2,indsR)
   return R
 end
 
-# TODO: move to tensor.jl?
-function contract(T1::Tensor, labelsT1, T2::Tensor,
-                  labelsT2, labelsR = contract_labels(labelsT1, labelsT2))
-  #@timeit_debug timer "dense contract" begin
-  # TODO: put the contract_inds logic into contraction_output,
-  # call like R = contraction_ouput(T1,labelsT1,T2,labelsT2)
-  #indsR = contract_inds(inds(T1),labelsT1,inds(T2),labelsT2,labelsR)
-  R = contraction_output(T1, labelsT1,
-                         T2, labelsT2,
-                         labelsR)
-  # contract!! version here since the output R may not
-  # be mutable (like UniformDiag)
-  R = contract!!(R, labelsR,
-                 T1, labelsT1,
-                 T2, labelsT2)
+function contract(::Val{NR}, T1::Tensor, labelsT1,
+                  T2::Tensor, labelsT2) where {NR}
+  labelsR = contract_labels(Val(NR), labelsT1, labelsT2)
+  R = contract(T1, labelsT1, T2, labelsT2, labelsR)
   return R
-  #end @timeit
+end
+
+function contract(T1::Tensor, labelsT1, T2::Tensor, labelsT2, labelsR)
+  R = contraction_output(T1, labelsT1, T2, labelsT2, labelsR)
+  R = contract!!(R, labelsR, T1, labelsT1, T2, labelsT2)
+  return R
 end
 
 # Move to tensor.jl? Is this generic for all storage types?

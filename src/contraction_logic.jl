@@ -1,23 +1,23 @@
 
-const Labels{N} = NTuple{N,Int}
-
-# Automatically determine the output labels given
-# input labels of a contraction
-function contract_labels(T1labels::Labels{N1},
-                         T2labels::Labels{N2}) where {N1,N2}
+function num_unconctracted(T1labels::NTuple{N1, Int}, T2labels::NTuple{N2, Int}) where {N1,N2}
   ncont = 0
   for i in T1labels
     i < 0 && (ncont += 1)
   end
-  NR = N1+N2-2*ncont
-  ValNR = Val{NR}
-  return contract_labels(ValNR, T1labels, T2labels)
+  return N1 + N2 - 2 * ncont
 end
 
-function contract_labels(::Type{Val{NR}},
-                         T1labels::Labels{N1},
-                         T2labels::Labels{N2}) where {NR,N1,N2}
-  Rlabels = MVector{NR,Int}(undef)
+# Automatically determine the output labels given
+# input labels of a contraction
+function contract_labels(T1labels::NTuple{N1, Int},
+                         T2labels::NTuple{N2, Int}) where {N1,N2}
+  NR = num_unconctracted(T1labels, T2labels)
+  return contract_labels(Val(NR), T1labels, T2labels)
+end
+
+function contract_labels(::Val{NR}, T1labels::NTuple{N1, Int},
+                         T2labels::NTuple{N2, Int})::NTuple{NR, Int} where {NR,N1,N2}
+  Rlabels = MVector{NR, Int}(undef)
   u = 1
   # TODO: use Rlabels, don't assume ncon convention
   for i in 1:N1
@@ -32,15 +32,15 @@ function contract_labels(::Type{Val{NR}},
       u += 1
     end
   end
-  return Labels{NR}(Rlabels)
+  return NTuple{NR, Int}(Rlabels)
 end
 
 function _contract_inds!(Ris,
                          T1is,
-                         T1labels::Labels{N1},
+                         T1labels::NTuple{N1},
                          T2is,
-                         T2labels::Labels{N2},
-                         Rlabels::Labels{NR}) where {N1,N2,NR}
+                         T2labels::NTuple{N2},
+                         Rlabels::NTuple{NR}) where {N1,N2,NR}
   for n in 1:NR
     Rlabel = @inbounds Rlabels[n]
     found = false
@@ -64,6 +64,7 @@ function _contract_inds!(Ris,
 end
 
 # Old version that doesn't take into account Rlabels
+#const Labels{N} = NTuple{N,Int}
 #function _contract_inds!(Ris,
 #                         T1is,
 #                         T1labels::Labels{N1},
@@ -97,11 +98,9 @@ end
 #  return nothing
 #end
 
-function contract_inds(T1is,
-                       T1labels::Labels{N1},
-                       T2is,
-                       T2labels::Labels{N2},
-                       Rlabels::Labels{NR}) where {N1,N2,NR}
+function contract_inds(T1is, T1labels::NTuple{N1, Int},
+                       T2is, T2labels::NTuple{N2, Int},
+                       Rlabels::NTuple{NR, Int}) where {N1,N2,NR}
   if length(T1is) == 0 && length(T2is) == 0
     return ()
   end
@@ -116,7 +115,7 @@ function contract_inds(T1is,
                   T1is, T1labels,
                   T2is, T2labels,
                   Rlabels)
-  return Tuple(Ris)
+  return NTuple{NR, eltype(T1is)}(Ris)::NTuple{NR, eltype(T1is)}
 end
 
 mutable struct ContractionProperties{NA,NB,NC}
