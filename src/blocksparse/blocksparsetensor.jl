@@ -983,6 +983,9 @@ function contract!(R::BlockSparseTensor{ElR, NR},
                    labelsT2,
                    contraction_plan) where {ElR, ElT1, ElT2,
                                             N1, N2, NR}
+  if isempty(contraction_plan)
+    return R
+  end
   if using_threaded_blocksparse() && nthreads() > 1
     _threaded_contract!(R, labelsR, T1, labelsT1, T2, labelsT2,
                         contraction_plan)
