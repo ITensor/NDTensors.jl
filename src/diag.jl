@@ -399,7 +399,8 @@ end
 
 function contract!(C::DenseTensor{ElC,NC},Clabels,
                    A::DiagTensor{ElA,NA},Alabels,
-                   B::DenseTensor{ElB,NB},Blabels;
+                   B::DenseTensor{ElB,NB},Blabels,
+                   α::Number = one(ElC), β::Number = zero(ElC);
                    convert_to_dense::Bool = true) where {ElA,NA,
                                                          ElB,NB,
                                                          ElC,NC}
@@ -411,21 +412,28 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
     if length(Clabels) == 0
       # all indices are summed over, just add the product of the diagonal
       # elements of A and B
+      # Assumes C starts set to 0
+      c₁ = zero(ElC)
       for i = 1:min_dim
-        setdiagindex!(C,getdiagindex(C,1)+getdiagindex(A,i)*getdiagindex(B,i),1)
+        c₁ += getdiagindex(A, i) * getdiagindex(B, i)
       end
+      setdiagindex!(C, α * c₁ + β * getdiagindex(C, 1), 1)
     else
       # not all indices are summed over, set the diagonals of the result
       # to the product of the diagonals of A and B
       # TODO: should we make this return a Diag storage?
       for i = 1:min_dim
-        setdiagindex!(C,getdiagindex(A,i)*getdiagindex(B,i),i)
+        setdiagindex!(C, α * getdiagindex(A, i) * getdiagindex(B, i) + β * getdiagindex(C, i), i)
       end
     end
   else
+    # Most general contraction
     if convert_to_dense
-      contract!(C, Clabels, dense(A), Alabels, B, Blabels)
+      contract!(C, Clabels, dense(A), Alabels, B, Blabels, α, β)
     else
+      if !isone(α) || !iszero(β)
+        error("`contract!(::DenseTensor, ::DiagTensor, ::DenseTensor, α, β; convert_to_dense = false)` with `α ≠ 1` or `β ≠ 0` is not currently supported. You can call it with `convert_to_dense = true` instead.")
+      end
       astarts = zeros(Int,length(Alabels))
       bstart = 0
       cstart = 0
@@ -479,9 +487,12 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
           boffset += ii*bustride[i]
           coffset += ii*custride[i]
         end
+        c = zero(ElC)
         for j in 1:diaglength(A)
-          C[cstart+j*c_cstride+coffset] += getdiagindex(A,j)*
-                                           B[bstart+j*b_cstride+boffset]
+          # With α == 0 && β == 1
+          C[cstart+j*c_cstride+coffset] += getdiagindex(A, j)* B[bstart+j*b_cstride+boffset]
+          # XXX: not sure if this is correct
+          #C[cstart+j*c_cstride+coffset] += α * getdiagindex(A, j)* B[bstart+j*b_cstride+boffset] + β * C[cstart+j*c_cstride+coffset]
         end
       end
     end
@@ -490,8 +501,8 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
 end
 
 contract!(C::DenseTensor, Clabels, A::DenseTensor, Alabels,
-          B::DiagTensor, Blabels) =
-  contract!(C, Clabels, B, Blabels, A, Alabels)
+          B::DiagTensor, Blabels, α::Number = one(eltype(C)), β::Number = zero(eltype(C))) =
+  contract!(C, Clabels, B, Blabels, A, Alabels, α, β)
 
 function show(io::IO, mime::MIME"text/plain", T::DiagTensor)
   summary(io,T)
