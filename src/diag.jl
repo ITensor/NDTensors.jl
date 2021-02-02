@@ -501,7 +501,7 @@ function contract!(C::DenseTensor{ElC,NC},Clabels,
 end
 
 contract!(C::DenseTensor, Clabels, A::DenseTensor, Alabels,
-          B::DiagTensor, Blabels, α::Number = zero(eltype(C)), β::Number = one(eltype(C))) =
+          B::DiagTensor, Blabels, α::Number = one(eltype(C)), β::Number = zero(eltype(C))) =
   contract!(C, Clabels, B, Blabels, A, Alabels, α, β)
 
 function show(io::IO, mime::MIME"text/plain", T::DiagTensor)
