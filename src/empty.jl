@@ -96,11 +96,18 @@ end
 insertblock!!(T::EmptyTensor{<: Number, N}, block) where {N} =
   insertblock(T, block)
 
-@propagate_inbounds function setindex(T::EmptyTensor{<: Number, N},
-                                      x, I...) where {N}
+@propagate_inbounds function _setindex(T::EmptyTensor, x, I...)
   R = zeros(T)
   R[I...] = x
   return R
+end
+
+@propagate_inbounds function setindex(T::EmptyTensor, x, I...)
+  return _setindex(T, x, I...)
+end
+
+@propagate_inbounds function setindex(T::EmptyTensor, x, I::Int)
+  return _setindex(T, x, I)
 end
 
 setindex!!(T::EmptyTensor, x, I...) = setindex(T, x, I...)
