@@ -400,7 +400,7 @@ end
 function contract!(C::DenseTensor{ElC,NC},Clabels,
                    A::DiagTensor{ElA,NA},Alabels,
                    B::DenseTensor{ElB,NB},Blabels,
-                   α::Number = zero(ElC), β::Number = one(ElC);
+                   α::Number = one(ElC), β::Number = zero(ElC);
                    convert_to_dense::Bool = true) where {ElA,NA,
                                                          ElB,NB,
                                                          ElC,NC}
