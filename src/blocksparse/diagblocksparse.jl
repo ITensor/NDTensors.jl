@@ -565,8 +565,8 @@ contract!(C::BlockSparseTensor, Clabels,
 
 function show(io::IO, mime::MIME"text/plain", T::DiagBlockSparseTensor)
   summary(io,T)
-  for (n, (block, _)) in enumerate(diagblockoffsets(T))
-    blockdimsT = blockdims(T,block)
+  for (n, block) in enumerate(keys(diagblockoffsets(T)))
+    blockdimsT = blockdims(T, block)
     println(io, block)
     println(io," [",_range2string(blockstart(T,block),blockend(T,block)),"]")
     print_tensor(io,blockview(T,block))
