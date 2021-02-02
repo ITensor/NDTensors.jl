@@ -224,6 +224,8 @@ is known already).
 """
 blockview(T::DiagBlockSparseTensor, blockT::Block) = blockview(T, BlockOffset(blockT, offset(T, blockT)))
 
+getindex(T::DiagBlockSparseTensor, block::Block) = blockview(T, block)
+
 function blockview(T::DiagBlockSparseTensor,
                    bof::BlockOffset)
   blockT,offsetT = bof
@@ -522,58 +524,55 @@ function contraction_output(T1::TensorT1,
   return R,contraction_plan
 end
 
-function contract(T1::BlockSparseTensor,
-                  labelsT1,
-                  T2::DiagBlockSparseTensor,
-                  labelsT2,
+function contract(T1::BlockSparseTensor, labelsT1,
+                  T2::DiagBlockSparseTensor, labelsT2,
                   labelsR = contract_labels(labelsT1,labelsT2))
   R,contraction_plan = contraction_output(T1,labelsT1,T2,labelsT2,labelsR)
   R = contract!(R,labelsR,T1,labelsT1,T2,labelsT2,contraction_plan)
   return R
 end
 
-contract(T1::DiagBlockSparseTensor,
-         labelsT1,
-         T2::BlockSparseTensor,
-         labelsT2,
-         labelsR = contract_labels(labelsT2,labelsT1)) = contract(T2,labelsT2,T1,labelsT1,labelsR)
+contract(T1::DiagBlockSparseTensor, labelsT1,
+         T2::BlockSparseTensor, labelsT2,
+         labelsR = contract_labels(labelsT2,labelsT1)) =
+  contract(T2,labelsT2,T1,labelsT1,labelsR)
 
-function contract!(R::BlockSparseTensor{ElR,NR},
-                   labelsR,
-                   T1::BlockSparseTensor,
-                   labelsT1,
-                   T2::DiagBlockSparseTensor,
-                   labelsT2,
-                   contraction_plan) where {ElR,NR}
-  for (pos1,pos2,posR) in contraction_plan
-    blockT1 = blockview(T1,pos1)
-    blockT2 = blockview(T2,pos2)
-    blockR = blockview(R,posR)
+function contract!(R::BlockSparseTensor{ElR, NR}, labelsR, T1::BlockSparseTensor, labelsT1,
+                   T2::DiagBlockSparseTensor, labelsT2, contraction_plan) where {ElR <: Number, NR}
+  already_written_to = Dict{Block{NR}, Bool}()
+  # In R .= α .* (T1 * T2) .+ β .* R
+  α = one(ElR)
+  for (block1, block2, blockR) in contraction_plan
+    T1block = T1[block1]
+    T2block = T2[block2]
+    Rblock = R[blockR]
 
     # <fermions>
-    α = compute_alpha(ElR,labelsR,posR,inds(R),
-                      labelsT1,pos1,inds(T1),
-                      labelsT2,pos2,inds(T2))
+    α = compute_alpha(ElR,labelsR,blockR,inds(R),
+                      labelsT1,block1,inds(T1),
+                      labelsT2,block2,inds(T2))
 
-    contract!(blockR,labelsR,
-              blockT1,labelsT1,
-              blockT2,labelsT2,α)
+    β = one(ElR)
+    if !haskey(already_written_to, blockR)
+      already_written_to[blockR] = true
+      # Overwrite the block of R
+      β = zero(ElR)
+    end
+    contract!(Rblock, labelsR, T1block, labelsT1,
+              T2block, labelsT2, α, β)
   end
   return R
 end
 
-contract!(C::BlockSparseTensor,Clabels,
-          A::BlockSparseTensor,Alabels,
-          B::DiagBlockSparseTensor,Blabels) = contract!(C,Clabels,
-                                                        B,Blabels,
-                                                        A,Alabels)
+contract!(C::BlockSparseTensor, Clabels,
+          A::BlockSparseTensor, Alabels,
+          B::DiagBlockSparseTensor, Blabels) =
+  contract!(C, Clabels, B,Blabels, A, Alabels)
 
-function show(io::IO,
-                   mime::MIME"text/plain",
-                   T::DiagBlockSparseTensor)
+function show(io::IO, mime::MIME"text/plain", T::DiagBlockSparseTensor)
   summary(io,T)
-  for (n, (block, _)) in enumerate(diagblockoffsets(T))
-    blockdimsT = blockdims(T,block)
+  for (n, block) in enumerate(keys(diagblockoffsets(T)))
+    blockdimsT = blockdims(T, block)
     println(io, block)
     println(io," [",_range2string(blockstart(T,block),blockend(T,block)),"]")
     print_tensor(io,blockview(T,block))
