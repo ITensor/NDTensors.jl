@@ -29,20 +29,37 @@ include("exports.jl")
 include("imports.jl")
 
 #####################################
-# DenseTensor and DiagTensor
+# LinearAlgebra tools
+#
+include("linearalgebra/svd.jl")
+include("linearalgebra/truncate.jl")
+
+#####################################
+# Dims, TensorStorage, Tensor
 #
 include("tupletools.jl")
 include("dims.jl")
 include("tensorstorage.jl")
 include("tensor.jl")
-include("contraction_logic.jl")
-include("dense.jl")
-include("symmetric.jl")
-include("linearalgebra.jl")
-include("diag.jl")
-include("combiner.jl")
-include("truncate.jl")
-include("svd.jl")
+
+#####################################
+# DenseTensor
+#
+include("dense/contraction_logic.jl")
+include("dense/dense.jl")
+include("dense/bangbang.jl")
+include("dense/symmetric.jl")
+include("dense/linearalgebra.jl")
+
+#####################################
+# DiagTensor
+#
+include("diag/diag.jl")
+
+#####################################
+# Combiner
+#
+include("combiner/combiner.jl")
 
 #####################################
 # BlockSparseTensor
@@ -59,7 +76,8 @@ include("blocksparse/linearalgebra.jl")
 #####################################
 # Empty
 #
-include("empty.jl")
+include("empty/empty.jl")
+include("empty/bangbang.jl")
 
 #####################################
 # Deprecations

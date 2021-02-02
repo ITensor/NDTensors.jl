@@ -47,19 +47,17 @@ end
 # EmptyTensor (Tensor using Empty storage)
 #
 
-const EmptyTensor{ElT,
-                  N,
-                  StoreT,
-                  IndsT} = Tensor{ElT,
-                                  N,
-                                  StoreT,
-                                  IndsT} where {StoreT <: Empty}
+const EmptyTensor{ElT, N, StoreT, IndsT} =
+  Tensor{ElT, N, StoreT, IndsT} where {StoreT <: Empty}
 
 isempty(::EmptyTensor) = true
 
-function EmptyTensor(::Type{ElT}, inds) where {ElT <: Number}
-  return tensor(Empty(ElT), inds)
-end
+EmptyTensor(::Type{ElT}, inds) where {ElT <: Number} =
+  tensor(Empty(ElT), inds)
+
+EmptyTensor(inds) = EmptyTensor(Float64, inds)
+
+EmptyTensor(inds::Int...) = EmptyTensor(inds)
 
 function EmptyTensor(::Type{StoreT}, inds) where {StoreT <: TensorStorage}
   return tensor(empty(StoreT)(), inds)
@@ -71,14 +69,7 @@ function EmptyBlockSparseTensor(::Type{ElT}, inds) where {ElT <: Number}
 end
 
 # From an EmptyTensor, return the closest Tensor type
-function fill(::Type{<: Tensor{ElT,
-                                    N,
-                                    EStoreT,
-                                    IndsT}}) where {ElT <: Number,
-                                                    N,
-                                                    EStoreT <: Empty{ElT,
-                                                                     StoreT},
-                                                    IndsT} where {StoreT}
+function fill(::Type{<: Tensor{ElT, N, EStoreT, IndsT}}) where {ElT <: Number, N, EStoreT <: Empty{ElT, StoreT}, IndsT} where {StoreT}
   return Tensor{ElT, N, StoreT, IndsT}
 end
 
@@ -93,24 +84,11 @@ function insertblock(T::EmptyTensor{<: Number, N}, block) where {N}
   return R
 end
 
-insertblock!!(T::EmptyTensor{<: Number, N}, block) where {N} =
-  insertblock(T, block)
-
 @propagate_inbounds function setindex(T::EmptyTensor{<: Number, N},
                                       x, I...) where {N}
   R = zeros(T)
   R[I...] = x
   return R
-end
-
-setindex!!(T::EmptyTensor, x, I...) = setindex(T, x, I...)
-
-# Version of contraction where output storage is empty
-function contract!!(R::EmptyTensor{<:Number, NR}, labelsR::NTuple{NR},
-                    T1::Tensor{<:Number, N1}, labelsT1::NTuple{N1},
-                    T2::Tensor{<:Number, N2}, labelsT2::NTuple{N2}) where {NR, N1, N2}
-  RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
-  return RR
 end
 
 function show(io::IO,
