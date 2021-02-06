@@ -1,5 +1,5 @@
 
-mult_combiner_signs(T,labelsC,indsC,labelsT,indsT) = T
+mult_combiner_signs(C,labelsC,indsC,T,labelsT,indsT,labelsRc) = T
 
 function contract(T::BlockSparseTensor,
                   labelsT,
