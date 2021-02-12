@@ -917,7 +917,7 @@ function _contract!(CT::DenseTensor{El, NC},
 end
 
 """
-permute_reshape(T::Tensor,pos...)
+    NDTensors.permute_reshape(T::Tensor,pos...)
 
 Takes a permutation that is split up into tuples. Index positions
 within the tuples are combined.
@@ -941,7 +941,9 @@ function permute_reshape(T::DenseTensor{ElT,NT,IndsT},
   if !is_trivial_permutation(perm)
     T = permutedims(T, perm)
   end
-  N==NT && return T
+  if all(p -> length(p) == 1, pos) && N == NT
+    return T
+  end
   newdims = MVector(ntuple(_->eltype(IndsT)(1),Val(N)))
   for i ∈ 1:N
     if length(pos[i])==1
@@ -990,7 +992,7 @@ function LinearAlgebra.qr(T::DenseTensor{<:Number,N,IndsT},
                           Lpos::NTuple{NL,Int},
                           Rpos::NTuple{NR,Int};kwargs...) where {N,IndsT,NL,NR}
   M = permute_reshape(T,Lpos,Rpos)
-  QM,RM = qr(M;kwargs...)
+  QM, RM = qr(M; kwargs...)
   q = ind(QM,2)
   r = ind(RM,1)
   # TODO: simplify this by permuting inds(T) by (Lpos,Rpos)
