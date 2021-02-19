@@ -254,12 +254,13 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
   i1, i2 = inds(T)
   l = sim(i1)
 
-  deleteat!(l, dropblocks)
+  lkeepblocks = Int[bT[1] for bT in nzblocksT]
+  ldropblocks = setdiff(1:nblocks(l),lkeepblocks)
+  deleteat!(l, ldropblocks)
 
   # l may have too many blocks
-  if nblocks(l) > nnzblocksT
-    resize!(l, nnzblocksT)
-  end
+  (nblocks(l) > nnzblocksT) && 
+    error("New index l in eigen has too many blocks")
 
   # Truncation may have changed
   # some block sizes
