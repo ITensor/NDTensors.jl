@@ -108,8 +108,8 @@ end
 
 # This is needed to fix an ambiguity error with ArrayInterface.jl
 # https://github.com/ITensor/NDTensors.jl/issues/62
-@propagate_inbounds function setindex(T::EmptyTensor, x, I::Int)
-  return _setindex(T, x, I)
+@propagate_inbounds function setindex(T::EmptyTensor, x, I::Int...)
+  return _setindex(T, x, I...)
 end
 
 setindex!!(T::EmptyTensor, x, I...) = setindex(T, x, I...)
