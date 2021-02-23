@@ -86,12 +86,12 @@ end
 
 # convert to complex
 # TODO: this could be a generic TensorStorage function
-complex(D::DiagBlockSparse) = DiagBlockSparse(complex(data(D)))
+complex(D::DiagBlockSparse) = DiagBlockSparse(complex(data(D)), diagblockoffsets(D))
 
-copy(D::DiagBlockSparse) = DiagBlockSparse(copy(data(D)))
+copy(D::DiagBlockSparse) = DiagBlockSparse(copy(data(D)), diagblockoffsets(D))
 
 conj(D::DiagBlockSparse{<:Real}) = D
-conj(D::DiagBlockSparse{<:Complex}) = DiagBlockSparse(conj(data(D)))
+conj(D::DiagBlockSparse{<:Complex}) = DiagBlockSparse(conj(data(D)), diagblockoffsets(D))
 
 # TODO: make this generic for all storage types
 eltype(::DiagBlockSparse{ElT}) where {ElT} = ElT
@@ -103,19 +103,21 @@ eltype(::Type{<:DiagBlockSparse{ElT}}) where {ElT} = ElT
 size(D::DiagBlockSparse) = size(data(D))
 
 # TODO: write in terms of ::Int, not inds
-similar(D::NonuniformDiagBlockSparse) = DiagBlockSparse(similar(data(D)))
-#similar(D::NonuniformDiagBlockSparse,inds) = DiagBlockSparse(similar(data(D),minimum(dims(inds))))
+similar(D::NonuniformDiagBlockSparse) = DiagBlockSparse(similar(data(D)), diagblockoffsets(D))
+similar(D::NonuniformDiagBlockSparse, ::Type{S}) where {S} =
+  DiagBlockSparse(similar(data(D), S), diagblockoffsets(D))
+#similar(D::NonuniformDiagBlockSparse,inds) = DiagBlockSparse(similar(data(D),minimum(dims(inds))), diagblockoffsets(D))
 #function similar(D::Type{<:NonuniformDiagBlockSparse{ElT,VecT}},inds) where {ElT,VecT}
-#  return DiagBlockSparse(similar(VecT,diaglength(inds)))
+#  return DiagBlockSparse(similar(VecT,diaglength(inds)), diagblockoffsets(D))
 #end
 
-similar(D::UniformDiagBlockSparse) = DiagBlockSparse(zero(T))
+similar(D::UniformDiagBlockSparse) = DiagBlockSparse(zero(eltype(D)), diagblockoffsets(D))
 similar(D::UniformDiagBlockSparse,inds) = similar(D)
-similar(::Type{<:UniformDiagBlockSparse{ElT}},inds) where {ElT} = DiagBlockSparse(zero(ElT))
+similar(::Type{<:UniformDiagBlockSparse{ElT}},inds) where {ElT} = DiagBlockSparse(zero(ElT), diagblockoffsets(D))
 
-similar(D::DiagBlockSparse,n::Int) = DiagBlockSparse(similar(data(D),n))
+similar(D::DiagBlockSparse,n::Int) = DiagBlockSparse(similar(data(D),n), diagblockoffsets(D))
 
-similar(D::DiagBlockSparse,::Type{ElR},n::Int) where {ElR} = DiagBlockSparse(similar(data(D),ElR,n))
+similar(D::DiagBlockSparse,::Type{ElR},n::Int) where {ElR} = DiagBlockSparse(similar(data(D),ElR,n), diagblockoffsets(D))
 
 # TODO: make this work for other storage besides Vector
 zeros(::Type{<:NonuniformDiagBlockSparse{ElT}},dim::Int64) where {ElT} = DiagBlockSparse(zeros(ElT,dim))
@@ -312,10 +314,10 @@ end
 
 getdiagindex(T::DiagBlockSparseTensor{<:Number},ind::Int) = store(T)[ind]
 
-function setdiagindex!(T::DiagBlockSparseTensor,
-                       val,
-                       ind::Int)
-  setindex!(T, val, ind)
+# XXX: handle case of missing diagonal blocks
+function setdiagindex!(T::DiagBlockSparseTensor{<: Number},
+                       val, ind::Int)
+  store(T)[ind] = val
   return T
 end
 
