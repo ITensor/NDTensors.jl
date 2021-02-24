@@ -139,9 +139,8 @@ similar(T::Tensor) = tensor(similar(store(T)), inds(T))
 # To handle method ambiguity with AbstractArray
 #similar(T::Tensor,dims::Dims) = _similar_from_dims(T,dims)
 
-similar(T::Tensor,
-             ::Type{S}) where {S} = tensor(similar(store(T),S),
-                                           inds(T))
+similar(T::Tensor, ::Type{S}) where {S} =
+  tensor(similar(store(T), S), inds(T))
 
 similar(T::Tensor,
              ::Type{S},
