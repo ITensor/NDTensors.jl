@@ -239,13 +239,14 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
     truncerr = 0.0
   end
 
+
   # Get the list of blocks of T
   # that are not dropped
   nzblocksT = nzblocks(T)
   deleteat!(nzblocksT, dropblocks)
 
   # The number of blocks of T remaining
-  nnzblocksT = nnzblocks(T) - length(dropblocks)
+  nnzfinal = nnzblocks(T) - length(dropblocks)
 
   #
   # Put the blocks into D, V
@@ -259,12 +260,12 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
   deleteat!(l, ldropblocks)
 
   # l may have too many blocks
-  (nblocks(l) > nnzblocksT) && 
+  (nblocks(l) > nnzfinal) && 
     error("New index l in eigen has too many blocks")
 
   # Truncation may have changed
   # some block sizes
-  for n in 1:nnzblocksT
+  for n in 1:nnzfinal
     setblockdim!(l, minimum(dims(Ds[n])), n)
   end
 
@@ -273,9 +274,9 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
   indsD = (l, r)
   indsV = (dag(i2), r)
 
-  nzblocksD = Vector{Block{2}}(undef, nnzblocksT)
-  nzblocksV = Vector{Block{2}}(undef, nnzblocksT)
-  for n in 1:nnzblocksT
+  nzblocksD = Vector{Block{2}}(undef, nnzfinal)
+  nzblocksV = Vector{Block{2}}(undef, nnzfinal)
+  for n in 1:nnzfinal
     blockT = nzblocksT[n]
 
     blockD = (n, n)
@@ -288,7 +289,7 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
   D = DiagBlockSparseTensor(ElD, undef, nzblocksD, indsD)
   V = BlockSparseTensor(ElV, undef, nzblocksV, indsV)
 
-  for n in 1:nnzblocksT
+  for n in 1:nnzfinal
     Db, Vb = Ds[n], Vs[n]
 
     blockD = nzblocksD[n]
