@@ -1,6 +1,7 @@
 #
 # Dense storage
 #
+using LinearAlgebra: BlasFloat
 
 struct Dense{ElT, VecT<:AbstractVector} <: TensorStorage{ElT}
   data::VecT
@@ -453,18 +454,49 @@ function outer!(R::DenseTensor{ElR},
   return R
 end
 
-# BLAS matmul
+export backend_auto, backend_blas, backend_generic
+const gemm_backend = Ref(:Auto)
+function backend_auto()
+    gemm_backend[] = :Auto
+end
+function backend_blas()
+    gemm_backend[] = :BLAS
+end
+function backend_generic()
+    gemm_backend[] = :Generic
+end
+
+@inline function auto_select_backend(::Type{<:StridedVecOrMat{<:BlasFloat}}, ::Type{<:StridedVecOrMat{<:BlasFloat}}, ::Type{<:StridedVecOrMat{<:BlasFloat}})
+    Val(:BLAS)
+end
+
+@inline function auto_select_backend(::Type{<:AbstractVecOrMat}, ::Type{<:AbstractVecOrMat}, ::Type{<:AbstractVecOrMat})
+    Val(:Generic)
+end
+
 function _gemm!(tA, tB, alpha,
-                A::AbstractVecOrMat{<:LinearAlgebra.BlasFloat},
-                B::AbstractVecOrMat{<:LinearAlgebra.BlasFloat},
-                beta, C::AbstractVecOrMat{<:LinearAlgebra.BlasFloat})
+                A::TA,
+                B::TB,
+                beta, C::TC) where {TA<:AbstractVecOrMat, TB<:AbstractVecOrMat, TC<:AbstractVecOrMat}
+    if gemm_backend[] == :Auto
+        _gemm!(auto_select_backend(TA, TB, TC), tA, tB, alpha, A, B, beta, C)
+    else
+        _gemm!(Val(gemm_backend[]), tA, tB, alpha, A, B, beta, C)
+    end
+end
+
+# BLAS matmul
+function _gemm!(::Val{:BLAS}, tA, tB, alpha,
+                A::AbstractVecOrMat,
+                B::AbstractVecOrMat,
+                beta, C::AbstractVecOrMat)
   #@timeit_debug timer "BLAS.gemm!" begin
   BLAS.gemm!(tA, tB, alpha, A, B, beta, C)
   #end # @timeit
 end
 
 # generic matmul
-function _gemm!(tA, tB, alpha::AT,
+function _gemm!(::Val{:Generic}, tA, tB, alpha::AT,
                 A::AbstractVecOrMat, B::AbstractVecOrMat,
                 beta::BT, C::AbstractVecOrMat) where {AT, BT}
     if tA == 'T'
@@ -473,19 +505,7 @@ function _gemm!(tA, tB, alpha::AT,
     if tB == 'T'
         B = transpose(B)
     end
-    if beta == zero(BT)
-        if alpha == one(AT)
-            C .= A * B
-        else
-            C .= alpha .* (A * B)
-        end
-    else
-        if alpha == one(AT)
-            C .= (A * B) .+ beta .* C
-        else
-            C .= alpha .* (A * B) .+ beta .* C
-        end
-    end
+    mul!(C, A, B, alpha, beta)
     return C
 end
 
