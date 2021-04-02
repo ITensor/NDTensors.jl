@@ -499,13 +499,7 @@ end
 function _gemm!(::Val{:Generic}, tA, tB, alpha::AT,
                 A::AbstractVecOrMat, B::AbstractVecOrMat,
                 beta::BT, C::AbstractVecOrMat) where {AT, BT}
-    if tA == 'T'
-        A = transpose(A)
-    end
-    if tB == 'T'
-        B = transpose(B)
-    end
-    mul!(C, A, B, alpha, beta)
+    mul!(C, tA == 'T' ? transpose(A) : A, tB == 'T' ? transpose(B) : B, alpha, beta)
     return C
 end
 

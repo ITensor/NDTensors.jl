@@ -173,6 +173,9 @@ function __init__()
     enable_tblis()
     include("tblis.jl")
   end
+  @require Octavian = "6fd5a793-0b7e-452c-907f-f8bfe9c57db4" begin
+      include("octavian.jl")
+  end
 end
 
 end # module NDTensors

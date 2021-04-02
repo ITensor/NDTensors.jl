@@ -1,4 +1,4 @@
-using NDTensors,
+using NDTensors, Octavian,
       Test
 
 @testset "DenseTensor basic functionality" begin
@@ -205,8 +205,12 @@ end
     backend_generic()
     @test NDTensors.gemm_backend[] == :Generic
     res3 = NDTensors._gemm!('N', 'N', 2.0, a, b, 0.2, copy(c))
+    backend_octavian()
+    @test NDTensors.gemm_backend[] == :Octavian
+    res4 = NDTensors._gemm!('N', 'N', 2.0, a, b, 0.2, copy(c))
     @test res1 == res2
     @test res1 ≈ res3
+    @test res1 ≈ res4
 end
 
 nothing
