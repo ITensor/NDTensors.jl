@@ -1,5 +1,11 @@
-using NDTensors, Octavian,
+using NDTensors,
       Test
+
+@static if VERSION >= v"1.5"
+    using Pkg
+    Pkg.add("Octavian")
+    using Octavian
+end
 
 @testset "DenseTensor basic functionality" begin
 
@@ -205,13 +211,24 @@ end
     backend_generic()
     @test NDTensors.gemm_backend[] == :Generic
     res3 = NDTensors._gemm!('N', 'N', 2.0, a, b, 0.2, copy(c))
-    backend_octavian()
-    @test NDTensors.gemm_backend[] == :Octavian
-    res4 = NDTensors._gemm!('N', 'N', 2.0, a, b, 0.2, copy(c))
     @test res1 == res2
     @test res1 ≈ res3
-    @test res1 ≈ res4
     backend_auto()
+end
+
+@static if VERSION >= v"1.5"
+    @testset "change backends" begin
+        a, b, c = [randn(5,5) for i=1:3]
+        backend_auto()
+        @test NDTensors.gemm_backend[] == :Auto
+        @test NDTensors.auto_select_backend(typeof.((a, b, c))...) == NDTensors.GemmBackend(:BLAS)
+        res1 = NDTensors._gemm!('N', 'N', 2.0, a, b, 0.2, copy(c))
+        backend_octavian()
+        @test NDTensors.gemm_backend[] == :Octavian
+        res4 = NDTensors._gemm!('N', 'N', 2.0, a, b, 0.2, copy(c))
+        @test res1 ≈ res4
+        backend_auto()
+    end
 end
 
 nothing
