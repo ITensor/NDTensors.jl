@@ -455,6 +455,15 @@ function outer!(R::DenseTensor{ElR},
 end
 
 export backend_auto, backend_blas, backend_generic
+
+@eval struct GemmBackend{T}
+  (f::Type{<:GemmBackend})() = $(Expr(:new, :f))
+end
+GemmBackend(s) = GemmBackend{Symbol(s)}()
+macro GemmBackend_str(s)
+    :(GemmBackend{$(Expr(:quote, Symbol(s)))})
+end
+
 const gemm_backend = Ref(:Auto)
 function backend_auto()
     gemm_backend[] = :Auto
@@ -467,11 +476,11 @@ function backend_generic()
 end
 
 @inline function auto_select_backend(::Type{<:StridedVecOrMat{<:BlasFloat}}, ::Type{<:StridedVecOrMat{<:BlasFloat}}, ::Type{<:StridedVecOrMat{<:BlasFloat}})
-    Val(:BLAS)
+    GemmBackend(:BLAS)
 end
 
 @inline function auto_select_backend(::Type{<:AbstractVecOrMat}, ::Type{<:AbstractVecOrMat}, ::Type{<:AbstractVecOrMat})
-    Val(:Generic)
+    GemmBackend(:Generic)
 end
 
 function _gemm!(tA, tB, alpha,
@@ -481,12 +490,12 @@ function _gemm!(tA, tB, alpha,
     if gemm_backend[] == :Auto
         _gemm!(auto_select_backend(TA, TB, TC), tA, tB, alpha, A, B, beta, C)
     else
-        _gemm!(Val(gemm_backend[]), tA, tB, alpha, A, B, beta, C)
+        _gemm!(GemmBackend(gemm_backend[]), tA, tB, alpha, A, B, beta, C)
     end
 end
 
 # BLAS matmul
-function _gemm!(::Val{:BLAS}, tA, tB, alpha,
+function _gemm!(::GemmBackend{:BLAS}, tA, tB, alpha,
                 A::AbstractVecOrMat,
                 B::AbstractVecOrMat,
                 beta, C::AbstractVecOrMat)
@@ -496,7 +505,7 @@ function _gemm!(::Val{:BLAS}, tA, tB, alpha,
 end
 
 # generic matmul
-function _gemm!(::Val{:Generic}, tA, tB, alpha::AT,
+function _gemm!(::GemmBackend{:Generic}, tA, tB, alpha::AT,
                 A::AbstractVecOrMat, B::AbstractVecOrMat,
                 beta::BT, C::AbstractVecOrMat) where {AT, BT}
     mul!(C, tA == 'T' ? transpose(A) : A, tB == 'T' ? transpose(B) : B, alpha, beta)

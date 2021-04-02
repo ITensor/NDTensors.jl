@@ -197,7 +197,7 @@ end
     a, b, c = [randn(5,5) for i=1:3]
     backend_auto()
     @test NDTensors.gemm_backend[] == :Auto
-    @test NDTensors.auto_select_backend(typeof.((a, b, c))...) == Val(:BLAS)
+    @test NDTensors.auto_select_backend(typeof.((a, b, c))...) == NDTensors.GemmBackend(:BLAS)
     res1 = NDTensors._gemm!('N', 'N', 2.0, a, b, 0.2, copy(c))
     backend_blas()
     @test NDTensors.gemm_backend[] == :BLAS
@@ -211,6 +211,7 @@ end
     @test res1 == res2
     @test res1 ≈ res3
     @test res1 ≈ res4
+    backend_auto()
 end
 
 nothing

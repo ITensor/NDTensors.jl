@@ -6,7 +6,7 @@ function backend_octavian()
     gemm_backend[] = :Octavian
 end
 
-function _gemm!(::Val{:Octavian}, tA, tB, alpha,
+function _gemm!(::GemmBackend{:Octavian}, tA, tB, alpha,
                 A::AbstractVecOrMat,
                 B::AbstractVecOrMat,
                 beta, C::AbstractVecOrMat)
