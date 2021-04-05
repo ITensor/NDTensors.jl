@@ -34,6 +34,9 @@ getindex(D::UniformDiag,i::Int) = data(D)
 
 setindex!(D::UniformDiag,val,i::Int) = error("Cannot set elements of a uniform Diag storage")
 
+Base.real(::Type{Diag{ElT,Vector{ElT}}}) where {ElT} = Diag{real(ElT),Vector{real(ElT)}}
+Base.real(::Type{Diag{ElT,ElT}}) where {ElT} = Diag{real(ElT),real(ElT)}
+
 complex(::Type{Diag{ElT,Vector{ElT}}}) where {ElT} = Diag{complex(ElT),Vector{complex(ElT)}}
 complex(::Type{Diag{ElT,ElT}}) where {ElT} = Diag{complex(ElT),complex(ElT)}
 
@@ -61,6 +64,8 @@ zeros(::Type{<:UniformDiag{ElT}},dim::Int64) where {ElT} = Diag(zero(ElT))
 
 (D::Diag * x::Number) = Diag(x * data(D))
 (x::Number * D::Diag) = D * x
+
+setdata(D::Diag,ndata) = Diag(ndata)
 
 #
 # Type promotions involving Diag
