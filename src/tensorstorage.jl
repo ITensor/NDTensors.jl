@@ -39,12 +39,14 @@ function Base.conj(S::T;always_copy = false) where {T<:TensorStorage}
   if always_copy
     return conj!(copy(S))
   end
-  return T(conj(data(S)))
+  return setdata(S,conj(data(S)))
 end
 
-function Base.complex(S::T) where {T <: TensorStorage}
-  return complex(T)(complex(data(S)))
-end
+Base.complex(S::TensorStorage) = setdata(S,complex(data(S)))
+
+Base.real(S::TensorStorage) = setdata(S,real(data(S)))
+
+Base.imag(S::TensorStorage) = setdata(S,imag(data(S)))
 
 Base.copyto!(S1::TensorStorage,
              S2::TensorStorage) = (copyto!(data(S1), data(S2)); S1)
