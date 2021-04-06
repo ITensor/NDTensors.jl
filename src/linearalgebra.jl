@@ -265,11 +265,13 @@ function random_unitary(::Type{ElT}, n::Int,m::Int) where {ElT <: Number}
   end
   F = qr(randn(ElT,n,m))
   Q = Matrix(F.Q)
-  A = diag(Matrix(F.R))
-  pn(x) = (real(x) < 0.0 ? -1.0 : 1.0)
-  A .= pn.(A)
+  # The upper triangle of F.factors 
+  # are the elements of R.
+  # Multiply cols of Q by the signs
+  # that would make diagonal of R 
+  # non-negative:
   for c in 1:size(Q,2)
-    Q[:,c] *= A[c]
+    Q[:,c] .*= sign(F.factors[c,c])
   end
   return Q
 end
