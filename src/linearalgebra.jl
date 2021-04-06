@@ -247,12 +247,13 @@ function LinearAlgebra.eigen(T::Hermitian{ElT,<:DenseTensor{ElT,2,IndsT}};
 end
 
 """
-    random_unitary(n::Int,m::Int)::Matrix
-    random_unitary(ElT = ComplexF64, n::Int,m::Int)::Matrix
+    random_unitary(n::Int,m::Int)::Matrix{ComplexF64}
+    random_unitary(::Type{ElT},n::Int,m::Int)::Matrix{ElT}
 
-Return a random complex matrix U of dimensions (n,m)
+Return a random matrix U of dimensions (n,m)
 such that if n >= m, U'*U is the identity, or if 
-m > n U*U' is the identity.
+m > n U*U' is the identity. Optionally can pass a numeric
+type as the first argument to obtain a matrix of that type.
 
 Sampling is based on https://arxiv.org/abs/math-ph/0609050
 such that in the case `n==m`, the unitary matrix will be sampled
@@ -276,12 +277,14 @@ end
 random_unitary(n::Int,m::Int) = random_unitary(ComplexF64,n,m)
 
 """
-    random_orthog(n::Int,m::Int)
+    random_orthog(n::Int,m::Int)::Matrix{Float64}
+    random_orthog(::Type{ElT},n::Int,m::Int)::Matrix{ElT}
 
 Return a random, real matrix O of dimensions (n,m)
 such that if n >= m, transpose(O)*O is the 
 identity, or if m > n O*transpose(O) is the
-identity.
+identity. Optionally can pass a real number type
+as the first argument to obtain a matrix of that type.
 """
 random_orthog(::Type{ElT}, n::Int,m::Int) where {ElT<:Real} = 
   random_unitary(ElT,n,m)
@@ -289,7 +292,7 @@ random_orthog(::Type{ElT}, n::Int,m::Int) where {ElT<:Real} =
 random_orthog(n::Int,m::Int) = random_orthog(Float64,n,m)
 
 """
-  qr_positive(M::AbstractMatrix)
+    qr_positive(M::AbstractMatrix)
 
 Compute the QR decomposition of a matrix M
 such that the diagonal elements of R are
