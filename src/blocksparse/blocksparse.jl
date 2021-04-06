@@ -35,7 +35,7 @@ BlockSparse(::UndefInitializer,
 copy(D::BlockSparse) = BlockSparse(copy(data(D)),
                                    copy(blockoffsets(D)))
 
-setdata(B::BlockSparse,ndata) = BlockSparse(ndata,copy(blockoffsets(B)))
+setdata(B::BlockSparse,ndata) = BlockSparse(ndata,blockoffsets(B))
 
 #
 # Random
