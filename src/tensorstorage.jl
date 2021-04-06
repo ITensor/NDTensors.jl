@@ -24,6 +24,14 @@ Base.@propagate_inbounds Base.getindex(S::TensorStorage,
 Base.@propagate_inbounds Base.setindex!(S::TensorStorage,v,
                                         i::Integer) = (setindex!(data(S),v,i); S)
 
+(S::TensorStorage * x::Number) = setdata(S,x*data(S))
+(x::Number * S::TensorStorage) = S*x
+
+# To be added, but make sure these covers all the cases, such
+# as different kinds of DiagBlockSparse:
+#similar(S::TensorStorage) = setdata(S,similar(data(S)))
+#similar(S::TensorStorage,::Type{ElT}) where {ElT} = setdata(S,similar(data(S),ElT))
+
 # Needed for passing Tensor{T,2} to BLAS/LAPACK
 function Base.unsafe_convert(::Type{Ptr{ElT}},
                              T::TensorStorage{ElT}) where {ElT}

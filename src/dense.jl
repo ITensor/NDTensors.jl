@@ -106,9 +106,6 @@ end
 convert(::Type{<:Dense{ElR,VecR}}, D::Dense) where {ElR,VecR} =
   Dense(convert(VecR,data(D)))
 
-# Make generic to all storage types?
-(D::Dense * x::Number) = Dense(x*data(D))
-(x::Number * D::Dense) = D*x
 
 #
 # DenseTensor (Tensor using Dense storage)

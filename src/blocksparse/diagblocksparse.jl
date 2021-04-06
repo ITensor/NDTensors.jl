@@ -128,8 +128,6 @@ similar(D::DiagBlockSparse,::Type{ElR},n::Int) where {ElR} = setdata(D,similar(d
 zeros(::Type{<:NonuniformDiagBlockSparse{ElT}},dim::Int64) where {ElT} = DiagBlockSparse(zeros(ElT,dim))
 zeros(::Type{<:UniformDiagBlockSparse{ElT}},dim::Int64) where {ElT} = DiagBlockSparse(zero(ElT))
 
-Base.:*(D::DiagBlockSparse,x::Number) = DiagBlockSparse(x*data(D))
-Base.:*(x::Number,D::DiagBlockSparse) = D*x
 
 #
 # Type promotions involving DiagBlockSparse

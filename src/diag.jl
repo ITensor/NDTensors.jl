@@ -62,9 +62,6 @@ similar(D::Diag,::Type{ElR},n::Int) where {ElR} = Diag(similar(data(D),ElR,n))
 zeros(::Type{<:NonuniformDiag{ElT}},dim::Int64) where {ElT} = Diag(zeros(ElT,dim))
 zeros(::Type{<:UniformDiag{ElT}},dim::Int64) where {ElT} = Diag(zero(ElT))
 
-(D::Diag * x::Number) = Diag(x * data(D))
-(x::Number * D::Diag) = D * x
-
 setdata(D::Diag,ndata) = Diag(ndata)
 
 #

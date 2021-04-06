@@ -102,8 +102,6 @@ function convert(::Type{<:BlockSparse{ElR,VecR,N}},
   return setdata(D,convert(VecR,data(D)))
 end
 
-(D::BlockSparse * x::Number) = setdata(D,x*data(D))
-(x::Number * D::BlockSparse) = D * x
 
 """
 isblocknz(T::BlockSparse,
