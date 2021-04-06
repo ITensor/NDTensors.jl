@@ -247,54 +247,52 @@ function LinearAlgebra.eigen(T::Hermitian{ElT,<:DenseTensor{ElT,2,IndsT}};
 end
 
 """
-    random_orthog(n::Int,m::Int)
-
-Return a random matrix O of dimensions (n,m)
-such that if n >= m, transpose(O)*O is the 
-identity, or if m > n O*transpose(O) is the
-identity.
-"""
-function random_orthog(n::Int,m::Int)::Matrix
-  #TODO: optimize by using recursive Householder algorithm?
-  if n < m
-    return transpose(random_orthog(m,n))
-  end
-  F = qr(randn(n,m))
-  Q = Matrix(F.Q)
-  for c=1:size(Q,2)
-    if real(F.R[c,c]) < 0.0
-      Q[:,c] *= -1
-    end
-  end
-  return Q
-end
-
-"""
     random_unitary(n::Int,m::Int)::Matrix
+    random_unitary(ElT = ComplexF64, n::Int,m::Int)::Matrix
 
 Return a random complex matrix U of dimensions (n,m)
-such that if n >= m, U'*U is the
-identity, or if m > n U*U' is the
-identity.
+such that if n >= m, U'*U is the identity, or if 
+m > n U*U' is the identity.
 
 Sampling is based on https://arxiv.org/abs/math-ph/0609050
 such that in the case `n==m`, the unitary matrix will be sampled
 according to the Haar measure.
 """
-function random_unitary(n::Int,m::Int)
+function random_unitary(::Type{ElT}, n::Int,m::Int) where {ElT <: Number}
   if n < m
-    return Matrix(random_unitary(m,n)')
+    return Matrix(random_unitary(ElT,m,n)')
   end
-  F = qr(randn(ComplexF64,n,m))
+  F = qr(randn(ElT,n,m))
   Q = Matrix(F.Q)
   A = diag(Matrix(F.R))
-  A ./= abs.(A)
+  pn(x) = (x < 0.0 ? -1.0 : 1.0)
+  A .= pn.(A)
   for c in 1:size(Q,2)
-      Q[:,c] *= A[c]
+    Q[:,c] *= A[c]
   end
   return Q
 end
 
+random_unitary(n::Int,m::Int) = random_unitary(ComplexF64,n,m)
+
+"""
+    random_orthog(n::Int,m::Int)
+
+Return a random, real matrix O of dimensions (n,m)
+such that if n >= m, transpose(O)*O is the 
+identity, or if m > n O*transpose(O) is the
+identity.
+"""
+random_orthog(n::Int,m::Int) = random_unitary(Float64,n,m)
+
+"""
+  qr_positive(M::AbstractMatrix)
+
+Compute the QR decomposition of a matrix M
+such that the diagonal elements of R are
+non-negative. Such a QR decomposition of a
+matrix is unique. Returns a tuple (Q,R).
+"""
 function qr_positive(M::AbstractMatrix)
   sparseQ,R = qr(M)
   Q = convert(Matrix,sparseQ)
