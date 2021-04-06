@@ -265,7 +265,7 @@ function random_unitary(::Type{ElT}, n::Int,m::Int) where {ElT <: Number}
   F = qr(randn(ElT,n,m))
   Q = Matrix(F.Q)
   A = diag(Matrix(F.R))
-  pn(x) = (x < 0.0 ? -1.0 : 1.0)
+  pn(x) = (real(x) < 0.0 ? -1.0 : 1.0)
   A .= pn.(A)
   for c in 1:size(Q,2)
     Q[:,c] *= A[c]
