@@ -283,7 +283,10 @@ such that if n >= m, transpose(O)*O is the
 identity, or if m > n O*transpose(O) is the
 identity.
 """
-random_orthog(n::Int,m::Int) = random_unitary(Float64,n,m)
+random_orthog(::Type{ElT}, n::Int,m::Int) where {ElT<:Real} = 
+  random_unitary(ElT,n,m)
+
+random_orthog(n::Int,m::Int) = random_orthog(Float64,n,m)
 
 """
   qr_positive(M::AbstractMatrix)
