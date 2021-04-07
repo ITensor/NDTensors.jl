@@ -32,13 +32,18 @@ BlockSparse(::UndefInitializer,
             blockoffsets::BlockOffsets,
             dim::Integer; vargs...) = BlockSparse(Float64,undef,blockoffsets,dim; vargs...)
 
+copy(D::BlockSparse) = BlockSparse(copy(data(D)),
+                                   copy(blockoffsets(D)))
+
+setdata(B::BlockSparse,ndata) = BlockSparse(ndata,blockoffsets(B))
+
 #
 # Random
 #
 
 function randn(::Type{ <: BlockSparse{ElT}},
-                    blockoffsets::BlockOffsets,
-                    dim::Integer) where {ElT <: Number}
+               blockoffsets::BlockOffsets,
+               dim::Integer) where {ElT <: Number}
   return BlockSparse(randn(ElT, dim), blockoffsets)
 end
 
@@ -47,16 +52,12 @@ end
 #end
 #BlockSparse{ElT}() where {ElT} = BlockSparse(ElT[],BlockOffsets())
 
-function similar(D::BlockSparse)
-  return BlockSparse(similar(data(D)),blockoffsets(D))
-end
+similar(D::BlockSparse) = setdata(D,similar(data(D)))
 
 # TODO: test this function
 similar(D::BlockSparse,
-             ::Type{ElT}) where {ElT} = BlockSparse(similar(data(D),ElT),
-                                                    copy(blockoffsets(D)))
-copy(D::BlockSparse) = BlockSparse(copy(data(D)),
-                                        copy(blockoffsets(D)))
+        ::Type{ElT}) where {ElT} = setdata(D,similar(data(D),ElT))
+
 
 # TODO: check the offsets are the same?
 function copyto!(D1::BlockSparse,D2::BlockSparse)
@@ -65,31 +66,9 @@ function copyto!(D1::BlockSparse,D2::BlockSparse)
   return D1
 end
 
-# convert to complex
-# TODO: this could be a generic TensorStorage function
-complex(D::BlockSparse{T}) where {T} = BlockSparse{complex(T)}(complex(data(D)),
-                                                                    blockoffsets(D))
+Base.real(::Type{BlockSparse{T}}) where {T} = BlockSparse{real(T)}
 
-function conj(D::BlockSparse{<: Real}; always_copy = false) 
-  if always_copy
-    return copy(D)
-  end
-  return D
-end
-
-function conj(D::BlockSparse; always_copy = false)
-  if always_copy
-    return conj!(copy(D))
-  end
-  return BlockSparse(conj(data(D)), blockoffsets(D))
-end
-
-
-
-function scale!(D::BlockSparse,α::Number)
-  scale!(data(D),α)
-  return D
-end
+complex(::Type{BlockSparse{T}}) where {T} = BlockSparse{complex(T)}
 
 ndims(::BlockSparse{T,V,N}) where {T,V,N} = N
 
@@ -119,15 +98,10 @@ function promote_rule(::Type{<:BlockSparse{ElT1,Vector{ElT1},N1}},
 end
 
 function convert(::Type{<:BlockSparse{ElR,VecR,N}},
-                      D::BlockSparse{ElD,VecD,N}) where {ElR,VecR,N,ElD,VecD}
-  return BlockSparse(convert(VecR,data(D)),
-                     blockoffsets(D))
+                      D::BlockSparse{ElD,VecD,N}) where {ElR,VecR,N,ElD,VecD} 
+  return setdata(D,convert(VecR,data(D)))
 end
 
-function (D::BlockSparse * x::Number)
-  return BlockSparse(x*data(D),blockoffsets(D))
-end
-(x::Number * D::BlockSparse) = D * x
 
 """
 isblocknz(T::BlockSparse,

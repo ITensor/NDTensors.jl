@@ -43,6 +43,8 @@ Dense(::UndefInitializer,dim::Integer) = Dense(Float64,undef,dim)
 Dense{ElT}() where {ElT} = Dense(ElT[])
 Dense(::Type{ElT}) where {ElT} = Dense{ElT}()
 
+setdata(D::Dense,ndata) = Dense(ndata)
+
 #
 # Random constructors
 #
@@ -51,6 +53,9 @@ randn(::Type{StoreT}, dim::Integer) where {StoreT <: Dense} =
   Dense(randn(eltype(StoreT), dim))
 
 copy(D::Dense) = Dense(copy(data(D)))
+
+Base.real(::Type{Dense{ElT, Vector{ElT}}}) where {ElT} =
+  Dense{real(ElT),Vector{real(ElT)}}
 
 complex(::Type{Dense{ElT, Vector{ElT}}}) where {ElT} =
   Dense{complex(ElT),Vector{complex(ElT)}}
@@ -101,9 +106,6 @@ end
 convert(::Type{<:Dense{ElR,VecR}}, D::Dense) where {ElR,VecR} =
   Dense(convert(VecR,data(D)))
 
-# Make generic to all storage types?
-(D::Dense * x::Number) = Dense(x*data(D))
-(x::Number * D::Dense) = D*x
 
 #
 # DenseTensor (Tensor using Dense storage)
