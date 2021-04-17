@@ -79,6 +79,10 @@ eltype(::Tensor{ElT}) where {ElT} = ElT
 
 strides(T::Tensor) = dim_to_strides(inds(T))
 
+setstorage(T,nstore) = tensor(nstore,inds(T))
+
+setinds(T,ninds) = tensor(store(T),ninds)
+
 #
 # Generic Tensor functions
 #
@@ -99,11 +103,15 @@ function unsafe_convert(::Type{Ptr{ElT}},
   return unsafe_convert(Ptr{ElT},store(T))
 end
 
-copy(T::Tensor) = tensor(copy(store(T)), inds(T))
+copy(T::Tensor) = setstorage(T,copy(store(T)))
 
 copyto!(R::Tensor,T::Tensor) = (copyto!(store(R), store(T)); R)
 
-complex(T::Tensor) = tensor(complex(store(T)), inds(T))
+complex(T::Tensor) = setstorage(T,complex(store(T)))
+
+Base.real(T::Tensor) = setstorage(T,real(store(T)))
+
+Base.imag(T::Tensor) = setstorage(T,imag(store(T)))
 
 #
 # Necessary to overload since the generic fallbacks are
@@ -113,7 +121,7 @@ complex(T::Tensor) = tensor(complex(store(T)), inds(T))
 LinearAlgebra.norm(T::Tensor) = norm(store(T))
 
 conj(T::Tensor;
-          kwargs...) = tensor(conj(store(T); kwargs...), inds(T))
+     kwargs...) = setstorage(T,conj(store(T); kwargs...))
 
 Random.randn!(T::Tensor) = (randn!(store(T)); T)
 
@@ -130,7 +138,7 @@ fill!(T::Tensor,α::Number) = (fill!(store(T),α); T)
 #similar(T::Type{<:Tensor},::Type{S}) where {S} = tensor(similar(store(T),S),inds(T))
 #similar(T::Type{<:Tensor},::Type{S},dims) where {S} = tensor(similar(store(T),S),dims)
 
-similar(T::Tensor) = tensor(similar(store(T)), inds(T))
+similar(T::Tensor) = setstorage(T,similar(store(T)))
 
 # TODO: for BlockSparse, this needs to include the offsets
 # TODO: for Diag, the storage is not just the total dimension
@@ -140,7 +148,7 @@ similar(T::Tensor) = tensor(similar(store(T)), inds(T))
 #similar(T::Tensor,dims::Dims) = _similar_from_dims(T,dims)
 
 similar(T::Tensor, ::Type{S}) where {S} =
-  tensor(similar(store(T), S), inds(T))
+  setstorage(T,similar(store(T), S))
 
 similar(T::Tensor,
              ::Type{S},
@@ -160,7 +168,7 @@ end
 
 function convert(::Type{<:Tensor{<:Number,N,StoreR,Inds}},
                       T::Tensor{<:Number,N,<:Any,Inds}) where {N,Inds,StoreR}
-  return tensor(convert(StoreR,store(T)),inds(T))
+  return setstorage(T,convert(StoreR,store(T)))
 end
 
 function zeros(TensorT::Type{<:Tensor{ElT,N,StoreT}},
@@ -192,7 +200,7 @@ function dense(::Type{<:Tensor{ElT,NT,StoreT,IndsT}}) where {ElT,NT,StoreT,IndsT
   return Tensor{ElT,NT,dense(StoreT),IndsT}
 end
 
-dense(T::Tensor) = tensor(dense(store(T)), inds(T))
+dense(T::Tensor) = setstorage(T,dense(store(T)))
 
 function similar_type(::Type{<:Tensor{ElT,<:Any,StoreT,<:Any}},
                       ::Type{IndsR}) where {ElT,StoreT,IndsR}

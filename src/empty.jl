@@ -26,14 +26,15 @@ nnzblocks(::Empty) = 0
 
 nnz(::Empty) = 0
 
-function complex(::Type{<: Empty{ElT, StoreT}}) where {ElT,
-                                                            StoreT}
-  return Empty{complex(ElT), complex(StoreT)}
-end
+Base.real(::Type{<: Empty{ElT, StoreT}}) where {ElT,StoreT} =
+  Empty{real(ElT),real(StoreT)}
 
-function complex(S::Empty)
-  return complex(typeof(S))()
-end
+Base.real(S::Empty) = real(typeof(S))()
+
+complex(::Type{<: Empty{ElT, StoreT}}) where {ElT,StoreT} = 
+  Empty{complex(ElT), complex(StoreT)}
+
+complex(S::Empty) = complex(typeof(S))()
 
 #size(::Empty) = 0
 
