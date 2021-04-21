@@ -29,10 +29,7 @@ end
     Tensor(store::TensorStorage, inds)
 
 Construct a Tensor from a tensor storage and indices.
-The storage data is copied into the Tensor.
-
-See also tensor(store::TensorStorage, inds)
-which makes a view of the storage.
+The Tensor holds a view of the storage data.
 """
 function Tensor(store::StoreT, inds::IndsT) where {StoreT<:TensorStorage, IndsT}
   return Tensor{eltype(store),length(inds),StoreT,IndsT}(inds, store)
