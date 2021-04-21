@@ -5,6 +5,13 @@ function contract(T::BlockSparseTensor,
                   labelsT,
                   C::CombinerTensor,
                   labelsC)
+  if count_common(labelsC,labelsT) == 0
+    tensor = T
+    @show inds(tensor)
+    combiner = C
+    @show inds(combiner)
+    error("No common indices between combiner and tensor")
+  end
   #println("----------------- in contract BlockSparse, Combiner ----")
   #@timeit_debug timer "Block sparse (un)combiner" begin
   # Get the label marking the combined index
