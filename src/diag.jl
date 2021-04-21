@@ -189,12 +189,12 @@ end
 
 function zeros(TensorT::Type{<: DiagTensor},
                     inds)
-  return tensor(zeros(storetype(TensorT), mindim(inds)), inds)
+  return tensor(zeros(storagetype(TensorT), mindim(inds)), inds)
 end
 
 function zeros(TensorT::Type{<: DiagTensor},
                     inds::Tuple{})
-  return tensor(zeros(storetype(TensorT), mindim(inds)), inds)
+  return tensor(zeros(storagetype(TensorT), mindim(inds)), inds)
 end
 
 # Needed to get slice of DiagTensor like T[1:3,1:3]

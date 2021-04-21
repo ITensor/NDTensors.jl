@@ -9,10 +9,10 @@ export dense,
 dims(ds::Dims) = ds
 
 # Generic dims function
-dims(inds) = ntuple(i -> dim(inds[i]), Val(length(inds)))
+dims(inds::Tuple) = ntuple(i -> dim(@inbounds inds[i]), Val(length(inds)))
 
 # Generic dim function
-dim(inds) = prod(dims(inds))
+dim(inds::Tuple) = prod(dims(inds))
 
 dims(::Tuple{}) = ()
 
@@ -24,7 +24,7 @@ dense(::Type{DimsT}) where {DimsT<:Dims} = DimsT
 
 dim(ds::Dims) = prod(ds)
 
-dim(ds::Dims,i::Int) = dims(ds)[i]
+dim(ds::Dims, i::Int) = dims(ds)[i]
 
 mindim(inds::Tuple) = minimum(dims(inds))
 
