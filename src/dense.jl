@@ -44,6 +44,8 @@ Dense(::UndefInitializer,dim::Integer) = Dense(Float64,undef,dim)
 Dense{ElT}() where {ElT} = Dense(ElT[])
 Dense(::Type{ElT}) where {ElT} = Dense{ElT}()
 
+setdata(D::Dense,ndata) = Dense(ndata)
+
 #
 # Random constructors
 #
@@ -52,6 +54,9 @@ randn(::Type{StoreT}, dim::Integer) where {StoreT <: Dense} =
   Dense(randn(eltype(StoreT), dim))
 
 copy(D::Dense) = Dense(copy(data(D)))
+
+Base.real(::Type{Dense{ElT, Vector{ElT}}}) where {ElT} =
+  Dense{real(ElT),Vector{real(ElT)}}
 
 complex(::Type{Dense{ElT, Vector{ElT}}}) where {ElT} =
   Dense{complex(ElT),Vector{complex(ElT)}}
@@ -102,9 +107,6 @@ end
 convert(::Type{<:Dense{ElR,VecR}}, D::Dense) where {ElR,VecR} =
   Dense(convert(VecR,data(D)))
 
-# Make generic to all storage types?
-(D::Dense * x::Number) = Dense(x*data(D))
-(x::Number * D::Dense) = D*x
 
 #
 # DenseTensor (Tensor using Dense storage)
@@ -199,7 +201,7 @@ iterate(T::DenseTensor,args...) = iterate(store(T),args...)
 
 function _zeros(TensorT::Type{<: DenseTensor},
                 inds)
-  return tensor(zeros(storetype(TensorT), dim(inds)), inds)
+  return tensor(zeros(storagetype(TensorT), dim(inds)), inds)
 end
 
 function zeros(TensorT::Type{<: DenseTensor}, inds)
@@ -216,7 +218,7 @@ function zeros(TensorT::Type{<: DenseTensor}, inds::Tuple{})
 end
 
 function _similar(TensorT::Type{<: DenseTensor}, inds)
-  return tensor(similar(storetype(TensorT), dim(inds)), inds)
+  return tensor(similar(storagetype(TensorT), dim(inds)), inds)
 end
 
 function similar(TensorT::Type{<: DenseTensor}, inds)
@@ -244,39 +246,25 @@ similar(T::DenseTensor,inds::Dims) = _similar(T, inds)
 # Single index
 #
 
-@propagate_inbounds function _getindex(T::DenseTensor{<:Number,N},
-                                       I::CartesianIndex{N}) where {N}
-  return store(T)[@inbounds LinearIndices(T)[CartesianIndex(I)]]
+@propagate_inbounds function getindex(T::DenseTensor{<:Number,N}, I::Vararg{Integer, N}) where {N}
+  Base.@_inline_meta
+  return getindex(data(T), Base._sub2ind(T, I...))
 end
 
-@propagate_inbounds function getindex(T::DenseTensor{<:Number,N},
-                                      I::Vararg{Int,N}) where {N}
-  return _getindex(T,CartesianIndex(I))
+@propagate_inbounds function getindex(T::DenseTensor{<:Number,N}, I::CartesianIndex{N}) where {N}
+  Base.@_inline_meta
+  return getindex(T, I.I...)
 end
 
-@propagate_inbounds function getindex(T::DenseTensor{<:Number,N},
-                                      I::CartesianIndex{N}) where {N}
-  return _getindex(T,I)
-end
-
-@propagate_inbounds function _setindex!(T::DenseTensor{<:Number,N},
-                                        x::Number,
-                                        I::CartesianIndex{N}) where {N}
-  store(T)[@inbounds LinearIndices(T)[CartesianIndex(I)]] = x
+@propagate_inbounds function setindex!(T::DenseTensor{<:Number,N}, x::Number, I::Vararg{Integer, N}) where {N}
+  Base.@_inline_meta
+  setindex!(data(T), x, Base._sub2ind(T, I...))
   return T
 end
 
-@propagate_inbounds function setindex!(T::DenseTensor{<:Number,N},
-                                       x::Number,
-                                       I::Vararg{Int,N}) where {N}
-  _setindex!(T,x,CartesianIndex(I))
-  return T
-end
-
-@propagate_inbounds function setindex!(T::DenseTensor{<:Number,N},
-                                       x::Number,
-                                       I::CartesianIndex{N}) where {N}
-  _setindex!(T,x,I)
+@propagate_inbounds function setindex!(T::DenseTensor{<:Number,N}, x::Number, I::CartesianIndex{N}) where {N}
+  Base.@_inline_meta
+  setindex!(T, x, I.I...)
   return T
 end
 
@@ -284,9 +272,9 @@ end
 # Linear indexing
 #
 
-@propagate_inbounds getindex(T::DenseTensor,i::Int) = store(T)[i]
+@propagate_inbounds @inline getindex(T::DenseTensor, i::Integer) = store(T)[i]
 
-@propagate_inbounds setindex!(T::DenseTensor,v,i::Int) = (store(T)[i] = v; T)
+@propagate_inbounds @inline setindex!(T::DenseTensor, v, i::Integer) = (store(T)[i] = v; T)
 
 #
 # Slicing

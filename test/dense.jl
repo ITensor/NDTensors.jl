@@ -7,6 +7,8 @@ using NDTensors,
     using Octavian
 end
 
+@testset "Dense Tensors" begin
+
 @testset "DenseTensor basic functionality" begin
 
   A = Tensor(3,4)
@@ -116,6 +118,21 @@ end
   @test eltype(Tc) == ComplexF64
   @test Tc[1,1] ≉ 0
   @test norm(Tc) ≉ 0
+end
+
+@testset "Complex Valued Tensors" begin
+  d1,d2,d3 = 2,3,4
+  T = randomTensor(ComplexF64,d1,d2,d3)
+
+  rT = real(T)
+  iT = imag(T)
+  cT = conj(T)
+
+  for n1=1:d1,n2=1:d2,n3=1:d3
+    @test rT[n1,n2,n3] ≈ real(T[n1,n2,n3])
+    @test iT[n1,n2,n3] ≈ imag(T[n1,n2,n3])
+    @test cT[n1,n2,n3] ≈ conj(T[n1,n2,n3])
+  end
 end
 
 @testset "Custom inds types" begin
@@ -231,4 +248,7 @@ end
     end
 end
 
+end
+
 nothing
+

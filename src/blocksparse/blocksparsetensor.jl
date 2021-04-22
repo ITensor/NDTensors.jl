@@ -88,6 +88,9 @@ function BlockSparseTensor(::Type{ElT}, blocks::Vector{BlockT}, inds) where {ElT
   return tensor(storage,inds)
 end
 
+#complex(::Type{BlockSparseTensor{ElT,N,StoreT,IndsT}}) where {ElT<:Number,N,StoreT<:BlockSparse
+#  = Tensor{ElT,N,StoreT,IndsT} where {StoreT<:BlockSparse}
+
 function randn(::Type{ <: BlockSparseTensor{ElT, N}},
                blocks::Vector{<:BlockT},
                inds) where {ElT, BlockT <: Union{Block{N}, NTuple{N, <: Integer}}} where {N}
@@ -118,14 +121,14 @@ function BlockSparseTensor(blocks::Vector{BlockT},
 end
 
 function similar(::BlockSparseTensor{ElT,N},
-                      blockoffsets::BlockOffsets{N},
-                      inds) where {ElT,N}
+                 blockoffsets::BlockOffsets{N},
+                 inds) where {ElT,N}
   return BlockSparseTensor(ElT,undef,blockoffsets,inds)
 end
 
 function similar(::Type{<:BlockSparseTensor{ElT,N}},
-                      blockoffsets::BlockOffsets{N},
-                      inds) where {ElT,N}
+                 blockoffsets::BlockOffsets{N},
+                 inds) where {ElT,N}
   return BlockSparseTensor(ElT,undef,blockoffsets,inds)
 end
 

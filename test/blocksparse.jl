@@ -91,6 +91,23 @@ using LinearAlgebra
     @test norm(Tc) ≉ 0
   end
 
+  @testset "Complex Valued Operations" begin
+    T = randomBlockSparseTensor(ComplexF64,
+                                [(1,1),(2,2)],
+                                ([2,2],[2,2]))
+    rT = real(T)
+    @test eltype(rT) == Float64
+    @test nnzblocks(rT) == nnzblocks(T)
+    iT = imag(T)
+    @test eltype(iT) == Float64
+    @test nnzblocks(iT) == nnzblocks(T)
+    @test norm(rT)^2+norm(iT)^2 ≈ norm(T)^2
+
+    cT = conj(T)
+    @test eltype(cT) == ComplexF64
+    @test nnzblocks(cT) == nnzblocks(T)
+  end
+
   @testset "BlockSparseTensor setindex! add block" begin
     T = BlockSparseTensor([2,3],[4,5])
 
@@ -310,5 +327,6 @@ using LinearAlgebra
   end
 
 end
+
 
 nothing

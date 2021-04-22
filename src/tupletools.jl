@@ -29,21 +29,28 @@ popfirst(s::NTuple{N}) where {N} = ntuple(i -> s[i+1],
 # Permute some other type by perm
 # (for example, tuple, MVector, etc.)
 # as long as the constructor accepts a tuple
-function _permute(s::T, perm) where {T}
-  return ntuple(i->s[perm[i]], ValLength(T)())
+@inline function _permute(s, perm)
+  return ntuple(i->s[perm[i]], ValLength(perm))
 end
 
 permute(s::Tuple, perm) = _permute(s, perm)
 
+# TODO: is this needed?
 function permute(s::T, perm) where {T <: NTuple}
   return T(_permute(s, perm))
 end
 
 function permute(s::T, perm) where {T}
-  return T(_permute(s, perm))
+  return T(_permute(Tuple(s), perm))
 end
 
+# TODO: This is to handle Vector, is this correct?
+permute(s::AbstractVector, perm) = _permute(s, perm)
+
 sim(s::NTuple) = s
+
+# type stable findfirst
+@inline _findfirst(args...) = (i = findfirst(args...); i === nothing ? 0 : i)
 
 """
     getperm(col1,col2)
@@ -51,12 +58,12 @@ sim(s::NTuple) = s
 Get the permutation that takes collection 2 to collection 1,
 such that col2[p].==col1
 """
-function getperm(s1, s2)
-  return ntuple(i->findfirst(==(s1[i]),s2),Val(length(s1)))
+@inline function getperm(s1, s2)
+  return ntuple(i -> _findfirst(==(@inbounds s1[i]), s2), length(s1))
 end
 
 """
-    getperm(col1,col2,col3)
+    getperms(col1,col2,col3)
 
 Get the permutations that takes collections 2 and 3 to collection 1.
 """
