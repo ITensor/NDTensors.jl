@@ -218,7 +218,7 @@ function DiagBlockSparseTensor(x::Number, blocks::Vector, inds)
   return tensor(storage,inds)
 end
 
-diagblockoffsets(T::DiagBlockSparseTensor) = diagblockoffsets(store(T))
+diagblockoffsets(T::DiagBlockSparseTensor) = diagblockoffsets(storage(T))
 
 """
 blockview(T::DiagBlockSparseTensor, block::Block)
@@ -236,7 +236,7 @@ function blockview(T::DiagBlockSparseTensor,
   blockT,offsetT = bof
   blockdimsT = blockdims(T,blockT)
   blockdiaglengthT = minimum(blockdimsT)
-  dataTslice = @view data(store(T))[offsetT+1:offsetT+blockdiaglengthT]
+  dataTslice = @view data(storage(T))[offsetT+1:offsetT+blockdiaglengthT]
   return tensor(Diag(dataTslice),blockdimsT)
 end
 
@@ -312,15 +312,15 @@ end
 function similar(T::DiagBlockSparseTensor{<:Number,N},
                       ::Type{ElR},
                       inds::Dims{N}) where {ElR<:Number,N}
-  return tensor(similar(store(T),ElR,minimum(inds)),inds)
+  return tensor(similar(storage(T),ElR,minimum(inds)),inds)
 end
 
-getdiagindex(T::DiagBlockSparseTensor{<:Number},ind::Int) = store(T)[ind]
+getdiagindex(T::DiagBlockSparseTensor{<:Number},ind::Int) = storage(T)[ind]
 
 # XXX: handle case of missing diagonal blocks
 function setdiagindex!(T::DiagBlockSparseTensor{<: Number},
                        val, ind::Int)
-  store(T)[ind] = val
+  storage(T)[ind] = val
   return T
 end
 
@@ -334,7 +334,7 @@ end
 getindex(T::DiagBlockSparseTensor{ElT,N},
               inds::Vararg{Int,N}) where {ElT,N}
   if all(==(inds[1]),inds)
-    return store(T)[inds[1]]
+    return storage(T)[inds[1]]
   else
     return zero(eltype(ElT))
   end
@@ -343,12 +343,12 @@ end
 @propagate_inbounds function
 getindex(T::DiagBlockSparseTensor{<:Number,1},
               ind::Int)
-  return store(T)[ind]
+  return storage(T)[ind]
 end
 
 @propagate_inbounds function
 getindex(T::DiagBlockSparseTensor{<:Number,0})
-  return store(T)[1]
+  return storage(T)[1]
 end
 
 # Set diagonal elements
@@ -358,7 +358,7 @@ setindex!(T::DiagBlockSparseTensor{<: Number, N},
                val,
                inds::Vararg{Int, N}) where {N}
   all(==(inds[1]),inds) || error("Cannot set off-diagonal element of DiagBlockSparse storage")
-  store(T)[inds[1]] = val
+  storage(T)[inds[1]] = val
   return T
 end
 
@@ -366,14 +366,14 @@ end
 setindex!(T::DiagBlockSparseTensor{<:Number, 1},
                val,
                ind::Int)
-  store(T)[ind] = val
+  storage(T)[ind] = val
   return T
 end
 
 @propagate_inbounds function
 setindex!(T::DiagBlockSparseTensor{<:Number,0},
                val)
-  store(T)[1] = val
+  storage(T)[1] = val
   return T
 end
 
@@ -384,7 +384,7 @@ function setindex!(T::UniformDiagBlockSparseTensor{<:Number, N},
 end
 
 # TODO: make a fill!! that works for uniform and non-uniform
-#fill!(T::DiagBlockSparseTensor,v) = fill!(store(T),v)
+#fill!(T::DiagBlockSparseTensor,v) = fill!(storage(T),v)
 
 function dense(::Type{<:Tensor{ElT,
                                N,

@@ -43,11 +43,14 @@ end
 
 Base.conj!(S::TensorStorage) = (conj!(data(S)); return S)
 
-function Base.conj(S::T;always_copy = false) where {T<:TensorStorage} 
-  if always_copy
-    return conj!(copy(S))
-  end
-  return setdata(S,conj(data(S)))
+Base.conj(S::TensorStorage) = conj(AllowAlias(), S)
+
+function Base.conj(::AllowAlias, S::TensorStorage)
+  return setdata(S, conj(data(S)))
+end
+
+function Base.conj(::NeverAlias, S::TensorStorage)
+  return conj!(copy(S))
 end
 
 Base.complex(S::TensorStorage) = setdata(S,complex(data(S)))

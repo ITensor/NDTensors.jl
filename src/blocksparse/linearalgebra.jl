@@ -77,7 +77,7 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
       if blockdim == 0
         push!(dropblocks,n)
       else
-        Strunc = tensor(Diag(store(Ss[n])[1:blockdim]),
+        Strunc = tensor(Diag(storage(Ss[n])[1:blockdim]),
                         (blockdim,blockdim))
         Us[n] = Us[n][1:dim(Us[n],1),1:blockdim]
         Ss[n] = Strunc
@@ -227,7 +227,7 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
       if blockdim == 0
         push!(dropblocks,n)
       else
-        Dtrunc = tensor(Diag(store(Ds[n])[1:blockdim]),
+        Dtrunc = tensor(Diag(storage(Ds[n])[1:blockdim]),
                         (blockdim,blockdim))
         Ds[n] = Dtrunc
         Vs[n] = copy(Vs[n][1:dim(Vs[n],1),1:blockdim])

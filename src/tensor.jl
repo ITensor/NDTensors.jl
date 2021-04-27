@@ -20,10 +20,16 @@ struct Tensor{ElT, N, StoreT <: TensorStorage, IndsT} <: AbstractArray{ElT,N}
   For normal usage, use the Tensor(store::TensorStorage, inds)
   and tensor(store::TensorStorage, inds) constructors.
   """
-  function Tensor{ElT, N, StoreT, IndsT}(inds, store) where {ElT, N, StoreT, IndsT}
-    new{ElT, N, StoreT, IndsT}(store, inds)
+  function Tensor{ElT, N, StoreT, IndsT}(::AllowAlias, storage::TensorStorage, inds) where {ElT, N, StoreT <: TensorStorage, IndsT}
+    new{ElT, N, StoreT, IndsT}(storage, inds)
   end
 end
+
+Tensor{ElT, N, StoreT, IndsT}(vs::NeverAlias, storage::TensorStorage, inds) where {ElT, N, StoreT <: TensorStorage, IndsT} =
+  Tensor{ElT, N, StoreT, IndsT}(AllowAlias(), copy(storage), inds)
+
+# Allow the storage and indices to be input in opposite ordering
+(T::Type{<: Tensor})(vs::AliasStyle, inds, storage::TensorStorage) = T(vs, storage, inds)
 
 """
     Tensor(store::TensorStorage, inds)
@@ -31,19 +37,20 @@ end
 Construct a Tensor from a tensor storage and indices.
 The Tensor holds a view of the storage data.
 """
-function Tensor(store::StoreT, inds::IndsT) where {StoreT<:TensorStorage, IndsT}
-  return Tensor{eltype(store),length(inds),StoreT,IndsT}(inds, store)
+function Tensor(vs::AliasStyle, store::StoreT, inds::IndsT) where {StoreT <: TensorStorage, IndsT}
+  return Tensor{eltype(store), length(inds), StoreT, IndsT}(vs, inds, store)
 end
 
-# TODO: deprecate
-tensor(args...; kwargs...) = Tensor(args...; kwargs...)
+tensor(args...; kwargs...) = Tensor(AllowAlias(), args...; kwargs...)
+Tensor(storage::TensorStorage, inds) = Tensor(NeverAlias(), storage, inds)
+Tensor(inds, storage::TensorStorage) = Tensor(storage, inds)
 
 storage(T::Tensor) = T.storage
 
 # TODO: deprecate
 store(T::Tensor) = storage(T)
 
-data(T::Tensor) = data(store(T))
+data(T::Tensor) = data(storage(T))
 
 storagetype(::Tensor{<: Any, <: Any, StoreT}) where {StoreT} = StoreT
 
@@ -62,9 +69,9 @@ eltype(::Tensor{ElT}) where {ElT} = ElT
 
 strides(T::Tensor) = dim_to_strides(inds(T))
 
-setstorage(T, nstore) = Tensor(nstore, inds(T))
+setstorage(T, nstore) = tensor(nstore, inds(T))
 
-setinds(T, ninds) = Tensor(storage(T), ninds)
+setinds(T, ninds) = tensor(storage(T), ninds)
 
 #
 # Generic Tensor functions
@@ -84,44 +91,45 @@ size(T::Tensor,i::Int) = dim(T,i)
 # TODO: maybe this should only be for DenseTensor?
 function unsafe_convert(::Type{Ptr{ElT}},
                              T::Tensor{ElT}) where {ElT}
-  return unsafe_convert(Ptr{ElT},store(T))
+  return unsafe_convert(Ptr{ElT},storage(T))
 end
 
-copy(T::Tensor) = setstorage(T,copy(store(T)))
+copy(T::Tensor) = setstorage(T, copy(storage(T)))
 
-copyto!(R::Tensor,T::Tensor) = (copyto!(store(R), store(T)); R)
+copyto!(R::Tensor,T::Tensor) = (copyto!(storage(R), storage(T)); R)
 
-complex(T::Tensor) = setstorage(T,complex(store(T)))
+complex(T::Tensor) = setstorage(T,complex(storage(T)))
 
-Base.real(T::Tensor) = setstorage(T,real(store(T)))
+Base.real(T::Tensor) = setstorage(T,real(storage(T)))
 
-Base.imag(T::Tensor) = setstorage(T,imag(store(T)))
+Base.imag(T::Tensor) = setstorage(T,imag(storage(T)))
 
 #
 # Necessary to overload since the generic fallbacks are
 # slow
 #
 
-LinearAlgebra.norm(T::Tensor) = norm(store(T))
+LinearAlgebra.norm(T::Tensor) = norm(storage(T))
 
-conj(T::Tensor; kwargs...) = setstorage(T, conj(store(T); kwargs...))
+conj(vs::AliasStyle, T::Tensor) = setstorage(T, conj(vs, storage(T)))
+conj(T::Tensor) = conj(AllowAlias(), T)
 
-Random.randn!(T::Tensor) = (randn!(store(T)); T)
+Random.randn!(T::Tensor) = (randn!(storage(T)); T)
 
-LinearAlgebra.rmul!(T::Tensor,α::Number) = (rmul!(store(T),α); T)
-scale!(T::Tensor,α::Number) = rmul!(store(T),α)
+LinearAlgebra.rmul!(T::Tensor,α::Number) = (rmul!(storage(T),α); T)
+scale!(T::Tensor,α::Number) = rmul!(storage(T),α)
 
-fill!(T::Tensor,α::Number) = (fill!(store(T),α); T)
+fill!(T::Tensor,α::Number) = (fill!(storage(T),α); T)
 
 #function similar(::Type{<:Tensor{ElT,N,StoreT}},dims) where {ElT,N,StoreT}
 #  return tensor(similar(StoreT,dim(dims)),dims)
 #end
 
 # TODO: make sure these are implemented correctly
-#similar(T::Type{<:Tensor},::Type{S}) where {S} = tensor(similar(store(T),S),inds(T))
-#similar(T::Type{<:Tensor},::Type{S},dims) where {S} = tensor(similar(store(T),S),dims)
+#similar(T::Type{<:Tensor},::Type{S}) where {S} = tensor(similar(storage(T),S),inds(T))
+#similar(T::Type{<:Tensor},::Type{S},dims) where {S} = tensor(similar(storage(T),S),dims)
 
-similar(T::Tensor) = setstorage(T,similar(store(T)))
+similar(T::Tensor) = setstorage(T,similar(storage(T)))
 
 # TODO: for BlockSparse, this needs to include the offsets
 # TODO: for Diag, the storage is not just the total dimension
@@ -131,7 +139,7 @@ similar(T::Tensor) = setstorage(T,similar(store(T)))
 #similar(T::Tensor,dims::Dims) = _similar_from_dims(T,dims)
 
 similar(T::Tensor, ::Type{S}) where {S} =
-  setstorage(T,similar(store(T), S))
+  setstorage(T,similar(storage(T), S))
 
 similar(T::Tensor,
              ::Type{S},
@@ -142,15 +150,15 @@ similar(T::Tensor, ::Type{S}, dims::Dims) where {S<:Number} =
   _similar_from_dims(T, S, dims)
 
 _similar_from_dims(T::Tensor, dims) =
-  tensor(similar(store(T), dim(dims)), dims)
+  tensor(similar(storage(T), dim(dims)), dims)
 
 function _similar_from_dims(T::Tensor,::Type{S},dims) where {S<:Number}
-  return tensor(similar(store(T),S,dim(dims)),dims)
+  return tensor(similar(storage(T),S,dim(dims)),dims)
 end
 
 function convert(::Type{<:Tensor{<:Number,N,StoreR,Inds}},
                       T::Tensor{<:Number,N,<:Any,Inds}) where {N,Inds,StoreR}
-  return setstorage(T,convert(StoreR,store(T)))
+  return setstorage(T,convert(StoreR,storage(T)))
 end
 
 function zeros(TensorT::Type{<:Tensor{ElT,N,StoreT}},
@@ -182,7 +190,7 @@ function dense(::Type{<:Tensor{ElT,NT,StoreT,IndsT}}) where {ElT,NT,StoreT,IndsT
   return Tensor{ElT,NT,dense(StoreT),IndsT}
 end
 
-dense(T::Tensor) = setstorage(T,dense(store(T)))
+dense(T::Tensor) = setstorage(T,dense(storage(T)))
 
 function similar_type(::Type{<:Tensor{ElT,<:Any,StoreT,<:Any}},
                       ::Type{IndsR}) where {ElT,StoreT,IndsR}
@@ -199,7 +207,7 @@ array(T::Tensor) = array(dense(T))
 matrix(T::Tensor{<:Number,2}) = array(T)
 vector(T::Tensor{<:Number,1}) = array(T)
 
-isempty(T::Tensor) = isempty(store(T))
+isempty(T::Tensor) = isempty(storage(T))
 
 #
 # Helper functions for BlockSparse-type storage
@@ -210,13 +218,13 @@ nzblocks(T::Tensor)
 
 Return a vector of the non-zero blocks of the BlockSparseTensor.
 """
-nzblocks(T::Tensor) = nzblocks(store(T))
+nzblocks(T::Tensor) = nzblocks(storage(T))
 
-eachnzblock(T::Tensor) = eachnzblock(store(T))
+eachnzblock(T::Tensor) = eachnzblock(storage(T))
 
-blockoffsets(T::Tensor) = blockoffsets(store(T))
-nnzblocks(T::Tensor) = nnzblocks(store(T))
-nnz(T::Tensor) = nnz(store(T))
+blockoffsets(T::Tensor) = blockoffsets(storage(T))
+nnzblocks(T::Tensor) = nnzblocks(storage(T))
+nnz(T::Tensor) = nnz(storage(T))
 nblocks(T::Tensor) = nblocks(inds(T))
 blockdims(T::Tensor,block) = blockdims(inds(T),block)
 blockdim(T::Tensor,block) = blockdim(inds(T),block)
@@ -232,7 +240,7 @@ offset(T::Tensor,pos::Int)
 Get the offset of the block at position pos
 in the block-offsets list.
 """
-offset(T::Tensor, block) = offset(store(T), block)
+offset(T::Tensor, block) = offset(storage(T), block)
 
 """
 isblocknz(T::Tensor,
@@ -240,7 +248,7 @@ isblocknz(T::Tensor,
 
 Check if the specified block is non-zero
 """
-isblocknz(T::Tensor,block) = isblocknz(store(T),block)
+isblocknz(T::Tensor,block) = isblocknz(storage(T),block)
 
 function blockstart(T::Tensor{<:Number,N},block) where {N}
   start_index = @MVector ones(Int,N)
@@ -328,7 +336,7 @@ function summary(io::IO,
   for (dim, ind) in enumerate(inds(T))
     println(io, "Dim $dim: ", ind)
   end
-  println(io, typeof(store(T)))
+  println(io, typeof(storage(T)))
   println(io, " ", Base.dims2string(dims(T)))
 end
 
