@@ -1,8 +1,4 @@
-export dense,
-       dims,
-       dim,
-       mindim,
-       diaglength
+export dense, dims, dim, mindim, diaglength
 
 # dim and dims are used in the Tensor interface, overload 
 # base Dims here
@@ -54,8 +50,7 @@ dim_to_stride(ds, k::Int) = dim_to_strides(ds)[k]
 # code (it helps to construct a Tuple(::NTuple{N,Int}) where the 
 # only known thing for dispatch is a concrete type such
 # as Dims{4})
-similar_type(::Type{<:Dims},
-             ::Type{Val{N}}) where {N} = Dims{N}
+similar_type(::Type{<:Dims}, ::Type{Val{N}}) where {N} = Dims{N}
 
 # This is to help with ITensor compatibility
 dim(i::Int) = i
@@ -75,7 +70,7 @@ sim(i::Int) = i
 
 # More complicated definition makes Order(Ref(2)[]) faster
 @eval struct Order{N}
-  (OrderT::Type{ <: Order})() = $(Expr(:new, :OrderT))
+  (OrderT::Type{<:Order})() = $(Expr(:new, :OrderT))
 end
 
 @doc """
@@ -91,4 +86,3 @@ Create an instance of the value type Order representing
 the order of an ITensor.
 """
 Order(N) = Order{N}()
-

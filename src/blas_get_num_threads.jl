@@ -12,15 +12,14 @@ function guess_vendor()
   if Sys.isapple() && (ret == :unknown)
     ret = :osxblas
   end
-  ret
+  return ret
 end
 
 _tryparse_env_int(key) = tryparse(Int, get(ENV, key, ""))
 
-blas_get_num_threads()::Union{Int, Nothing} =
-  _get_num_threads()
+blas_get_num_threads()::Union{Int,Nothing} = _get_num_threads()
 
-function _get_num_threads(; _blas = guess_vendor())::Union{Int, Nothing}
+function _get_num_threads(; _blas=guess_vendor())::Union{Int,Nothing}
   if _blas === :openblas || _blas === :openblas64
     return Int(ccall((BLAS.@blasfunc(openblas_get_num_threads), BLAS.libblas), Cint, ()))
   elseif _blas === :mkl
@@ -29,14 +28,13 @@ function _get_num_threads(; _blas = guess_vendor())::Union{Int, Nothing}
     key = "VECLIB_MAXIMUM_THREADS"
     nt = _tryparse_env_int(key)
     if nt === nothing
-      @warn "Failed to read environment variable $key" maxlog=1
+      @warn "Failed to read environment variable $key" maxlog = 1
     else
       return nt
     end
   else
     @assert _blas === :unknown
   end
-  @warn "Could not get number of BLAS threads. Returning `nothing` instead." maxlog=1
+  @warn "Could not get number of BLAS threads. Returning `nothing` instead." maxlog = 1
   return nothing
 end
-

@@ -1,9 +1,7 @@
-using NDTensors,
-      Test
+using NDTensors, Test
 
 @testset "DiagTensor basic functionality" begin
-
-  t = tensor(Diag(rand(ComplexF64,100)), (100,100))
+  t = tensor(Diag(rand(ComplexF64, 100)), (100, 100))
   @test conj(data(store(t))) == data(store(conj(t)))
   @test typeof(conj(t)) <: DiagTensor
 
@@ -21,9 +19,9 @@ using NDTensors,
 
   d = 3
   vr = rand(d)
-  D = tensor(Diag(vr), (d,d))
-  @test Array(D) == NDTensors.LinearAlgebra.diagm(0=>vr) 
-  @test matrix(D) == NDTensors.LinearAlgebra.diagm(0=>vr)
+  D = tensor(Diag(vr), (d, d))
+  @test Array(D) == NDTensors.LinearAlgebra.diagm(0 => vr)
+  @test matrix(D) == NDTensors.LinearAlgebra.diagm(0 => vr)
   # fails because of missing similar method for NonuniformDiag :(
   #@test permutedims(D, (2, 1)) == tensor(diagITensor(vr, j, i))
   #@test permutedims(tensor(diagITensor(2.0, j, i)), (2, 1)) == tensor(diagITensor(2.0, j, i))

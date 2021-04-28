@@ -7,7 +7,7 @@ Base.eltype(::TensorStorage{ElT}) where {ElT} = ElT
 
 Base.eltype(::Type{<:TensorStorage{ElT}}) where {ElT} = ElT
 
-Base.iterate(S::TensorStorage,args...) = iterate(data(S),args...)
+Base.iterate(S::TensorStorage, args...) = iterate(data(S), args...)
 
 dense(S::TensorStorage) = S
 
@@ -19,13 +19,13 @@ Base.length(S::TensorStorage) = length(data(S))
 
 Base.size(S::TensorStorage) = size(data(S))
 
-Base.@propagate_inbounds Base.getindex(S::TensorStorage,
-                                       i::Integer) = data(S)[i]
-Base.@propagate_inbounds Base.setindex!(S::TensorStorage,v,
-                                        i::Integer) = (setindex!(data(S),v,i); S)
+Base.@propagate_inbounds Base.getindex(S::TensorStorage, i::Integer) = data(S)[i]
+Base.@propagate_inbounds function Base.setindex!(S::TensorStorage, v, i::Integer)
+(setindex!(data(S), v, i); S)
+end
 
-(S::TensorStorage * x::Number) = setdata(S,x*data(S))
-(x::Number * S::TensorStorage) = S*x
+(S::TensorStorage * x::Number) = setdata(S, x * data(S))
+(x::Number * S::TensorStorage) = S * x
 
 # To be added, but make sure these covers all the cases, such
 # as different kinds of DiagBlockSparse:
@@ -33,9 +33,8 @@ Base.@propagate_inbounds Base.setindex!(S::TensorStorage,v,
 #similar(S::TensorStorage,::Type{ElT}) where {ElT} = setdata(S,similar(data(S),ElT))
 
 # Needed for passing Tensor{T,2} to BLAS/LAPACK
-function Base.unsafe_convert(::Type{Ptr{ElT}},
-                             T::TensorStorage{ElT}) where {ElT}
-  return Base.unsafe_convert(Ptr{ElT},data(T))
+function Base.unsafe_convert(::Type{Ptr{ElT}}, T::TensorStorage{ElT}) where {ElT}
+  return Base.unsafe_convert(Ptr{ElT}, data(T))
 end
 
 # This may need to be overloaded, since storage types
@@ -53,27 +52,25 @@ function Base.conj(::NeverAlias, S::TensorStorage)
   return conj!(copy(S))
 end
 
-Base.complex(S::TensorStorage) = setdata(S,complex(data(S)))
+Base.complex(S::TensorStorage) = setdata(S, complex(data(S)))
 
-Base.real(S::TensorStorage) = setdata(S,real(data(S)))
+Base.real(S::TensorStorage) = setdata(S, real(data(S)))
 
-Base.imag(S::TensorStorage) = setdata(S,imag(data(S)))
+Base.imag(S::TensorStorage) = setdata(S, imag(data(S)))
 
-Base.copyto!(S1::TensorStorage,
-             S2::TensorStorage) = (copyto!(data(S1), data(S2)); S1)
+Base.copyto!(S1::TensorStorage, S2::TensorStorage) = (copyto!(data(S1), data(S2)); S1)
 
 Random.randn!(S::TensorStorage) = (randn!(data(S)); S)
 
 Base.fill!(S::TensorStorage, v) = (fill!(data(S), v); S)
 
-LinearAlgebra.rmul!(S::TensorStorage,
-                    v::Number) = (rmul!(data(S), v); S)
+LinearAlgebra.rmul!(S::TensorStorage, v::Number) = (rmul!(data(S), v); S)
 
 scale!(S::TensorStorage, v::Number) = rmul!(S, v)
 
 LinearAlgebra.norm(S::TensorStorage) = norm(data(S))
 
-Base.convert(::Type{T},S::T) where {T <: TensorStorage} = S
+Base.convert(::Type{T}, S::T) where {T<:TensorStorage} = S
 
 blockoffsets(S::TensorStorage) = S.blockoffsets
 
@@ -90,4 +87,3 @@ nnzblocks(S::TensorStorage) = length(blockoffsets(S))
 nnz(S::TensorStorage) = length(S)
 
 offset(S::TensorStorage, block) = offset(blockoffsets(S), block)
-

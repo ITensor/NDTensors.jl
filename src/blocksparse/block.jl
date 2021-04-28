@@ -4,9 +4,9 @@
 #
 
 struct Block{N}
-  data::NTuple{N, UInt}
+  data::NTuple{N,UInt}
   hash::UInt
-  function Block{N}(data::NTuple{N, UInt}) where {N}
+  function Block{N}(data::NTuple{N,UInt}) where {N}
     h = _hash(data)
     return new{N}(data, h)
   end
@@ -20,8 +20,7 @@ end
 # Constructors
 #
 
-Block{N}(t::Tuple{Vararg{<:Any, N}}) where {N} =
-  Block{N}(UInt.(t))
+Block{N}(t::Tuple{Vararg{<:Any,N}}) where {N} = Block{N}(UInt.(t))
 
 Block{N}(I::CartesianIndex{N}) where {N} = Block{N}(I.I)
 
@@ -37,13 +36,13 @@ Block(v::MVector{N}) where {N} = Block{N}(v)
 
 Block(v::SVector{N}) where {N} = Block{N}(v)
 
-Block(t::NTuple{N, UInt}) where {N} = Block{N}(t)
+Block(t::NTuple{N,UInt}) where {N} = Block{N}(t)
 
-Block(t::Tuple{Vararg{<:Any, N}}) where {N} = Block{N}(t)
+Block(t::Tuple{Vararg{<:Any,N}}) where {N} = Block{N}(t)
 
 Block(::Tuple{}) where {N} = Block{0}(())
 
-Block(I::Union{Integer, Block{1}}...) = Block(I)
+Block(I::Union{Integer,Block{1}}...) = Block(I)
 
 #
 # Conversions
@@ -51,7 +50,7 @@ Block(I::Union{Integer, Block{1}}...) = Block(I)
 
 CartesianIndex(b::Block) = CartesianIndex(Tuple(b))
 
-Tuple(b::Block{N}) where {N} = NTuple{N, UInt}(b.data)
+Tuple(b::Block{N}) where {N} = NTuple{N,UInt}(b.data)
 
 convert(::Type{Block}, I::CartesianIndex{N}) where {N} = Block{N}(I.I)
 
@@ -61,7 +60,7 @@ convert(::Type{Block}, t::Tuple) where {N} = Block(t)
 
 convert(::Type{Block{N}}, t::Tuple) where {N} = Block{N}(t)
 
-(::Type{IntT})(b::Block{1}) where {IntT <: Integer}= IntT(only(b))
+(::Type{IntT})(b::Block{1}) where {IntT<:Integer} = IntT(only(b))
 
 #
 # Getting and setting fields
@@ -85,15 +84,15 @@ iterate(b::Block, args...) = iterate(b.data, args...)
   return b.data[i]
 end
 
-@propagate_inbounds setindex(b::Block{N}, val, i::Integer) where {N} =
-  Block{N}(setindex(b.data, UInt(val), i))
+@propagate_inbounds function setindex(b::Block{N}, val, i::Integer) where {N}
+  return Block{N}(setindex(b.data, UInt(val), i))
+end
 
 ValLength(::Type{<:Block{N}}) where {N} = Val{N}
 
 deleteat(b::Block, pos) = Block(deleteat(Tuple(b), pos))
 
-insertafter(b::Block, val, pos) =
-  Block(insertafter(Tuple(b), UInt.(val), pos))
+insertafter(b::Block, val, pos) = Block(insertafter(Tuple(b), UInt.(val), pos))
 
 getindices(b::Block, I) = getindices(Tuple(b), I)
 
@@ -117,14 +116,14 @@ _hash(::Tuple{}, h::UInt) = h + Base.tuplehash_seed
 @generated function _hash(b::NTuple{N}, h::UInt) where {N}
   quote
     out = h + Base.tuplehash_seed
-    @nexprs $N i -> out = hash(b[$N-i+1], out)
+    @nexprs $N i -> out = hash(b[$N - i + 1], out)
   end
 end
 # Stop inlining after some number of arguments to avoid code blowup
 function _hash(t::Base.Any16, h::UInt)
   out = h + Base.tuplehash_seed
-  for i = length(t):-1:1
-      out = hash(t[i], out)
+  for i in length(t):-1:1
+    out = hash(t[i], out)
   end
   return out
 end
@@ -167,4 +166,3 @@ hash(b::Block, h::UInt) = h + hash(b)
 show(io::IO, mime::MIME"text/plain", b::Block) = print(io, "Block$(Int.(Tuple(b)))")
 
 show(io::IO, b::Block) = show(io, MIME("text/plain"), b)
-

@@ -44,10 +44,6 @@ import Base:
   view,
   zeros
 
-import Base.Broadcast:
-  Broadcasted,
-  BroadcastStyle
+import Base.Broadcast: Broadcasted, BroadcastStyle
 
-import TupleTools:
-  isperm
-
+import TupleTools: isperm
