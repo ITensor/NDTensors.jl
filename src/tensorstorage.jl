@@ -21,7 +21,7 @@ Base.size(S::TensorStorage) = size(data(S))
 
 Base.@propagate_inbounds Base.getindex(S::TensorStorage, i::Integer) = data(S)[i]
 Base.@propagate_inbounds function Base.setindex!(S::TensorStorage, v, i::Integer)
-(setindex!(data(S), v, i); S)
+  return (setindex!(data(S), v, i); S)
 end
 
 (S::TensorStorage * x::Number) = setdata(S, x * data(S))
