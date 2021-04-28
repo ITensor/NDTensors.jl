@@ -145,20 +145,16 @@ DenseTensor(::UndefInitializer,
   DenseTensor(undef, inds)
 
 # For convenience, direct Tensor constructors default to Dense
-Tensor(::Type{ElT},
-       inds...) where {ElT} = DenseTensor(ElT, inds...)
+Tensor(::Type{ElT}, inds...) where {ElT} = DenseTensor(ElT, inds...)
 
 Tensor(inds...) = Tensor(Float64, inds...)
 
-Tensor(::Type{ElT},
-       ::UndefInitializer,
-       inds...) where {ElT} = DenseTensor(ElT, undef, inds...)
+Tensor(::Type{ElT}, ::UndefInitializer, inds...) where {ElT} =
+  DenseTensor(ElT, undef, inds...)
 
-Tensor(::UndefInitializer,
-       inds...) = DenseTensor(undef, inds...)
+Tensor(::UndefInitializer, inds...) = DenseTensor(undef, inds...)
 
-Tensor(A::Array{<:Number,N},
-       inds::Dims{N}) where {N} = tensor(Dense(vec(A)),inds)
+Tensor(A::Array{<:Number,N}, inds::Dims{N}) where {N} = tensor(Dense(vec(A)),inds)
 
 #
 # Random constructors
@@ -197,7 +193,7 @@ IndexStyle(::Type{<:DenseTensor}) = IndexLinear()
 
 # Override CartesianIndices iteration to iterate
 # linearly through the Dense storage (faster)
-iterate(T::DenseTensor,args...) = iterate(store(T),args...)
+iterate(T::DenseTensor,args...) = iterate(storage(T),args...)
 
 function _zeros(TensorT::Type{<: DenseTensor},
                 inds)
@@ -232,7 +228,7 @@ end
 
 # To fix method ambiguity with similar(::AbstractArray,::Type)
 function similar(T::DenseTensor, ::Type{ElT}) where {ElT}
-  return tensor(similar(store(T), ElT), inds(T))
+  return tensor(similar(storage(T), ElT), inds(T))
 end
 
 _similar(T::DenseTensor, inds) = similar(typeof(T), inds)
@@ -272,9 +268,9 @@ end
 # Linear indexing
 #
 
-@propagate_inbounds @inline getindex(T::DenseTensor, i::Integer) = store(T)[i]
+@propagate_inbounds @inline getindex(T::DenseTensor, i::Integer) = storage(T)[i]
 
-@propagate_inbounds @inline setindex!(T::DenseTensor, v, i::Integer) = (store(T)[i] = v; T)
+@propagate_inbounds @inline setindex!(T::DenseTensor, v, i::Integer) = (storage(T)[i] = v; T)
 
 #
 # Slicing
@@ -298,21 +294,21 @@ end
 # This returns a view into the same Tensor data
 function reshape(T::DenseTensor, dims)
   dim(T)==dim(dims) || error("Total new dimension must be the same as the old dimension")
-  return tensor(store(T), dims)
+  return tensor(storage(T), dims)
 end
 
 # This version fixes method ambiguity with AbstractArray reshape
 function reshape(T::DenseTensor, dims::Dims)
   dim(T)==dim(dims) || error("Total new dimension must be the same as the old dimension")
-  return tensor(store(T), dims)
+  return tensor(storage(T), dims)
 end
 
 function reshape(T::DenseTensor, dims::Int...)
-  return tensor(store(T), tuple(dims...))
+  return tensor(storage(T), tuple(dims...))
 end
 
 convert(::Type{Array}, T::DenseTensor) =
-  reshape(data(store(T)), dims(inds(T)))
+  reshape(data(storage(T)), dims(inds(T)))
 
 # Create an Array that is a view of the Dense Tensor
 # Useful for using Base Array functions
@@ -395,7 +391,7 @@ permutedims(::Tensor, ::Tuple{Vararg{Int}}) =
 
 # TODO: move to tensor.jl?
 function (x::Number * T::Tensor)
-  return tensor(x*store(T),inds(T))
+  return tensor(x*storage(T),inds(T))
 end
 (T::Tensor * x::Number) = x*T
 
@@ -858,9 +854,9 @@ function _contract!(CT::DenseTensor{El, NC},
                     α::Number = one(El),
                     β::Number = zero(El)) where {El, NC, NA, NB}
   # TODO: directly use Tensor instead of Array
-  C = ReshapedArray(data(store(CT)), dims(inds(CT)), ())
-  A = ReshapedArray(data(store(AT)), dims(inds(AT)), ())
-  B = ReshapedArray(data(store(BT)), dims(inds(BT)), ())
+  C = ReshapedArray(data(storage(CT)), dims(inds(CT)), ())
+  A = ReshapedArray(data(storage(AT)), dims(inds(AT)), ())
+  B = ReshapedArray(data(storage(BT)), dims(inds(BT)), ())
 
   tA = 'N'
   if props.permuteA

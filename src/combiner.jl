@@ -17,12 +17,16 @@ data(::Combiner) = error("Combiner storage has no data")
 blockperm(C::Combiner) = C.perm
 blockcomb(C::Combiner) = C.comb
 
+copy(C::Combiner) = Combiner(copy(blockperm(C)), copy(blockcomb(C)))
+
 eltype(::Type{<:Combiner}) = Number
 
 eltype(::Combiner) = eltype(Combiner)
 
-promote_rule(::Type{<:Combiner},
-                  StorageT::Type{<:Dense}) = StorageT
+promote_rule(::Type{<:Combiner}, StorageT::Type{<:Dense}) = StorageT
+
+conj(::AllowAlias, T::Combiner) = T
+conj(::NeverAlias, T::Combiner) = copy(T)
 
 #
 # CombinerTensor (Tensor using Combiner storage)
@@ -33,10 +37,8 @@ const CombinerTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where {Sto
 combinedindex(T::CombinerTensor) = inds(T)[1]
 uncombinedinds(T::CombinerTensor) = popfirst(inds(T))
 
-blockperm(C::CombinerTensor) = blockperm(store(C))
-blockcomb(C::CombinerTensor) = blockcomb(store(C))
-
-conj(T::CombinerTensor; always_copy = false) = T
+blockperm(C::CombinerTensor) = blockperm(storage(C))
+blockcomb(C::CombinerTensor) = blockcomb(storage(C))
 
 function contraction_output(::TensorT1,
                             ::TensorT2,
@@ -71,13 +73,13 @@ function contract!!(R::Tensor{<:Number,NR},
     ui = setdiff(labelsT1, labelsT2)[]
     newind = inds(T1)[findfirst(==(ui),labelsT1)]
     cpos1,cpos2 = intersect_positions(labelsT1,labelsT2)
-    storeR = copy(store(T2))
+    storeR = copy(storage(T2))
     indsR = setindex(inds(T2),newind,cpos2)
     return tensor(storeR,indsR)
   elseif count_common(labelsT1,labelsT2) == 1 && length(inds(T1)) != 2
     # This is the case of uncombining
     cpos1,cpos2 = intersect_positions(labelsT1,labelsT2)
-    storeR = copy(store(T2))
+    storeR = copy(storage(T2))
     indsC = deleteat(inds(T1),cpos1)
     indsR = insertat(inds(T2),indsC,cpos2)
     return tensor(storeR,indsR)
@@ -125,6 +127,6 @@ end
 function show(io::IO, mime::MIME"text/plain", T::CombinerTensor)
   summary(io, T)
   println(io)
-  show(io, mime, store(T))
+  show(io, mime, storage(T))
 end
 

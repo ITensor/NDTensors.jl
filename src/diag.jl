@@ -201,7 +201,7 @@ end
 function similar(T::DiagTensor{<:Number,N},
                       ::Type{ElR},
                       inds::Dims{N}) where {ElR<:Number,N}
-  return tensor(similar(store(T),ElR,minimum(inds)),inds)
+  return tensor(similar(storage(T),ElR,minimum(inds)),inds)
 end
 
 """
@@ -209,14 +209,14 @@ getdiagindex(T::DiagTensor,i::Int)
 
 Get the ith value along the diagonal of the tensor.
 """
-getdiagindex(T::DiagTensor{<:Number},ind::Int) = store(T)[ind]
+getdiagindex(T::DiagTensor{<:Number},ind::Int) = storage(T)[ind]
 
 """
 setdiagindex!(T::DiagTensor,i::Int)
 
 Set the ith value along the diagonal of the tensor.
 """
-setdiagindex!(T::DiagTensor{<:Number},val,ind::Int) = (store(T)[ind] = val)
+setdiagindex!(T::DiagTensor{<:Number},val,ind::Int) = (storage(T)[ind] = val)
 
 """
 setdiag(T::UniformDiagTensor,val)
@@ -233,8 +233,8 @@ setdiag(T::UniformDiagTensor,val) = tensor(Diag(val),inds(T))
     return zero(eltype(ElT))
   end
 end
-@propagate_inbounds getindex(T::DiagTensor{<:Number,1},ind::Int) = store(T)[ind]
-@propagate_inbounds getindex(T::DiagTensor{<:Number,0}) = store(T)[1]
+@propagate_inbounds getindex(T::DiagTensor{<:Number,1},ind::Int) = storage(T)[ind]
+@propagate_inbounds getindex(T::DiagTensor{<:Number,0}) = storage(T)[1]
 
 # Set diagonal elements
 # Throw error for off-diagonal
@@ -244,15 +244,15 @@ end
   setdiagindex!(T,val,inds[1])
   return T
 end
-@propagate_inbounds setindex!(T::DiagTensor{<:Number,1},val,ind::Int) = ( store(T)[ind] = val )
-@propagate_inbounds setindex!(T::DiagTensor{<:Number,0},val) = ( store(T)[1] = val )
+@propagate_inbounds setindex!(T::DiagTensor{<:Number,1},val,ind::Int) = ( storage(T)[ind] = val )
+@propagate_inbounds setindex!(T::DiagTensor{<:Number,0},val) = ( storage(T)[1] = val )
 
 function setindex!(T::UniformDiagTensor{<:Number,N},val,inds::Vararg{Int,N}) where {N}
   error("Cannot set elements of a uniform Diag storage")
 end
 
 # TODO: make a fill!! that works for uniform and non-uniform
-#fill!(T::DiagTensor,v) = fill!(store(T),v)
+#fill!(T::DiagTensor,v) = fill!(storage(T),v)
 
 function dense(::Type{<:Tensor{ElT,N,StoreT,IndsT}}) where {ElT,N,
                                                             StoreT<:Diag,IndsT}

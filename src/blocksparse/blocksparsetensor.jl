@@ -192,18 +192,18 @@ end
                                       i::Vararg{Int,N}) where {ElT,N}
   offset,_ = indexoffset(T,i...)
   isnothing(offset) && return zero(ElT)
-  return store(T)[offset]
+  return storage(T)[offset]
 end
 
 @propagate_inbounds function getindex(T::BlockSparseTensor{ElT,0}) where {ElT}
   nnzblocks(T) == 0 && return zero(ElT)
-  return store(T)[]
+  return storage(T)[]
 end
 
 # These may not be valid if the Tensor has no blocks
-#@propagate_inbounds getindex(T::BlockSparseTensor{<:Number,1},ind::Int) = store(T)[ind]
+#@propagate_inbounds getindex(T::BlockSparseTensor{<:Number,1},ind::Int) = storage(T)[ind]
 
-#@propagate_inbounds getindex(T::BlockSparseTensor{<:Number,0}) = store(T)[1]
+#@propagate_inbounds getindex(T::BlockSparseTensor{<:Number,0}) = storage(T)[1]
 
 # Add the specified block to the BlockSparseTensor
 # Insert it such that the blocks remain ordered.
@@ -216,7 +216,7 @@ function insertblock_offset!(T::BlockSparseTensor{ElT, N},
   newoffset = nnz(T)
   insert!(blockoffsets(T), newblock, newoffset)
   # Insert new block into data
-  splice!(data(store(T)), newoffset+1:newoffset, zeros(ElT,newdim))
+  splice!(data(storage(T)), newoffset+1:newoffset, zeros(ElT,newdim))
   return newoffset
 end
 
@@ -237,7 +237,7 @@ insertblock!(T::BlockSparseTensor, block) = insertblock!(T, Block(block))
     offset_of_block = insertblock_offset!(T, block)
     offset = offset_of_block+offset_within_block
   end
-  store(T)[offset] = val
+  storage(T)[offset] = val
   return T
 end
 
@@ -269,7 +269,7 @@ function blockview(T::BlockSparseTensor,
   blockT, offsetT = bof
   blockdimsT = blockdims(T, blockT)
   blockdimT = prod(blockdimsT)
-  dataTslice = @view data(store(T))[offsetT+1:offsetT+blockdimT]
+  dataTslice = @view data(storage(T))[offsetT+1:offsetT+blockdimT]
   return tensor(Dense(dataTslice), blockdimsT)
 end
 
@@ -1046,7 +1046,7 @@ reshape(T::BlockSparse, boffsR::BlockOffsets) =
 
 function reshape(T::BlockSparseTensor, boffsR::BlockOffsets,
                  indsR)
-  storeR = reshape(store(T),boffsR)
+  storeR = reshape(storage(T),boffsR)
   return tensor(storeR,indsR)
 end
 
