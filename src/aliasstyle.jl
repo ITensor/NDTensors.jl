@@ -32,4 +32,3 @@ i.e. the output will never share data with one of the inputs.
 See also [`AliasStyle`](@ref) and [`AllowAlias`](@ref).
 """
 struct NeverAlias <: AliasStyle end
-

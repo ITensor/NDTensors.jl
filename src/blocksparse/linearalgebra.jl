@@ -3,18 +3,16 @@ const BlockSparseMatrix{ElT,StoreT,IndsT} = BlockSparseTensor{ElT,2,StoreT,IndsT
 const DiagBlockSparseMatrix{ElT,StoreT,IndsT} = DiagBlockSparseTensor{ElT,2,StoreT,IndsT}
 const DiagMatrix{ElT,StoreT,IndsT} = DiagTensor{ElT,2,StoreT,IndsT}
 
-function _truncated_blockdim(S::DiagMatrix,
-                             docut::Float64;
-                             singular_values=false,
-                             truncate=true)
+function _truncated_blockdim(
+  S::DiagMatrix, docut::Float64; singular_values=false, truncate=true
+)
   !truncate && return diaglength(S)
   newdim = 0
-	val = singular_values ? getdiagindex(S,newdim+1)^2 : getdiagindex(S,newdim+1)
-  while newdim+1 ≤ diaglength(S) && val > docut
+  val = singular_values ? getdiagindex(S, newdim + 1)^2 : getdiagindex(S, newdim + 1)
+  while newdim + 1 ≤ diaglength(S) && val > docut
     newdim += 1
-    if newdim+1 ≤ diaglength(S)
-      val = singular_values ? getdiagindex(S,newdim+1)^2 : 
-             getdiagindex(S,newdim+1)
+    if newdim + 1 ≤ diaglength(S)
+      val = singular_values ? getdiagindex(S, newdim + 1)^2 : getdiagindex(S, newdim + 1)
     end
   end
   return newdim
@@ -30,23 +28,22 @@ per row/column, otherwise it fails.
 This assumption makes it so the result can be
 computed from the dense svds of seperate blocks.
 """
-function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
-                           kwargs...) where {ElT}
+function LinearAlgebra.svd(T::BlockSparseMatrix{ElT}; kwargs...) where {ElT}
   alg::String = get(kwargs, :alg, "divide_and_conquer")
 
   truncate = haskey(kwargs, :maxdim) || haskey(kwargs, :cutoff)
 
   #@timeit_debug timer "block sparse svd" begin
-  Us = Vector{DenseTensor{ElT, 2}}(undef, nnzblocks(T))
-  Ss = Vector{DiagTensor{real(ElT), 2}}(undef, nnzblocks(T))
-  Vs = Vector{DenseTensor{ElT, 2}}(undef, nnzblocks(T))
+  Us = Vector{DenseTensor{ElT,2}}(undef, nnzblocks(T))
+  Ss = Vector{DiagTensor{real(ElT),2}}(undef, nnzblocks(T))
+  Vs = Vector{DenseTensor{ElT,2}}(undef, nnzblocks(T))
 
   # Sorted eigenvalues
   d = Vector{real(ElT)}()
 
   for (n, b) in enumerate(eachnzblock(T))
     blockT = blockview(T, b)
-    USVb = svd(blockT; alg = alg)
+    USVb = svd(blockT; alg=alg)
     if isnothing(USVb)
       return nothing
     end
@@ -68,52 +65,49 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
 
   dropblocks = Int[]
   if truncate
-    truncerr,docut = truncate!(d; kwargs...)
+    truncerr, docut = truncate!(d; kwargs...)
     for n in 1:nnzblocks(T)
-      blockdim = _truncated_blockdim(Ss[n],
-                                     docut;
-                                     singular_values=true,
-                                     truncate=truncate)
+      blockdim = _truncated_blockdim(Ss[n], docut; singular_values=true, truncate=truncate)
       if blockdim == 0
-        push!(dropblocks,n)
+        push!(dropblocks, n)
       else
-        Strunc = tensor(Diag(storage(Ss[n])[1:blockdim]),
-                        (blockdim,blockdim))
-        Us[n] = Us[n][1:dim(Us[n],1),1:blockdim]
+        Strunc = tensor(Diag(storage(Ss[n])[1:blockdim]), (blockdim, blockdim))
+        Us[n] = Us[n][1:dim(Us[n], 1), 1:blockdim]
         Ss[n] = Strunc
-        Vs[n] = Vs[n][1:dim(Vs[n],1),1:blockdim]
+        Vs[n] = Vs[n][1:dim(Vs[n], 1), 1:blockdim]
       end
     end
-    deleteat!(Us,dropblocks)
-    deleteat!(Ss,dropblocks)
-    deleteat!(Vs,dropblocks)
-    deleteat!(nzblocksT,dropblocks)
-    else
-    truncerr,docut = 0.0,0.0
+    deleteat!(Us, dropblocks)
+    deleteat!(Ss, dropblocks)
+    deleteat!(Vs, dropblocks)
+    deleteat!(nzblocksT, dropblocks)
+  else
+    truncerr, docut = 0.0, 0.0
   end
 
   # The number of blocks of T remaining
-  nnzblocksT = nnzblocks(T)-length(dropblocks)
+  nnzblocksT = nnzblocks(T) - length(dropblocks)
 
   #
   # Put the blocks into U,S,V
   # 
 
-  nb1_lt_nb2 = (nblocks(T)[1] < nblocks(T)[2] || 
-                (nblocks(T)[1] == nblocks(T)[2] && 
-                 dim(T,1) < dim(T,2)))
+  nb1_lt_nb2 = (
+    nblocks(T)[1] < nblocks(T)[2] ||
+    (nblocks(T)[1] == nblocks(T)[2] && dim(T, 1) < dim(T, 2))
+  )
 
   if nb1_lt_nb2
-    uind = sim(ind(T,1))
+    uind = sim(ind(T, 1))
   else
-    uind = sim(ind(T,2))
+    uind = sim(ind(T, 2))
   end
 
-  deleteat!(uind,dropblocks)
+  deleteat!(uind, dropblocks)
 
   # uind may have too many blocks
   if nblocks(uind) > nnzblocksT
-    resize!(uind,nnzblocksT)
+    resize!(uind, nnzblocksT)
   end
 
   for n in 1:nnzblocksT
@@ -129,15 +123,15 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
   if dir(vind) != dir(inds(T)[2])
     vind = dag(vind)
   end
-  indsV = setindex(inds(T),dag(vind),1)
-  indsV = permute(indsV,(2,1))
+  indsV = setindex(inds(T), dag(vind), 1)
+  indsV = permute(indsV, (2, 1))
 
-  indsS = setindex(inds(T),uind,1)
-  indsS = setindex(indsS,vind,2)
+  indsS = setindex(inds(T), uind, 1)
+  indsS = setindex(indsS, vind, 2)
 
-  nzblocksU = Vector{Block{2}}(undef,nnzblocksT)
-  nzblocksS = Vector{Block{2}}(undef,nnzblocksT)
-  nzblocksV = Vector{Block{2}}(undef,nnzblocksT)
+  nzblocksU = Vector{Block{2}}(undef, nnzblocksT)
+  nzblocksS = Vector{Block{2}}(undef, nnzblocksT)
+  nzblocksV = Vector{Block{2}}(undef, nnzblocksT)
 
   for n in 1:nnzblocksT
     blockT = nzblocksT[n]
@@ -145,7 +139,7 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
     blockU = (blockT[1], UInt(n))
     nzblocksU[n] = blockU
 
-    blockS = (n,n)
+    blockS = (n, n)
     nzblocksS[n] = blockS
 
     blockV = (blockT[2], UInt(n))
@@ -180,7 +174,7 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT};
     blockview(V, blockV) .= Vb
   end
 
-  return U,S,V,Spectrum(d,truncerr)
+  return U, S, V, Spectrum(d, truncerr)
   #end # @timeit_debug
 end
 
@@ -188,10 +182,10 @@ _eigen_eltypes(T::Hermitian{ElT,<:BlockSparseMatrix{ElT}}) where {ElT} = real(El
 
 _eigen_eltypes(T::BlockSparseMatrix{ElT}) where {ElT} = complex(ElT), complex(ElT)
 
-function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
-                                      BlockSparseMatrix{ElT}};
-                             kwargs...) where {ElT<:Union{Real,Complex}}
-  truncate = haskey(kwargs,:maxdim) || haskey(kwargs,:cutoff)
+function LinearAlgebra.eigen(
+  T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},BlockSparseMatrix{ElT}}; kwargs...
+) where {ElT<:Union{Real,Complex}}
+  truncate = haskey(kwargs, :maxdim) || haskey(kwargs, :cutoff)
 
   ElD, ElV = _eigen_eltypes(T)
 
@@ -221,20 +215,19 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
   sort!(d; rev=true, by=abs)
 
   if truncate
-    truncerr,docut = truncate!(d; kwargs...)
+    truncerr, docut = truncate!(d; kwargs...)
     for n in 1:nnzblocks(T)
-      blockdim = _truncated_blockdim(Ds[n],docut)
+      blockdim = _truncated_blockdim(Ds[n], docut)
       if blockdim == 0
-        push!(dropblocks,n)
+        push!(dropblocks, n)
       else
-        Dtrunc = tensor(Diag(storage(Ds[n])[1:blockdim]),
-                        (blockdim,blockdim))
+        Dtrunc = tensor(Diag(storage(Ds[n])[1:blockdim]), (blockdim, blockdim))
         Ds[n] = Dtrunc
-        Vs[n] = copy(Vs[n][1:dim(Vs[n],1),1:blockdim])
+        Vs[n] = copy(Vs[n][1:dim(Vs[n], 1), 1:blockdim])
       end
     end
-    deleteat!(Ds,dropblocks)
-    deleteat!(Vs,dropblocks)
+    deleteat!(Ds, dropblocks)
+    deleteat!(Vs, dropblocks)
   else
     truncerr = 0.0
   end
@@ -255,12 +248,11 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
   l = sim(i1)
 
   lkeepblocks = Int[bT[1] for bT in nzblocksT]
-  ldropblocks = setdiff(1:nblocks(l),lkeepblocks)
+  ldropblocks = setdiff(1:nblocks(l), lkeepblocks)
   deleteat!(l, ldropblocks)
 
   # l may have too many blocks
-  (nblocks(l) > nnzblocksT) && 
-    error("New index l in eigen has too many blocks")
+  (nblocks(l) > nnzblocksT) && error("New index l in eigen has too many blocks")
 
   # Truncation may have changed
   # some block sizes
@@ -292,7 +284,7 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
     Db, Vb = Ds[n], Vs[n]
 
     blockD = nzblocksD[n]
-    blockviewD = blockview(D,blockD)
+    blockviewD = blockview(D, blockD)
     for i in 1:diaglength(Db)
       setdiagindex!(blockviewD, getdiagindex(Db, i), i)
     end
@@ -304,15 +296,14 @@ function LinearAlgebra.eigen(T::Union{Hermitian{ElT,<:BlockSparseMatrix{ElT}},
   return D, V, Spectrum(d, truncerr)
 end
 
-function LinearAlgebra.exp(T::Union{BlockSparseMatrix{ElT},
-                                    Hermitian{ElT, <:BlockSparseMatrix{ElT}}}) where {ElT<: Union{Real,
-                                                                                                  Complex}}
+function LinearAlgebra.exp(
+  T::Union{BlockSparseMatrix{ElT},Hermitian{ElT,<:BlockSparseMatrix{ElT}}}
+) where {ElT<:Union{Real,Complex}}
   expT = BlockSparseTensor(ElT, undef, nzblocks(T), inds(T))
   for b in eachnzblock(T)
-    all(==(b[1]),b) || error("exp currently supports only block-diagonal matrices")
+    all(==(b[1]), b) || error("exp currently supports only block-diagonal matrices")
     blockT = blockview(T, b)
     blockview(expT, b) .= exp(blockT)
   end
   return expT
 end
-

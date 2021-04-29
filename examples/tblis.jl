@@ -30,7 +30,8 @@ let
   println()
   println("Using BLAS with $nthreads threads")
 
-  time_blas = @belapsed NDTensors.contract!($C_blas, $labelsC, $A, $labelsA, $B, $labelsB) samples = 100
+  time_blas = @belapsed NDTensors.contract!($C_blas, $labelsC, $A, $labelsA, $B, $labelsB) samples =
+    100
 
   println()
   println("Time (BLAS) = ", time_blas, " seconds")
@@ -47,7 +48,8 @@ let
 
   C_tblis = randomTensor(d, d, d, d)
 
-  time_tblis = @belapsed NDTensors.contract!($C_tblis, $labelsC, $A, $labelsA, $B, $labelsB) samples = 100
+  time_tblis = @belapsed NDTensors.contract!($C_tblis, $labelsC, $A, $labelsA, $B, $labelsB) samples =
+    100
 
   println()
   println("Time (TBLIS) = ", time_tblis, " seconds")
@@ -58,4 +60,3 @@ let
   println()
   println("Time (TBLIS) / Time (BLAS) = ", time_tblis / time_blas)
 end
-

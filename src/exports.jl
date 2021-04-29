@@ -1,17 +1,17 @@
-export 
-# NDTensors.jl
+export
+  # NDTensors.jl
   insertblock!!,
   setindex,
   setindex!!,
 
-# blocksparse/blockdims.jl
+  # blocksparse/blockdims.jl
   BlockDims,
   blockdim,
   blockdims,
   nblocks,
   blockindex,
 
-# blocksparse/blocksparse.jl
+  # blocksparse/blocksparse.jl
   # Types
   Block,
   BlockOffset,
@@ -28,7 +28,7 @@ export
   nzblock,
   nzblocks,
 
-# blocksparse/blocksparsetensor.jl
+  # blocksparse/blocksparsetensor.jl
   # Types
   BlockSparseTensor,
   # Methods
@@ -36,7 +36,7 @@ export
   insertblock!,
   randomBlockSparseTensor,
 
-# dense.jl
+  # dense.jl
   # Types
   Dense,
   DenseTensor,
@@ -54,27 +54,26 @@ export
   vector,
   write,
 
-# diag.jl
+  # diag.jl
   # Types
   Diag,
   DiagTensor,
 
-# empty.jl
+  # empty.jl
   Empty,
   EmptyTensor,
   EmptyBlockSparseTensor,
 
-# tensorstorage.jl
+  # tensorstorage.jl
   data,
   TensorStorage,
   randn!,
   scale!,
   norm,
 
-# tensor.jl
+  # tensor.jl
   Tensor,
   tensor,
   inds,
   ind,
   store
-
