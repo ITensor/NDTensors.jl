@@ -10,14 +10,14 @@ nonzeros(T::Tensor) = data(T)
 # Special version for BlockSparseTensor
 # Generic version doesn't work since BlockSparse us parametrized by
 # the Tensor order
-function similar_type(
+function similartype(
   ::Type{<:Tensor{ElT,NT,<:BlockSparse{ElT,VecT},<:Any}}, ::Type{IndsR}
 ) where {NT,ElT,VecT,IndsR}
   NR = length(IndsR)
   return Tensor{ElT,NR,BlockSparse{ElT,VecT,NR},IndsR}
 end
 
-function similar_type(
+function similartype(
   ::Type{<:Tensor{ElT,NT,<:BlockSparse{ElT,VecT},<:Any}}, ::Type{IndsR}
 ) where {NT,ElT,VecT,IndsR<:NTuple{NR}} where {NR}
   return Tensor{ElT,NR,BlockSparse{ElT,VecT,NR},IndsR}
@@ -1025,7 +1025,7 @@ function permute_combine(inds::IndsT, pos::Vararg{IntOrIntTuple,N}) where {IndsT
     end
     newinds[i] = newind_i
   end
-  IndsR = similar_type(IndsT, Val{N})
+  IndsR = similartype(IndsT, Val{N})
   indsR = IndsR(Tuple(newinds))
   return indsR
 end
@@ -1049,7 +1049,7 @@ function combine(inds::IndsT, com::Vararg{IntOrIntTuple,N}) where {IndsT,N}
     end
     newinds[i] = newind_i
   end
-  IndsR = similar_type(IndsT, Val{N})
+  IndsR = similartype(IndsT, Val{N})
   indsR = IndsR(Tuple(newinds))
   return indsR
 end

@@ -18,7 +18,7 @@ const BlockDims{N} = NTuple{N,BlockDim}
 
 Base.ndims(ds::Type{<:BlockDims{N}}) where {N} = N
 
-similar_type(::Type{<:BlockDims}, ::Type{Val{N}}) where {N} = BlockDims{N}
+similartype(::Type{<:BlockDims}, ::Type{Val{N}}) where {N} = BlockDims{N}
 
 Base.copy(ds::BlockDims) = ds
 

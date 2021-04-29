@@ -1,60 +1,110 @@
 
 #
+# Empty Number
+#
+# Represents a number that can be set to any type.
+#
+
+struct EmptyNumber <: Number end
+
+#
 # Empty storage
 #
 
-struct Empty{ElT,StoreT<:TensorStorage} <: TensorStorage{ElT} end
+struct EmptyStorage{ElT,StoreT<:TensorStorage} <: TensorStorage{ElT} end
 
-# Get the Empty version of the TensorStorage
-function empty(::Type{StoreT}) where {StoreT<:TensorStorage{ElT}} where {ElT}
-  return Empty{ElT,StoreT}
+# Get the EmptyStorage version of the TensorStorage
+function emptytype(::Type{StoreT}) where {StoreT}
+  return EmptyStorage{eltype(StoreT),StoreT}
 end
+
+empty(::Type{StoreT}) where {StoreT} = emptytype(StoreT)()
 
 # Defaults to Dense
-function Empty(::Type{ElT}) where {ElT}
-  return empty(Dense{ElT,Vector{ElT}})()
+function EmptyStorage(::Type{ElT}) where {ElT}
+  return emptytype(Dense{ElT,Vector{ElT}})()
 end
 
-Empty() = Empty(Float64)
+EmptyStorage() = EmptyStorage(Float64)
 
-copy(S::Empty) = S
+similar(S::EmptyStorage) = S
+similar(S::EmptyStorage, ::Type{ElT}) where {ElT} = empty(similartype(fulltype(S), ElT))
 
-isempty(::Empty) = true
+copy(S::EmptyStorage) = S
 
-nnzblocks(::Empty) = 0
+isempty(::EmptyStorage) = true
 
-nnz(::Empty) = 0
+nnzblocks(::EmptyStorage) = 0
 
-Base.real(::Type{<:Empty{ElT,StoreT}}) where {ElT,StoreT} = Empty{real(ElT),real(StoreT)}
+nnz(::EmptyStorage) = 0
 
-Base.real(S::Empty) = real(typeof(S))()
+Base.real(::Type{<:EmptyStorage{ElT,StoreT}}) where {ElT,StoreT} = EmptyStorage{real(ElT),real(StoreT)}
 
-function complex(::Type{<:Empty{ElT,StoreT}}) where {ElT,StoreT}
-  return Empty{complex(ElT),complex(StoreT)}
+Base.real(S::EmptyStorage) = real(typeof(S))()
+
+function complex(::Type{<:EmptyStorage{ElT,StoreT}}) where {ElT,StoreT}
+  return EmptyStorage{complex(ElT),complex(StoreT)}
 end
 
-complex(S::Empty) = complex(typeof(S))()
+complex(S::EmptyStorage) = complex(typeof(S))()
 
-#size(::Empty) = 0
+#size(::EmptyStorage) = 0
 
-function show(io::IO, mime::MIME"text/plain", S::Empty)
+function show(io::IO, mime::MIME"text/plain", S::EmptyStorage)
   return println(io, typeof(S))
 end
 
 #
-# EmptyTensor (Tensor using Empty storage)
+# EmptyTensor (Tensor using EmptyStorage storage)
 #
 
-const EmptyTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where {StoreT<:Empty}
+const EmptyTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where {StoreT<:EmptyStorage}
+
+# XXX TODO: add bounds checking
+getindex(T::EmptyTensor, I::Integer...) = zero(eltype(T))
+getindex(T::EmptyTensor{EmptyNumber}, I::Integer...) = zero(Float64)
+
+similar(T::EmptyTensor, inds::Tuple) = setinds(T, inds)
+function similar(T::EmptyTensor, ::Type{ElT}) where {ElT<:Number}
+  return tensor(similar(storage(T), ElT), inds(T))
+end
+
+function permutedims!!(
+  R::EmptyTensor, T::EmptyTensor, perm::Tuple, f::Function=(r, t) -> t
+)
+  return R
+end
+
+function randn!!(T::EmptyTensor)
+  Tf = similar(fulltype(T), inds(T))
+  randn!(Tf)
+  return Tf
+end
+
+# Default to Float64
+function randn!!(T::EmptyTensor{EmptyNumber})
+  return randn!!(similar(T, Float64))
+end
+
+function _fill!!(::Type{ElT}, T::EmptyTensor, α::Number) where {ElT}
+  Tf = similar(fulltype(T), ElT, inds(T))
+  fill!(Tf, α)
+  return Tf
+end
+
+fill!!(T::EmptyTensor, α::Number) = _fill!!(eltype(T), T, α)
+
+# Determine the element type from the number you are filling with
+fill!!(T::EmptyTensor{EmptyNumber}, α::Number) = _fill!!(eltype(α), T, α)
 
 isempty(::EmptyTensor) = true
 
 function EmptyTensor(::Type{ElT}, inds) where {ElT<:Number}
-  return tensor(Empty(ElT), inds)
+  return tensor(EmptyStorage(ElT), inds)
 end
 
 function EmptyTensor(::Type{StoreT}, inds) where {StoreT<:TensorStorage}
-  return tensor(empty(StoreT)(), inds)
+  return tensor(empty(StoreT), inds)
 end
 
 function EmptyBlockSparseTensor(::Type{ElT}, inds) where {ElT<:Number}
@@ -62,15 +112,41 @@ function EmptyBlockSparseTensor(::Type{ElT}, inds) where {ElT<:Number}
   return EmptyTensor(StoreT, inds)
 end
 
+fulltype(::Type{EmptyStorage{ElT,StoreT}}) where {ElT,StoreT} = StoreT
+fulltype(T::EmptyStorage) = fulltype(typeof(T))
+
+fulltype(T::Tensor) = fulltype(typeof(T))
+
 # From an EmptyTensor, return the closest Tensor type
-function fill(
+function fulltype(::Type{TensorT}) where {TensorT<:Tensor}
+  return Tensor{eltype(TensorT),ndims(TensorT),fulltype(storetype(TensorT)),indstype(TensorT)}
+end
+
+# TODO: make these more general, move to tensorstorage.jl
+datatype(::Type{<:Dense{<:Any,DataT}}) where {DataT} = DataT
+
+# TODO: make these more general, move to tensorstorage.jl
+# TODO: rename `similartype`
+similartype(::Type{<:Vector}, ::Type{ElT}) where {ElT} = Vector{ElT}
+
+function similartype(StoreT::Type{<:Dense{EmptyNumber}}, ::Type{ElT}) where {ElT}
+  return Dense{ElT,similartype(datatype(StoreT), ElT)}
+end
+
+function fulltype(
+  ::Type{ElR},
   ::Type{<:Tensor{ElT,N,EStoreT,IndsT}}
-) where {ElT<:Number,N,EStoreT<:Empty{ElT,StoreT},IndsT} where {StoreT}
-  return Tensor{ElT,N,StoreT,IndsT}
+) where {ElR,ElT<:Number,N,EStoreT<:EmptyStorage{ElT,StoreT},IndsT} where {StoreT}
+  return Tensor{ElR,N,similartype(StoreT,ElR),IndsT}
 end
 
 function zeros(T::TensorT) where {TensorT<:EmptyTensor}
-  TensorR = fill(TensorT)
+  TensorR = fulltype(TensorT)
+  return zeros(TensorR, inds(T))
+end
+
+function zeros(::Type{ElT}, T::TensorT) where {ElT,TensorT<:EmptyTensor}
+  TensorR = fulltype(ElT, TensorT)
   return zeros(TensorR, inds(T))
 end
 
@@ -81,6 +157,14 @@ function insertblock(T::EmptyTensor{<:Number,N}, block) where {N}
 end
 
 insertblock!!(T::EmptyTensor{<:Number,N}, block) where {N} = insertblock(T, block)
+
+# Special case with element type of EmptyNumber: storage takes the type
+# of the input
+@propagate_inbounds function _setindex(T::EmptyTensor{EmptyNumber}, x, I...)
+  R = zeros(typeof(x), T)
+  R[I...] = x
+  return R
+end
 
 @propagate_inbounds function _setindex(T::EmptyTensor, x, I...)
   R = zeros(T)
