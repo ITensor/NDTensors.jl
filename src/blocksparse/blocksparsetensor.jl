@@ -303,8 +303,7 @@ function +(T1::BlockSparseTensor{<:Number,N}, T2::BlockSparseTensor{<:Number,N})
   inds(T1) ≠ inds(T2) &&
     error("Cannot add block sparse tensors with different block structure")
   R = copy(T1)
-  R = permutedims!!(R, T2, ntuple(identity, Val(N)), +)
-  return R
+  return permutedims!!(R, T2, ntuple(identity, Val(N)), +)
 end
 
 function permutedims(T::BlockSparseTensor{<:Number,N}, perm::NTuple{N,Int}) where {N}
@@ -627,14 +626,15 @@ function permutedims!!(
   perm::NTuple{N,Int},
   f::Function=(r, t) -> t,
 ) where {ElR,ElT,N}
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
   #@timeit_debug timer "block sparse permutedims!!" begin
-  bofsRR = blockoffsets(R)
+  bofsRR = blockoffsets(RR)
   bofsT = blockoffsets(T)
 
   # Determine if bofsRR has been copied
   copy_bofsRR = false
 
-  new_nnz = nnz(R)
+  new_nnz = nnz(RR)
   for (blockT, offsetT) in pairs(bofsT)
     blockTperm = permute(blockT, perm)
     if !isassigned(bofsRR, blockTperm)
@@ -653,13 +653,13 @@ function permutedims!!(
   ## # and offsets
   ## copyto!(data(RR), data(R))
 
-  if new_nnz > nnz(R)
-    dataRR = append!(data(R), zeros(new_nnz - nnz(R)))
-    R = Tensor(BlockSparse(dataRR, bofsRR), inds(R))
+  if new_nnz > nnz(RR)
+    dataRR = append!(data(RR), zeros(new_nnz - nnz(RR)))
+    RR = Tensor(BlockSparse(dataRR, bofsRR), inds(RR))
   end
 
-  permutedims!(R, T, perm, f)
-  return R
+  permutedims!(RR, T, perm, f)
+  return RR
   #end
 end
 

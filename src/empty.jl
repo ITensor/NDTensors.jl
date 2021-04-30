@@ -1,11 +1,39 @@
 
+# TODO: move to tensorstorage.jl
+# TODO: extend to AbstractVector, returning the same type as `Base.similar` would
+# (make sure it handles views, CuArrays, etc. correctly)
+similartype(::Type{VecT}, ::Type{ElT}) where {VecT<:Vector,ElT} = Vector{ElT}
+similartype(::Type{StoreT}, ::Type{ElT}) where {StoreT<:Dense,ElT} = Dense{ElT,similartype(datatype(StoreT), ElT)}
+
+# TODO: make these more general, move to tensorstorage.jl
+datatype(::Type{<:Dense{<:Any,DataT}}) where {DataT} = DataT
+datatype(::Type{<:BlockSparse{<:Any,DataT}}) where {DataT} = DataT
+
 #
-# Empty Number
+# Represents a tensor order that could be set to any order.
+#
+
+struct EmptyOrder end
+
 #
 # Represents a number that can be set to any type.
 #
 
 struct EmptyNumber <: Number end
+
+# This is a backup definition to make:
+# A = ITensor(i, j)
+# complex!(A)
+# work. It acts as if the "default" type is `Float64`
+complex(::Type{EmptyNumber}) = ComplexF64
+
+function similartype(::Type{StoreT}, ::Type{ElT}) where {StoreT<:Dense{EmptyNumber},ElT}
+  return Dense{ElT,similartype(datatype(StoreT), ElT)}
+end
+
+function similartype(::Type{StoreT}, ::Type{ElT}) where {StoreT<:BlockSparse{EmptyNumber},ElT}
+  return BlockSparse{ElT,similartype(datatype(StoreT), ElT),ndims(StoreT)}
+end
 
 #
 # Empty storage
@@ -73,12 +101,6 @@ function similar(T::EmptyTensor, ::Type{ElT}) where {ElT<:Number}
   return tensor(similar(storage(T), ElT), inds(T))
 end
 
-function permutedims!!(
-  R::EmptyTensor, T::EmptyTensor, perm::Tuple, f::Function=(r, t) -> t
-)
-  return R
-end
-
 function randn!!(T::EmptyTensor)
   Tf = similar(fulltype(T), inds(T))
   randn!(Tf)
@@ -124,17 +146,6 @@ fulltype(T::Tensor) = fulltype(typeof(T))
 # From an EmptyTensor, return the closest Tensor type
 function fulltype(::Type{TensorT}) where {TensorT<:Tensor}
   return Tensor{eltype(TensorT),ndims(TensorT),fulltype(storetype(TensorT)),indstype(TensorT)}
-end
-
-# TODO: make these more general, move to tensorstorage.jl
-datatype(::Type{<:Dense{<:Any,DataT}}) where {DataT} = DataT
-
-# TODO: make these more general, move to tensorstorage.jl
-# TODO: rename `similartype`
-similartype(::Type{<:Vector}, ::Type{ElT}) where {ElT} = Vector{ElT}
-
-function similartype(StoreT::Type{<:Dense{EmptyNumber}}, ::Type{ElT}) where {ElT}
-  return Dense{ElT,similartype(datatype(StoreT), ElT)}
 end
 
 function fulltype(
@@ -201,6 +212,34 @@ function contract!!(
   return RR
 end
 
+# When one of the tensors is empty, return an empty
+# tensor.
+# XXX: make sure `R` is actually correct!
+function contract!!(
+  R::EmptyTensor,
+  labelsR,
+  T1::EmptyTensor,
+  labelsT1,
+  T2::Tensor,
+  labelsT2,
+)
+  return R
+end
+
+# When one of the tensors is empty, return an empty
+# tensor.
+# XXX: make sure `R` is actually correct!
+function contract!!(
+  R::EmptyTensor,
+  labelsR,
+  T1::Tensor,
+  labelsT1,
+  T2::EmptyTensor,
+  labelsT2,
+)
+  return R
+end
+
 function contract!!(
   R::EmptyTensor,
   labelsR,
@@ -240,6 +279,11 @@ end
 
 promote_rule(::Type{EmptyNumber}, ::Type{T}) where {T<:Number} = T
 
+promote_rule(::Type{T1}, ::Type{T2}) where {T1<:EmptyStorage{EmptyNumber},T2<:TensorStorage} = T2
+function promote_rule(::Type{T1}, ::Type{T2}) where {T1<:EmptyStorage,T2<:TensorStorage}
+  return promote_type(similartype(T2, eltype(T1)), T2)
+end
+
 function contraction_output(T1::EmptyTensor, T2::EmptyTensor, is)
   fulltypeR = contraction_output_type(fulltype(T1), fulltype(T2), typeof(is))
   storagetypeR = storagetype(fulltypeR)
@@ -247,7 +291,78 @@ function contraction_output(T1::EmptyTensor, T2::EmptyTensor, is)
   return Tensor(emptystoragetypeR(), is)
 end
 
+function contraction_output(T1::Tensor, T2::EmptyTensor, is)
+  fulltypeR = contraction_output_type(typeof(T1), fulltype(T2), typeof(is))
+  storagetypeR = storagetype(fulltypeR)
+  emptystoragetypeR = emptytype(storagetypeR)
+  return Tensor(emptystoragetypeR(), is)
+end
+
+function contraction_output(T1::EmptyTensor, T2::Tensor, is)
+  fulltypeR = contraction_output_type(fulltype(T1), typeof(T2), typeof(is))
+  storagetypeR = storagetype(fulltypeR)
+  emptystoragetypeR = emptytype(storagetypeR)
+  return Tensor(emptystoragetypeR(), is)
+end
+
+function permutedims!!(
+  R::Tensor,
+  T::EmptyTensor,
+  perm::Tuple,
+  f::Function=(r, t) -> t
+)
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
+  g(r) = f(r, false)
+  # TODO: try out @avx here
+  RA = ReshapedArray(data(RR), dims(RR), ())
+  @strided RA .= g.(RA)
+  return RR
+end
+
+function permutedims!!(
+  R::EmptyTensor,
+  T::Tensor,
+  perm::Tuple,
+  f::Function=(r, t) -> t
+)
+  RR = convert(promote_type(typeof(R), typeof(T)), T)
+  RA = ReshapedArray(data(RR), dims(RR), ())
+  g(t) = f(false, t)
+  # TODO: try out @avx here
+  @strided RA .= g.(RA)
+  return RR
+end
+
+function permutedims!!(
+  R::EmptyTensor, T::EmptyTensor, perm::Tuple, f::Function=(r, t) -> t
+)
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
+  return RR
+end
+
 function show(io::IO, mime::MIME"text/plain", T::EmptyTensor)
   summary(io, T)
   return println(io)
 end
+
+# XXX: this seems a bit strange and fragile?
+# Takes the type very literally.
+function HDF5.read(
+  parent::Union{HDF5.File,HDF5.Group}, name::AbstractString, ::Type{StoreT}
+) where {StoreT<:EmptyStorage}
+  g = open_group(parent, name)
+  typestr = string(StoreT)
+  if read(attributes(g)["type"]) != typestr
+    error("HDF5 group or file does not contain $typestr data")
+  end
+  return StoreT()
+end
+
+function HDF5.write(
+  parent::Union{HDF5.File,HDF5.Group}, name::String, ::StoreT
+) where {StoreT<:EmptyStorage}
+  g = create_group(parent, name)
+  attributes(g)["type"] = string(StoreT)
+  attributes(g)["version"] = 1
+end
+

@@ -461,8 +461,9 @@ function permutedims!!(
   perm::NTuple{N,Int},
   f::Function=(r, t) -> t,
 ) where {N}
-  permutedims!(R, T, perm, f)
-  return R
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
+  permutedims!(RR, T, perm, f)
+  return RR
 end
 
 function permutedims!!(
@@ -471,8 +472,9 @@ function permutedims!!(
   perm::NTuple{N,Int},
   f::Function=(r, t) -> t,
 ) where {ElR,ElT,N}
-  R = tensor(DiagBlockSparse(f(getdiagindex(R, 1), getdiagindex(T, 1))), inds(R))
-  return R
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
+  RR = tensor(DiagBlockSparse(f(getdiagindex(RR, 1), getdiagindex(T, 1))), inds(RR))
+  return RR
 end
 
 function permutedims!(

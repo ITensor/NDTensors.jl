@@ -369,9 +369,10 @@ end
 function permutedims!!(
   R::DenseTensor, T::DenseTensor, perm::Tuple, f::Function=(r, t) -> t
 )
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
   #RA = array(R)
   #TA = array(T)
-  RA = ReshapedArray(data(R), dims(R), ())
+  RA = ReshapedArray(data(RR), dims(RR), ())
   TA = ReshapedArray(data(T), dims(T), ())
   if !is_trivial_permutation(perm)
     @strided RA .= f.(RA, permutedims(TA, perm))
@@ -379,7 +380,7 @@ function permutedims!!(
     # TODO: specialize for specific functions
     RA .= f.(RA, TA)
   end
-  return R
+  return RR
 end
 
 # TODO: move to tensor.jl?
