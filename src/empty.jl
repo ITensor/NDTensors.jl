@@ -186,13 +186,39 @@ setindex!!(T::EmptyTensor, x, I...) = setindex(T, x, I...)
 
 # Version of contraction where output storage is empty
 function contract!!(
-  R::EmptyTensor{<:Number,NR},
-  labelsR::NTuple{NR},
-  T1::Tensor{<:Number,N1},
-  labelsT1::NTuple{N1},
-  T2::Tensor{<:Number,N2},
-  labelsT2::NTuple{N2},
-) where {NR,N1,N2}
+  R::EmptyTensor,
+  labelsR,
+  T1::Tensor,
+  labelsT1,
+  T2::Tensor,
+  labelsT2,
+)
+  RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
+  return RR
+end
+
+# For ambiguity with versions in combiner.jl
+function contract!!(
+  R::EmptyTensor,
+  labelsR,
+  T1::CombinerTensor,
+  labelsT1,
+  T2::Tensor,
+  labelsT2,
+)
+  RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
+  return RR
+end
+
+# For ambiguity with versions in combiner.jl
+function contract!!(
+  R::EmptyTensor,
+  labelsR,
+  T1::Tensor,
+  labelsT1,
+  T2::CombinerTensor,
+  labelsT2,
+)
   RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
   return RR
 end

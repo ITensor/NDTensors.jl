@@ -55,13 +55,16 @@ function contraction_output(
 end
 
 function contract!!(
-  R::Tensor{<:Number,NR},
-  labelsR::NTuple{NR},
-  T1::CombinerTensor{<:Number,N1},
-  labelsT1::NTuple{N1},
-  T2::Tensor{<:Number,N2},
-  labelsT2::NTuple{N2},
-) where {NR,N1,N2}
+  R::Tensor,
+  labelsR,
+  T1::CombinerTensor,
+  labelsT1,
+  T2::Tensor,
+  labelsT2
+)
+  NR = ndims(R)
+  N1 = ndims(T1)
+  N2 = ndims(T2)
   if N1 ≤ 1
     # Empty combiner, acts as multiplying by 1
     R = permutedims!!(R, T2, getperm(labelsR, labelsT2))
@@ -111,12 +114,12 @@ function contract!!(
 end
 
 function contract!!(
-  R::Tensor{<:Number,NR},
-  labelsR::NTuple{NR},
-  T1::Tensor{<:Number,N1},
-  labelsT1::NTuple{N1},
-  T2::CombinerTensor{<:Number,N2},
-  labelsT2::NTuple{N2},
+  R::Tensor,
+  labelsR,
+  T1::Tensor,
+  labelsT1,
+  T2::CombinerTensor,
+  labelsT2,
 ) where {NR,N1,N2}
   return contract!!(R, labelsR, T2, labelsT2, T1, labelsT1)
 end

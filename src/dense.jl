@@ -569,15 +569,18 @@ end
 
 # Move to tensor.jl? Is this generic for all storage types?
 function contract!!(
-  R::Tensor{<:Number,NR},
-  labelsR::NTuple{NR},
-  T1::Tensor{<:Number,N1},
-  labelsT1::NTuple{N1},
-  T2::Tensor{<:Number,N2},
-  labelsT2::NTuple{N2},
+  R::Tensor,
+  labelsR,
+  T1::Tensor,
+  labelsT1,
+  T2::Tensor,
+  labelsT2,
   α::Number=1,
   β::Number=0,
-) where {NR,N1,N2}
+)
+  NR = ndims(R)
+  N1 = ndims(T1)
+  N2 = ndims(T2)
   if (N1 ≠ 0) && (N2 ≠ 0) && (N1 + N2 == NR)
     # Outer product
     (α ≠ 1 || β ≠ 0) && error(
