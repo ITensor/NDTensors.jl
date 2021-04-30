@@ -1,5 +1,7 @@
 
-mult_combiner_signs(C,labelsC,indsC,T,labelsT,indsT,labelsRc) = T
+#<fermions>:
+before_combiner_signs(T,labelsT,indsT,C,labelsC,indsC,labelsR,indsR) = T
+after_combiner_signs(R,labelsR,indsR,C,labelsC,indsC) = R
 
 function contract(T::BlockSparseTensor,
                   labelsT,
@@ -25,17 +27,21 @@ function contract(T::BlockSparseTensor,
   if labelsC[1] ∉ labelsT
     # Combine
     labelsRc = contract_labels(labelsC,labelsT)
-    #<fermions>:
-    T = mult_combiner_signs(C,labelsC,inds(C),T,labelsT,inds(T),labelsRc)
     cpos_in_labelsRc = findfirst(==(clabel),labelsRc)
     labelsRuc = insertat(labelsRc,labels_uc,cpos_in_labelsRc)
     indsRc = contract_inds(inds(C),labelsC,inds(T),labelsT,labelsRc)
+
+    #<fermions>:
+    T = before_combiner_signs(T,labelsT,inds(T),C,labelsC,inds(C),labelsRc,indsRc)
+
     perm = getperm(labelsRuc,labelsT)
     ucpos_in_labelsT = Tuple(findall(x->x in labels_uc,labelsT))
     Rc = permutedims_combine(T,indsRc,perm,ucpos_in_labelsT,blockperm(C),blockcomb(C))
     return Rc
   else
+    #
     # Uncombine
+    #
     labelsRc = labelsT
     cpos_in_labelsRc = findfirst(==(clabel),labelsRc)
     # Move combined index to first position
@@ -52,19 +58,12 @@ function contract(T::BlockSparseTensor,
     indsRuc = contract_inds(inds(C),labelsC,inds(T),labelsT,labelsRuc)
 
     # <fermions>:
-    T = mult_combiner_signs(C,labelsC,inds(C),T,labelsT,inds(T),labelsRuc)
+    T = before_combiner_signs(T,labelsT,inds(T),C,labelsC,inds(C),labelsRuc,indsRuc)
 
     Ruc = uncombine(T,indsRuc,cpos_in_labelsRc,blockperm(C),blockcomb(C))
 
     # <fermions>:
-    if !isconj(store(C))
-      #
-      # Post-process Ruc for the case of a conjugate uncombiner
-      #
-      Nuc = count(l->(l>0),labelsC)
-      rperm = ntuple(i->(Nuc-i+1),Nuc) # reverse permutation
-      scale_blocks!(Ruc,block->permfactor(rperm,block[1:Nuc],inds(Ruc)[1:Nuc]))
-    end
+    Ruc = after_combiner_signs(Ruc,labelsRuc,indsRuc,C,labelsC,inds(C))
 
     return Ruc
   end
