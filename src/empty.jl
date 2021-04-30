@@ -60,6 +60,10 @@ end
 
 const EmptyTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where {StoreT<:EmptyStorage}
 
+function emptytype(::Type{TensorT}) where {TensorT<:Tensor}
+  return Tensor{eltype(TensorT),ndims(TensorT),emptytype(storagetype(TensorT)),indstype(TensorT)}
+end
+
 # XXX TODO: add bounds checking
 getindex(T::EmptyTensor, I::Integer...) = zero(eltype(T))
 getindex(T::EmptyTensor{EmptyNumber}, I::Integer...) = zero(Float64)
@@ -197,6 +201,17 @@ function contract!!(
   return RR
 end
 
+function contract!!(
+  R::EmptyTensor,
+  labelsR,
+  T1::EmptyTensor,
+  labelsT1,
+  T2::EmptyTensor,
+  labelsT2,
+)
+  return R
+end
+
 # For ambiguity with versions in combiner.jl
 function contract!!(
   R::EmptyTensor,
@@ -221,6 +236,15 @@ function contract!!(
 )
   RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
   return RR
+end
+
+promote_rule(::Type{EmptyNumber}, ::Type{T}) where {T<:Number} = T
+
+function contraction_output(T1::EmptyTensor, T2::EmptyTensor, is)
+  fulltypeR = contraction_output_type(fulltype(T1), fulltype(T2), typeof(is))
+  storagetypeR = storagetype(fulltypeR)
+  emptystoragetypeR = emptytype(storagetypeR)
+  return Tensor(emptystoragetypeR(), is)
 end
 
 function show(io::IO, mime::MIME"text/plain", T::EmptyTensor)
