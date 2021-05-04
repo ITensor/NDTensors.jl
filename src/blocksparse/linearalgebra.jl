@@ -207,14 +207,14 @@ function LinearAlgebra.eigen(
   Db, Vb = eigen(blockT)
   Ds = [Db]
   Vs = [Vb]
-  append!(d, abs.(vector(diag(Db))))
+  append!(d, abs.(data(Db)))
   for (n, b) in enumerate(eachnzblock(T))
     n == 1 && continue
     blockT = blockview(T, b)
     Db, Vb = eigen(blockT)
     push!(Ds, Db)
     push!(Vs, Vb)
-    append!(d, abs.(vector(diag(Db))))
+    append!(d, abs.(data(Db)))
   end
 
   dropblocks = Int[]
