@@ -668,6 +668,30 @@ function permutedims!!(
   #end
 end
 
+# <fermions>
+function scale_blocks!(T,
+                       compute_fac::Function=(b)->1) where {N}
+  # intentionally left blank
+end
+
+# <fermions>
+function scale_blocks!(T::BlockSparseTensor{<:Number,N},
+                       compute_fac::Function=(b)->1) where {N}
+  for blockT in keys(blockoffsets(T))
+    fac = compute_fac(blockT)
+    if fac != 1
+      Tblock = blockview(T,blockT)
+      scale!(Tblock,fac)
+    end
+  end
+end
+
+# <fermions>
+function permfactor(perm,block::Block{N},inds) where {N}
+  #println("In default permfactor")
+  return 1
+end
+
 # Version where it is known that R has the same blocks
 # as T
 function permutedims!(
@@ -680,7 +704,12 @@ function permutedims!(
     # Loop over non-zero blocks of T/R
     Tblock = blockview(T, blockT)
     Rblock = blockview(R, permute(blockT, perm))
-    permutedims!(Rblock, Tblock, perm, f)
+
+    # <fermions>
+    pfac = permfactor(perm,blockT,inds(T))
+    fac_f = (r,t)->f(r,pfac*t)
+
+    permutedims!(Rblock, Tblock, perm, fac_f)
   end
   return R
 end
@@ -916,6 +945,15 @@ function contract(
   #end
 end
 
+# <fermions>
+function compute_alpha(ElR,
+              labelsR,blockR,indsR,
+              labelsT1,blockT1,indsT1,
+              labelsT2,blockT2,indsT2)
+  #println("Default compute_alpha")
+  return one(ElR)
+end
+
 # XXX: this is not thread safe, divide into groups of
 # contractions that contract into the same block
 function _threaded_contract!(
@@ -969,6 +1007,12 @@ function _threaded_contract!(
       for ncontracted in ncontracted_range
         blockT1, blockT2, blockR = contraction_plan_blocks[ncontracted]
         # R .= α .* (T1 * T2) .+ β .* R
+
+        # <fermions>:
+        α = compute_alpha(ElR,labelsR,blockR,inds(R),
+                          labelsT1,block1,inds(T1),
+                          labelsT2,block2,inds(T2))
+
         contract!(blockR, labelsR, blockT1, labelsT1, blockT2, labelsT2, α, β)
         # Now keep adding to the block, since it has
         # been written to
@@ -998,8 +1042,11 @@ function contract!(
   end
   already_written_to = Dict{Block{NR},Bool}()
   # In R .= α .* (T1 * T2) .+ β .* R
-  α = one(ElR)
   for (block1, block2, blockR) in contraction_plan
+
+    #<fermions>
+    α = compute_alpha(ElR,labelsR,blockR,inds(R),labelsT1,block1,inds(T1),labelsT2,block2,inds(T2))
+
     T1block = T1[block1]
     T2block = T2[block2]
     Rblock = R[blockR]

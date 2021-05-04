@@ -576,6 +576,12 @@ function contract!(
     T1block = T1[block1]
     T2block = T2[block2]
     Rblock = R[blockR]
+
+    # <fermions>
+    α = compute_alpha(ElR,labelsR,blockR,inds(R),
+                      labelsT1,block1,inds(T1),
+                      labelsT2,block2,inds(T2))
+
     β = one(ElR)
     if !haskey(already_written_to, blockR)
       already_written_to[blockR] = true
