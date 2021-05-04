@@ -34,7 +34,6 @@ import Base:
   setindex!,
   show,
   size,
-  similar,
   stride,
   strides,
   summary,

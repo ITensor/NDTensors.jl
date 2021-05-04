@@ -51,10 +51,16 @@ end
 #end
 #BlockSparse{ElT}() where {ElT} = BlockSparse(ElT[],BlockOffsets())
 
+datatype(::Type{<:BlockSparse{<:Any,DataT}}) where {DataT} = DataT
+
 similar(D::BlockSparse) = setdata(D, similar(data(D)))
 
 # TODO: test this function
 similar(D::BlockSparse, ::Type{ElT}) where {ElT} = setdata(D, similar(data(D), ElT))
+
+function similartype(::Type{StoreT}, ::Type{ElT}) where {StoreT<:BlockSparse,ElT}
+  return BlockSparse{ElT,similartype(datatype(StoreT), ElT),ndims(StoreT)}
+end
 
 # TODO: check the offsets are the same?
 function copyto!(D1::BlockSparse, D2::BlockSparse)

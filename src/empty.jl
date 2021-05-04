@@ -1,14 +1,4 @@
 
-# TODO: move to tensorstorage.jl
-# TODO: extend to AbstractVector, returning the same type as `Base.similar` would
-# (make sure it handles views, CuArrays, etc. correctly)
-similartype(::Type{VecT}, ::Type{ElT}) where {VecT<:Vector,ElT} = Vector{ElT}
-similartype(::Type{StoreT}, ::Type{ElT}) where {StoreT<:Dense,ElT} = Dense{ElT,similartype(datatype(StoreT), ElT)}
-
-# TODO: make these more general, move to tensorstorage.jl
-datatype(::Type{<:Dense{<:Any,DataT}}) where {DataT} = DataT
-datatype(::Type{<:BlockSparse{<:Any,DataT}}) where {DataT} = DataT
-
 #
 # Represents a tensor order that could be set to any order.
 #
@@ -312,10 +302,7 @@ function permutedims!!(
   f::Function=(r, t) -> t
 )
   RR = convert(promote_type(typeof(R), typeof(T)), R)
-  g(r) = f(r, false)
-  # TODO: try out @avx here
-  RA = ReshapedArray(data(RR), dims(RR), ())
-  @strided RA .= g.(RA)
+  RR = permutedims!!(RR, RR, ntuple(identity, Val(ndims(R))), (r, t) -> f(r, false))
   return RR
 end
 
@@ -325,11 +312,8 @@ function permutedims!!(
   perm::Tuple,
   f::Function=(r, t) -> t
 )
-  RR = convert(promote_type(typeof(R), typeof(T)), T)
-  RA = ReshapedArray(data(RR), dims(RR), ())
-  g(t) = f(false, t)
-  # TODO: try out @avx here
-  @strided RA .= g.(RA)
+  RR = similar(promote_type(typeof(R), typeof(T)), inds(R))
+  RR = permutedims!!(RR, T, perm, (r, t) -> f(false, t))
   return RR
 end
 

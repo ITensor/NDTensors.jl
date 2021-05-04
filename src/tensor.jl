@@ -145,7 +145,9 @@ similar(T::Tensor) = setstorage(T, similar(storage(T)))
 
 # TODO: for BlockSparse, this needs to include the offsets
 # TODO: for Diag, the storage is not just the total dimension
-#similar(T::Tensor,dims) = _similar_from_dims(T,dims)
+similar(T::Tensor, dims::Tuple) = _similar_from_dims(T, dims)
+similar(::Type{TensorT}, dims::Tuple) where {TensorT<:Tensor} = _similar_from_dims(TensorT, dims)
+similar(::Type{TensorT}, dims::Tuple{}) where {TensorT<:Tensor} = _similar_from_dims(TensorT, dims)
 
 # To handle method ambiguity with AbstractArray
 #similar(T::Tensor,dims::Dims) = _similar_from_dims(T,dims)
@@ -163,6 +165,10 @@ _similar_from_dims(T::Tensor, dims) = tensor(similar(storage(T), dim(dims)), dim
 
 function _similar_from_dims(T::Tensor, ::Type{S}, dims) where {S<:Number}
   return tensor(similar(storage(T), S, dim(dims)), dims)
+end
+
+function _similar_from_dims(::Type{TensorT}, dims) where {TensorT<:Tensor}
+  return _similar_from_dims(TensorT, eltype(TensorT), dims)
 end
 
 function _similar_from_dims(::Type{TensorT}, ::Type{S}, dims) where {TensorT<:Tensor,S<:Number}
@@ -328,7 +334,7 @@ end
 
 BroadcastStyle(::Type{T}) where {T<:Tensor} = Broadcast.ArrayStyle{T}()
 
-function similar(
+function Base.similar(
   bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{T}}, ::Type{ElT}
 ) where {T<:Tensor,ElT}
   A = find_tensor(bc)

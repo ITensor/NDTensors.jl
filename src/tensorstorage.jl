@@ -1,4 +1,3 @@
-
 abstract type TensorStorage{ElT} <: AbstractVector{ElT} end
 
 data(S::TensorStorage) = S.data

@@ -147,6 +147,13 @@ function similar(
   return BlockSparseTensor(ElT, undef, blockoffsets, inds)
 end
 
+# This version of similar creates a tensor with no blocks
+function similar(
+  ::Type{TensorT}, inds::Tuple
+) where {TensorT<:BlockSparseTensor}
+  return similar(TensorT, BlockOffsets{ndims(TensorT)}(), inds)
+end
+
 function zeros(
   ::BlockSparseTensor{ElT,N}, blockoffsets::BlockOffsets{N}, inds
 ) where {ElT,N}

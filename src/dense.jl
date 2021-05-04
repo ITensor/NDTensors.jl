@@ -68,10 +68,12 @@ function similar(
   return Dense(similar(Vector{ElT}, length))
 end
 
-# XXX: this is type piracy but why doesn't base have it?
-function similar(::Type{VecT}, ::Type{ElT}, size) where {VecT<:AbstractVector,ElT}
-  return similar(similartype(VecT, ElT), size)
+function similartype(::Type{StoreT}, ::Type{ElT}) where {StoreT<:Dense,ElT}
+  return Dense{ElT,similartype(datatype(StoreT), ElT)}
 end
+
+# TODO: make these more general, move to tensorstorage.jl
+datatype(::Type{<:Dense{<:Any,DataT}}) where {DataT} = DataT
 
 function similar(
   ::Type{StorageT}, ::Type{ElT}, length::Int
@@ -208,19 +210,6 @@ end
 
 function zeros(TensorT::Type{<:DenseTensor}, inds::Tuple{})
   return _zeros(TensorT, inds)
-end
-
-function _similar(TensorT::Type{<:DenseTensor}, inds)
-  return tensor(similar(storagetype(TensorT), dim(inds)), inds)
-end
-
-function similar(TensorT::Type{<:DenseTensor}, inds)
-  return _similar(TensorT, inds)
-end
-
-# To fix method ambiguity with similar(::AbstractArray,::Tuple)
-function similar(TensorT::Type{<:DenseTensor}, inds::Dims)
-  return _similar(TensorT, inds)
 end
 
 # To fix method ambiguity with similar(::AbstractArray,::Type)
