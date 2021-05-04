@@ -59,9 +59,13 @@ store(T::Tensor) = storage(T)
 
 data(T::Tensor) = data(storage(T))
 
-storagetype(::Tensor{<:Any,<:Any,StoreT}) where {StoreT} = StoreT
+datatype(T::Tensor) = datatype(storage(T))
+
+indstype(::Type{<:Tensor{<:Any,<:Any,<:Any,IndsT}}) where {IndsT} = IndsT
+indstype(T::Tensor) = indstype(typeof(T))
 
 storagetype(::Type{<:Tensor{<:Any,<:Any,StoreT}}) where {StoreT} = StoreT
+storagetype(T::Tensor) = storagetype(typeof(T))
 
 # TODO: deprecate
 storetype(args...) = storagetype(args...)
@@ -120,11 +124,13 @@ LinearAlgebra.norm(T::Tensor) = norm(storage(T))
 conj(vs::AliasStyle, T::Tensor) = setstorage(T, conj(vs, storage(T)))
 conj(T::Tensor) = conj(AllowAlias(), T)
 
+randn!!(T::Tensor) = (randn!(T); T)
 Random.randn!(T::Tensor) = (randn!(storage(T)); T)
 
 LinearAlgebra.rmul!(T::Tensor, α::Number) = (rmul!(storage(T), α); T)
 scale!(T::Tensor, α::Number) = rmul!(storage(T), α)
 
+fill!!(T::Tensor, α::Number) = fill!(T, α)
 fill!(T::Tensor, α::Number) = (fill!(storage(T), α); T)
 
 #function similar(::Type{<:Tensor{ElT,N,StoreT}},dims) where {ElT,N,StoreT}
@@ -139,12 +145,22 @@ similar(T::Tensor) = setstorage(T, similar(storage(T)))
 
 # TODO: for BlockSparse, this needs to include the offsets
 # TODO: for Diag, the storage is not just the total dimension
-#similar(T::Tensor,dims) = _similar_from_dims(T,dims)
+similar(T::Tensor, dims::Tuple) = _similar_from_dims(T, dims)
+function similar(::Type{TensorT}, dims::Tuple) where {TensorT<:Tensor}
+  return _similar_from_dims(TensorT, dims)
+end
+function similar(::Type{TensorT}, dims::Tuple{}) where {TensorT<:Tensor}
+  return _similar_from_dims(TensorT, dims)
+end
 
 # To handle method ambiguity with AbstractArray
 #similar(T::Tensor,dims::Dims) = _similar_from_dims(T,dims)
 
 similar(T::Tensor, ::Type{S}) where {S} = setstorage(T, similar(storage(T), S))
+
+function similar(::Type{TensorT}, ::Type{S}, dims) where {TensorT<:Tensor,S<:Number}
+  return _similar_from_dims(TensorT, S, dims)
+end
 
 similar(T::Tensor, ::Type{S}, dims) where {S<:Number} = _similar_from_dims(T, S, dims)
 
@@ -155,6 +171,16 @@ _similar_from_dims(T::Tensor, dims) = tensor(similar(storage(T), dim(dims)), dim
 
 function _similar_from_dims(T::Tensor, ::Type{S}, dims) where {S<:Number}
   return tensor(similar(storage(T), S, dim(dims)), dims)
+end
+
+function _similar_from_dims(::Type{TensorT}, dims) where {TensorT<:Tensor}
+  return _similar_from_dims(TensorT, eltype(TensorT), dims)
+end
+
+function _similar_from_dims(
+  ::Type{TensorT}, ::Type{S}, dims
+) where {TensorT<:Tensor,S<:Number}
+  return tensor(similar(storagetype(TensorT), S, dim(dims)), dims)
 end
 
 function convert(
@@ -191,13 +217,13 @@ end
 
 dense(T::Tensor) = setstorage(T, dense(storage(T)))
 
-function similar_type(
+function similartype(
   ::Type{<:Tensor{ElT,<:Any,StoreT,<:Any}}, ::Type{IndsR}
 ) where {ElT,StoreT,IndsR}
   return Tensor{ElT,length(IndsR),StoreT,IndsR}
 end
 
-function similar_type(
+function similartype(
   ::Type{<:Tensor{ElT,<:Any,StoreT,<:Any}}, ::Type{IndsR}
 ) where {ElT,StoreT,IndsR<:NTuple{NR}} where {NR}
   return Tensor{ElT,NR,StoreT,IndsR}
@@ -316,7 +342,7 @@ end
 
 BroadcastStyle(::Type{T}) where {T<:Tensor} = Broadcast.ArrayStyle{T}()
 
-function similar(
+function Base.similar(
   bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{T}}, ::Type{ElT}
 ) where {T<:Tensor,ElT}
   A = find_tensor(bc)

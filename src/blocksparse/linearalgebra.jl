@@ -51,7 +51,13 @@ function LinearAlgebra.svd(T::BlockSparseMatrix{ElT}; kwargs...) where {ElT}
     Us[n] = Ub
     Ss[n] = Sb
     Vs[n] = Vb
-    append!(d, vector(diag(Sb)))
+    # Previously this was:
+    # vector(diag(Sb))
+    # But it broke, did `diag(::Tensor)` change types?
+    # TODO: call this a function `diagonal`, i.e.:
+    # https://github.com/JuliaLang/julia/issues/30250
+    # or make `diag(::Tensor)` return a view by default.
+    append!(d, data(Sb))
   end
 
   # Square the singular values to get
@@ -201,14 +207,14 @@ function LinearAlgebra.eigen(
   Db, Vb = eigen(blockT)
   Ds = [Db]
   Vs = [Vb]
-  append!(d, abs.(vector(diag(Db))))
+  append!(d, abs.(data(Db)))
   for (n, b) in enumerate(eachnzblock(T))
     n == 1 && continue
     blockT = blockview(T, b)
     Db, Vb = eigen(blockT)
     push!(Ds, Db)
     push!(Vs, Vb)
-    append!(d, abs.(vector(diag(Db))))
+    append!(d, abs.(data(Db)))
   end
 
   dropblocks = Int[]

@@ -50,7 +50,7 @@ dim_to_stride(ds, k::Int) = dim_to_strides(ds)[k]
 # code (it helps to construct a Tuple(::NTuple{N,Int}) where the 
 # only known thing for dispatch is a concrete type such
 # as Dims{4})
-similar_type(::Type{<:Dims}, ::Type{Val{N}}) where {N} = Dims{N}
+similartype(::Type{<:Dims}, ::Type{Val{N}}) where {N} = Dims{N}
 
 # This is to help with ITensor compatibility
 dim(i::Int) = i

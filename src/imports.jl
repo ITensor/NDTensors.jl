@@ -1,4 +1,3 @@
-
 import Base:
   # Types
   Array,
@@ -35,7 +34,6 @@ import Base:
   setindex!,
   show,
   size,
-  similar,
   stride,
   strides,
   summary,

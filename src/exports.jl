@@ -60,7 +60,7 @@ export
   DiagTensor,
 
   # empty.jl
-  Empty,
+  EmptyStorage,
   EmptyTensor,
   EmptyBlockSparseTensor,
 

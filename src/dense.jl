@@ -68,6 +68,17 @@ function similar(
   return Dense(similar(Vector{ElT}, length))
 end
 
+function similartype(::Type{StoreT}, ::Type{ElT}) where {StoreT<:Dense,ElT}
+  return Dense{ElT,similartype(datatype(StoreT), ElT)}
+end
+
+# TODO: make these more general, move to tensorstorage.jl
+datatype(::Type{<:Dense{<:Any,DataT}}) where {DataT} = DataT
+
+function similar(::Type{StorageT}, ::Type{ElT}, length::Int) where {StorageT<:Dense,ElT}
+  return Dense(similar(datatype(StorageT), ElT, length))
+end
+
 similar(D::Dense, ::Type{T}) where {T<:Number} = Dense(similar(data(D), T))
 
 zeros(DenseT::Type{<:Dense{ElT}}, inds) where {ElT} = zeros(DenseT, dim(inds))
@@ -197,19 +208,6 @@ end
 
 function zeros(TensorT::Type{<:DenseTensor}, inds::Tuple{})
   return _zeros(TensorT, inds)
-end
-
-function _similar(TensorT::Type{<:DenseTensor}, inds)
-  return tensor(similar(storagetype(TensorT), dim(inds)), inds)
-end
-
-function similar(TensorT::Type{<:DenseTensor}, inds)
-  return _similar(TensorT, inds)
-end
-
-# To fix method ambiguity with similar(::AbstractArray,::Tuple)
-function similar(TensorT::Type{<:DenseTensor}, inds::Dims)
-  return _similar(TensorT, inds)
 end
 
 # To fix method ambiguity with similar(::AbstractArray,::Type)
@@ -355,13 +353,11 @@ end
 
 # Version that may overwrite the result or promote
 # and return the result
-# TODO: move to tensor.jl?
-function permutedims!!(
-  R::Tensor, T::Tensor, perm::NTuple{N,Int}, f::Function=(r, t) -> t
-) where {N}
+function permutedims!!(R::DenseTensor, T::DenseTensor, perm::Tuple, f::Function=(r, t) -> t)
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
   #RA = array(R)
   #TA = array(T)
-  RA = ReshapedArray(data(R), dims(R), ())
+  RA = ReshapedArray(data(RR), dims(RR), ())
   TA = ReshapedArray(data(T), dims(T), ())
   if !is_trivial_permutation(perm)
     @strided RA .= f.(RA, permutedims(TA, perm))
@@ -369,7 +365,7 @@ function permutedims!!(
     # TODO: specialize for specific functions
     RA .= f.(RA, TA)
   end
-  return R
+  return RR
 end
 
 # TODO: move to tensor.jl?
@@ -524,7 +520,7 @@ const ⊗ = outer
 function contraction_output_type(
   ::Type{TensorT1}, ::Type{TensorT2}, ::Type{IndsR}
 ) where {TensorT1<:Tensor,TensorT2<:Tensor,IndsR}
-  return similar_type(promote_type(TensorT1, TensorT2), IndsR)
+  return similartype(promote_type(TensorT1, TensorT2), IndsR)
 end
 
 function contraction_output(
@@ -559,15 +555,11 @@ end
 
 # Move to tensor.jl? Is this generic for all storage types?
 function contract!!(
-  R::Tensor{<:Number,NR},
-  labelsR::NTuple{NR},
-  T1::Tensor{<:Number,N1},
-  labelsT1::NTuple{N1},
-  T2::Tensor{<:Number,N2},
-  labelsT2::NTuple{N2},
-  α::Number=1,
-  β::Number=0,
-) where {NR,N1,N2}
+  R::Tensor, labelsR, T1::Tensor, labelsT1, T2::Tensor, labelsT2, α::Number=1, β::Number=0
+)
+  NR = ndims(R)
+  N1 = ndims(T1)
+  N2 = ndims(T2)
   if (N1 ≠ 0) && (N2 ≠ 0) && (N1 + N2 == NR)
     # Outer product
     (α ≠ 1 || β ≠ 0) && error(
@@ -983,7 +975,7 @@ function permute_reshape(
       newdims[i] = eltype(IndsT)(newdim_i)
     end
   end
-  newinds = similar_type(IndsT, Val{N})(Tuple(newdims))
+  newinds = similartype(IndsT, Val{N})(Tuple(newdims))
   return reshape(T, newinds)
 end
 
@@ -997,11 +989,11 @@ function LinearAlgebra.svd(
   u = ind(UM, 2)
   v = ind(VM, 2)
 
-  Linds = similar_type(IndsT, Val{NL})(ntuple(i -> inds(T)[Lpos[i]], Val(NL)))
+  Linds = similartype(IndsT, Val{NL})(ntuple(i -> inds(T)[Lpos[i]], Val(NL)))
   Uinds = push(Linds, u)
 
   # TODO: do these positions need to be reversed?
-  Rinds = similar_type(IndsT, Val{NR})(ntuple(i -> inds(T)[Rpos[i]], Val(NR)))
+  Rinds = similartype(IndsT, Val{NR})(ntuple(i -> inds(T)[Rpos[i]], Val(NR)))
   Vinds = push(Rinds, v)
 
   U = reshape(UM, Uinds)
@@ -1021,10 +1013,10 @@ function LinearAlgebra.qr(
   r = ind(RM, 1)
   # TODO: simplify this by permuting inds(T) by (Lpos,Rpos)
   # then grab Linds,Rinds
-  Linds = similar_type(IndsT, Val{NL})(ntuple(i -> inds(T)[Lpos[i]], Val(NL)))
+  Linds = similartype(IndsT, Val{NL})(ntuple(i -> inds(T)[Lpos[i]], Val(NL)))
   Qinds = push(Linds, r)
   Q = reshape(QM, Qinds)
-  Rinds = similar_type(IndsT, Val{NR})(ntuple(i -> inds(T)[Rpos[i]], Val(NR)))
+  Rinds = similartype(IndsT, Val{NR})(ntuple(i -> inds(T)[Rpos[i]], Val(NR)))
   Rinds = pushfirst(Rinds, r)
   R = reshape(RM, Rinds)
   return Q, R
@@ -1039,8 +1031,8 @@ function polar(
   UM, PM = polar(M)
 
   # TODO: turn these into functions
-  Linds = similar_type(IndsT, Val{NL})(ntuple(i -> inds(T)[Lpos[i]], Val(NL)))
-  Rinds = similar_type(IndsT, Val{NR})(ntuple(i -> inds(T)[Rpos[i]], Val(NR)))
+  Linds = similartype(IndsT, Val{NL})(ntuple(i -> inds(T)[Lpos[i]], Val(NL)))
+  Rinds = similartype(IndsT, Val{NR})(ntuple(i -> inds(T)[Rpos[i]], Val(NR)))
 
   # Use sim to create "similar" indices, in case
   # the indices have identifiers. If not this should

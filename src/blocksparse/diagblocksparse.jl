@@ -151,7 +151,7 @@ end
 #                                               ElT2<:Number} = promote_type(Vector{ElT2},ElT1)
 
 # TODO: how do we make this work more generally for T2<:AbstractVector{S2}?
-# Make a similar_type(AbstractVector{S2},T1) -> AbstractVector{T1} function?
+# Make a similartype(AbstractVector{S2},T1) -> AbstractVector{T1} function?
 function promote_rule(
   ::Type{<:UniformDiagBlockSparse{ElT1,VecT1}},
   ::Type{<:NonuniformDiagBlockSparse{ElT2,Vector{ElT2}}},
@@ -255,7 +255,7 @@ end
 function contraction_output_type(
   TensorT1::Type{<:DiagBlockSparseTensor}, TensorT2::Type{<:BlockSparseTensor}, IndsR::Type
 )
-  return similar_type(promote_type(TensorT1, TensorT2), IndsR)
+  return similartype(promote_type(TensorT1, TensorT2), IndsR)
 end
 
 function contraction_output_type(
@@ -278,9 +278,9 @@ function contraction_output_type(
   if ValLength(IndsR) === Val{N1 + N2}
     # Turn into is_outer(inds1,inds2,indsR) function?
     # How does type inference work with arithmatic of compile time values?
-    return similar_type(dense(promote_type(TensorT1, TensorT2)), IndsR)
+    return similartype(dense(promote_type(TensorT1, TensorT2)), IndsR)
   end
-  return similar_type(promote_type(TensorT1, TensorT2), IndsR)
+  return similartype(promote_type(TensorT1, TensorT2), IndsR)
 end
 
 # The output must be initialized as zero since it is sparse, cannot be undefined
@@ -461,8 +461,9 @@ function permutedims!!(
   perm::NTuple{N,Int},
   f::Function=(r, t) -> t,
 ) where {N}
-  permutedims!(R, T, perm, f)
-  return R
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
+  permutedims!(RR, T, perm, f)
+  return RR
 end
 
 function permutedims!!(
@@ -471,8 +472,9 @@ function permutedims!!(
   perm::NTuple{N,Int},
   f::Function=(r, t) -> t,
 ) where {ElR,ElT,N}
-  R = tensor(DiagBlockSparse(f(getdiagindex(R, 1), getdiagindex(T, 1))), inds(R))
-  return R
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
+  RR = tensor(DiagBlockSparse(f(getdiagindex(RR, 1), getdiagindex(T, 1))), inds(RR))
+  return RR
 end
 
 function permutedims!(

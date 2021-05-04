@@ -1,7 +1,8 @@
-
 abstract type TensorStorage{ElT} <: AbstractVector{ElT} end
 
 data(S::TensorStorage) = S.data
+
+datatype(S::TensorStorage) = typeof(data(S))
 
 Base.eltype(::TensorStorage{ElT}) where {ElT} = ElT
 

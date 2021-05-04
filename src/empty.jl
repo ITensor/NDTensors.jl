@@ -1,60 +1,133 @@
 
 #
+# Represents a tensor order that could be set to any order.
+#
+
+struct EmptyOrder end
+
+#
+# Represents a number that can be set to any type.
+#
+
+struct EmptyNumber <: Number end
+
+# This is a backup definition to make:
+# A = ITensor(i, j)
+# complex!(A)
+# work. It acts as if the "default" type is `Float64`
+complex(::Type{EmptyNumber}) = ComplexF64
+
+function similartype(::Type{StoreT}, ::Type{ElT}) where {StoreT<:Dense{EmptyNumber},ElT}
+  return Dense{ElT,similartype(datatype(StoreT), ElT)}
+end
+
+function similartype(
+  ::Type{StoreT}, ::Type{ElT}
+) where {StoreT<:BlockSparse{EmptyNumber},ElT}
+  return BlockSparse{ElT,similartype(datatype(StoreT), ElT),ndims(StoreT)}
+end
+
+#
 # Empty storage
 #
 
-struct Empty{ElT,StoreT<:TensorStorage} <: TensorStorage{ElT} end
+struct EmptyStorage{ElT,StoreT<:TensorStorage} <: TensorStorage{ElT} end
 
-# Get the Empty version of the TensorStorage
-function empty(::Type{StoreT}) where {StoreT<:TensorStorage{ElT}} where {ElT}
-  return Empty{ElT,StoreT}
+# Get the EmptyStorage version of the TensorStorage
+function emptytype(::Type{StoreT}) where {StoreT}
+  return EmptyStorage{eltype(StoreT),StoreT}
 end
+
+empty(::Type{StoreT}) where {StoreT} = emptytype(StoreT)()
 
 # Defaults to Dense
-function Empty(::Type{ElT}) where {ElT}
-  return empty(Dense{ElT,Vector{ElT}})()
+function EmptyStorage(::Type{ElT}) where {ElT}
+  return emptytype(Dense{ElT,Vector{ElT}})()
 end
 
-Empty() = Empty(Float64)
+EmptyStorage() = EmptyStorage(Float64)
 
-copy(S::Empty) = S
+similar(S::EmptyStorage) = S
+similar(S::EmptyStorage, ::Type{ElT}) where {ElT} = empty(similartype(fulltype(S), ElT))
 
-isempty(::Empty) = true
+copy(S::EmptyStorage) = S
 
-nnzblocks(::Empty) = 0
+isempty(::EmptyStorage) = true
 
-nnz(::Empty) = 0
+nnzblocks(::EmptyStorage) = 0
 
-Base.real(::Type{<:Empty{ElT,StoreT}}) where {ElT,StoreT} = Empty{real(ElT),real(StoreT)}
+nnz(::EmptyStorage) = 0
 
-Base.real(S::Empty) = real(typeof(S))()
-
-function complex(::Type{<:Empty{ElT,StoreT}}) where {ElT,StoreT}
-  return Empty{complex(ElT),complex(StoreT)}
+function Base.real(::Type{<:EmptyStorage{ElT,StoreT}}) where {ElT,StoreT}
+  return EmptyStorage{real(ElT),real(StoreT)}
 end
 
-complex(S::Empty) = complex(typeof(S))()
+Base.real(S::EmptyStorage) = real(typeof(S))()
 
-#size(::Empty) = 0
+function complex(::Type{<:EmptyStorage{ElT,StoreT}}) where {ElT,StoreT}
+  return EmptyStorage{complex(ElT),complex(StoreT)}
+end
 
-function show(io::IO, mime::MIME"text/plain", S::Empty)
+complex(S::EmptyStorage) = complex(typeof(S))()
+
+#size(::EmptyStorage) = 0
+
+function show(io::IO, mime::MIME"text/plain", S::EmptyStorage)
   return println(io, typeof(S))
 end
 
 #
-# EmptyTensor (Tensor using Empty storage)
+# EmptyTensor (Tensor using EmptyStorage storage)
 #
 
-const EmptyTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where {StoreT<:Empty}
+const EmptyTensor{ElT,N,StoreT,IndsT} =
+  Tensor{ElT,N,StoreT,IndsT} where {StoreT<:EmptyStorage}
+
+function emptytype(::Type{TensorT}) where {TensorT<:Tensor}
+  return Tensor{
+    eltype(TensorT),ndims(TensorT),emptytype(storagetype(TensorT)),indstype(TensorT)
+  }
+end
+
+# XXX TODO: add bounds checking
+getindex(T::EmptyTensor, I::Integer...) = zero(eltype(T))
+getindex(T::EmptyTensor{EmptyNumber}, I::Integer...) = zero(Float64)
+
+similar(T::EmptyTensor, inds::Tuple) = setinds(T, inds)
+function similar(T::EmptyTensor, ::Type{ElT}) where {ElT<:Number}
+  return tensor(similar(storage(T), ElT), inds(T))
+end
+
+function randn!!(T::EmptyTensor)
+  Tf = similar(fulltype(T), inds(T))
+  randn!(Tf)
+  return Tf
+end
+
+# Default to Float64
+function randn!!(T::EmptyTensor{EmptyNumber})
+  return randn!!(similar(T, Float64))
+end
+
+function _fill!!(::Type{ElT}, T::EmptyTensor, α::Number) where {ElT}
+  Tf = similar(fulltype(T), ElT, inds(T))
+  fill!(Tf, α)
+  return Tf
+end
+
+fill!!(T::EmptyTensor, α::Number) = _fill!!(eltype(T), T, α)
+
+# Determine the element type from the number you are filling with
+fill!!(T::EmptyTensor{EmptyNumber}, α::Number) = _fill!!(eltype(α), T, α)
 
 isempty(::EmptyTensor) = true
 
 function EmptyTensor(::Type{ElT}, inds) where {ElT<:Number}
-  return tensor(Empty(ElT), inds)
+  return tensor(EmptyStorage(ElT), inds)
 end
 
 function EmptyTensor(::Type{StoreT}, inds) where {StoreT<:TensorStorage}
-  return tensor(empty(StoreT)(), inds)
+  return tensor(empty(StoreT), inds)
 end
 
 function EmptyBlockSparseTensor(::Type{ElT}, inds) where {ElT<:Number}
@@ -62,15 +135,31 @@ function EmptyBlockSparseTensor(::Type{ElT}, inds) where {ElT<:Number}
   return EmptyTensor(StoreT, inds)
 end
 
+fulltype(::Type{EmptyStorage{ElT,StoreT}}) where {ElT,StoreT} = StoreT
+fulltype(T::EmptyStorage) = fulltype(typeof(T))
+
+fulltype(T::Tensor) = fulltype(typeof(T))
+
 # From an EmptyTensor, return the closest Tensor type
-function fill(
-  ::Type{<:Tensor{ElT,N,EStoreT,IndsT}}
-) where {ElT<:Number,N,EStoreT<:Empty{ElT,StoreT},IndsT} where {StoreT}
-  return Tensor{ElT,N,StoreT,IndsT}
+function fulltype(::Type{TensorT}) where {TensorT<:Tensor}
+  return Tensor{
+    eltype(TensorT),ndims(TensorT),fulltype(storetype(TensorT)),indstype(TensorT)
+  }
+end
+
+function fulltype(
+  ::Type{ElR}, ::Type{<:Tensor{ElT,N,EStoreT,IndsT}}
+) where {ElR,ElT<:Number,N,EStoreT<:EmptyStorage{ElT,StoreT},IndsT} where {StoreT}
+  return Tensor{ElR,N,similartype(StoreT, ElR),IndsT}
 end
 
 function zeros(T::TensorT) where {TensorT<:EmptyTensor}
-  TensorR = fill(TensorT)
+  TensorR = fulltype(TensorT)
+  return zeros(TensorR, inds(T))
+end
+
+function zeros(::Type{ElT}, T::TensorT) where {ElT,TensorT<:EmptyTensor}
+  TensorR = fulltype(ElT, TensorT)
   return zeros(TensorR, inds(T))
 end
 
@@ -81,6 +170,14 @@ function insertblock(T::EmptyTensor{<:Number,N}, block) where {N}
 end
 
 insertblock!!(T::EmptyTensor{<:Number,N}, block) where {N} = insertblock(T, block)
+
+# Special case with element type of EmptyNumber: storage takes the type
+# of the input
+@propagate_inbounds function _setindex(T::EmptyTensor{EmptyNumber}, x, I...)
+  R = zeros(typeof(x), T)
+  R[I...] = x
+  return R
+end
 
 @propagate_inbounds function _setindex(T::EmptyTensor, x, I...)
   R = zeros(T)
@@ -101,19 +198,122 @@ end
 setindex!!(T::EmptyTensor, x, I...) = setindex(T, x, I...)
 
 # Version of contraction where output storage is empty
-function contract!!(
-  R::EmptyTensor{<:Number,NR},
-  labelsR::NTuple{NR},
-  T1::Tensor{<:Number,N1},
-  labelsT1::NTuple{N1},
-  T2::Tensor{<:Number,N2},
-  labelsT2::NTuple{N2},
-) where {NR,N1,N2}
+function contract!!(R::EmptyTensor, labelsR, T1::Tensor, labelsT1, T2::Tensor, labelsT2)
   RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
+  return RR
+end
+
+# When one of the tensors is empty, return an empty
+# tensor.
+# XXX: make sure `R` is actually correct!
+function contract!!(
+  R::EmptyTensor, labelsR, T1::EmptyTensor, labelsT1, T2::Tensor, labelsT2
+)
+  return R
+end
+
+# When one of the tensors is empty, return an empty
+# tensor.
+# XXX: make sure `R` is actually correct!
+function contract!!(
+  R::EmptyTensor, labelsR, T1::Tensor, labelsT1, T2::EmptyTensor, labelsT2
+)
+  return R
+end
+
+function contract!!(
+  R::EmptyTensor, labelsR, T1::EmptyTensor, labelsT1, T2::EmptyTensor, labelsT2
+)
+  return R
+end
+
+# For ambiguity with versions in combiner.jl
+function contract!!(
+  R::EmptyTensor, labelsR, T1::CombinerTensor, labelsT1, T2::Tensor, labelsT2
+)
+  RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
+  return RR
+end
+
+# For ambiguity with versions in combiner.jl
+function contract!!(
+  R::EmptyTensor, labelsR, T1::Tensor, labelsT1, T2::CombinerTensor, labelsT2
+)
+  RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
+  return RR
+end
+
+promote_rule(::Type{EmptyNumber}, ::Type{T}) where {T<:Number} = T
+
+function promote_rule(
+  ::Type{T1}, ::Type{T2}
+) where {T1<:EmptyStorage{EmptyNumber},T2<:TensorStorage}
+  return T2
+end
+function promote_rule(::Type{T1}, ::Type{T2}) where {T1<:EmptyStorage,T2<:TensorStorage}
+  return promote_type(similartype(T2, eltype(T1)), T2)
+end
+
+function contraction_output(T1::EmptyTensor, T2::EmptyTensor, is)
+  fulltypeR = contraction_output_type(fulltype(T1), fulltype(T2), typeof(is))
+  storagetypeR = storagetype(fulltypeR)
+  emptystoragetypeR = emptytype(storagetypeR)
+  return Tensor(emptystoragetypeR(), is)
+end
+
+function contraction_output(T1::Tensor, T2::EmptyTensor, is)
+  fulltypeR = contraction_output_type(typeof(T1), fulltype(T2), typeof(is))
+  storagetypeR = storagetype(fulltypeR)
+  emptystoragetypeR = emptytype(storagetypeR)
+  return Tensor(emptystoragetypeR(), is)
+end
+
+function contraction_output(T1::EmptyTensor, T2::Tensor, is)
+  fulltypeR = contraction_output_type(fulltype(T1), typeof(T2), typeof(is))
+  storagetypeR = storagetype(fulltypeR)
+  emptystoragetypeR = emptytype(storagetypeR)
+  return Tensor(emptystoragetypeR(), is)
+end
+
+function permutedims!!(R::Tensor, T::EmptyTensor, perm::Tuple, f::Function=(r, t) -> t)
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
+  RR = permutedims!!(RR, RR, ntuple(identity, Val(ndims(R))), (r, t) -> f(r, false))
+  return RR
+end
+
+function permutedims!!(R::EmptyTensor, T::Tensor, perm::Tuple, f::Function=(r, t) -> t)
+  RR = similar(promote_type(typeof(R), typeof(T)), inds(R))
+  RR = permutedims!!(RR, T, perm, (r, t) -> f(false, t))
+  return RR
+end
+
+function permutedims!!(R::EmptyTensor, T::EmptyTensor, perm::Tuple, f::Function=(r, t) -> t)
+  RR = convert(promote_type(typeof(R), typeof(T)), R)
   return RR
 end
 
 function show(io::IO, mime::MIME"text/plain", T::EmptyTensor)
   summary(io, T)
   return println(io)
+end
+
+# XXX: this seems a bit strange and fragile?
+# Takes the type very literally.
+function HDF5.read(
+  parent::Union{HDF5.File,HDF5.Group}, name::AbstractString, ::Type{StoreT}
+) where {StoreT<:EmptyStorage}
+  g = open_group(parent, name)
+  typestr = string(StoreT)
+  if read(attributes(g)["type"]) != typestr
+    error("HDF5 group or file does not contain $typestr data")
+  end
+  return StoreT()
+end
+
+function HDF5.write(
+  parent::Union{HDF5.File,HDF5.Group}, name::String, ::StoreT
+) where {StoreT<:EmptyStorage}
+  g = create_group(parent, name)
+  attributes(g)["type"] = string(StoreT)
+  return attributes(g)["version"] = 1
 end
