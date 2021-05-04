@@ -21,7 +21,9 @@ function similartype(::Type{StoreT}, ::Type{ElT}) where {StoreT<:Dense{EmptyNumb
   return Dense{ElT,similartype(datatype(StoreT), ElT)}
 end
 
-function similartype(::Type{StoreT}, ::Type{ElT}) where {StoreT<:BlockSparse{EmptyNumber},ElT}
+function similartype(
+  ::Type{StoreT}, ::Type{ElT}
+) where {StoreT<:BlockSparse{EmptyNumber},ElT}
   return BlockSparse{ElT,similartype(datatype(StoreT), ElT),ndims(StoreT)}
 end
 
@@ -56,7 +58,9 @@ nnzblocks(::EmptyStorage) = 0
 
 nnz(::EmptyStorage) = 0
 
-Base.real(::Type{<:EmptyStorage{ElT,StoreT}}) where {ElT,StoreT} = EmptyStorage{real(ElT),real(StoreT)}
+function Base.real(::Type{<:EmptyStorage{ElT,StoreT}}) where {ElT,StoreT}
+  return EmptyStorage{real(ElT),real(StoreT)}
+end
 
 Base.real(S::EmptyStorage) = real(typeof(S))()
 
@@ -76,10 +80,13 @@ end
 # EmptyTensor (Tensor using EmptyStorage storage)
 #
 
-const EmptyTensor{ElT,N,StoreT,IndsT} = Tensor{ElT,N,StoreT,IndsT} where {StoreT<:EmptyStorage}
+const EmptyTensor{ElT,N,StoreT,IndsT} =
+  Tensor{ElT,N,StoreT,IndsT} where {StoreT<:EmptyStorage}
 
 function emptytype(::Type{TensorT}) where {TensorT<:Tensor}
-  return Tensor{eltype(TensorT),ndims(TensorT),emptytype(storagetype(TensorT)),indstype(TensorT)}
+  return Tensor{
+    eltype(TensorT),ndims(TensorT),emptytype(storagetype(TensorT)),indstype(TensorT)
+  }
 end
 
 # XXX TODO: add bounds checking
@@ -135,14 +142,15 @@ fulltype(T::Tensor) = fulltype(typeof(T))
 
 # From an EmptyTensor, return the closest Tensor type
 function fulltype(::Type{TensorT}) where {TensorT<:Tensor}
-  return Tensor{eltype(TensorT),ndims(TensorT),fulltype(storetype(TensorT)),indstype(TensorT)}
+  return Tensor{
+    eltype(TensorT),ndims(TensorT),fulltype(storetype(TensorT)),indstype(TensorT)
+  }
 end
 
 function fulltype(
-  ::Type{ElR},
-  ::Type{<:Tensor{ElT,N,EStoreT,IndsT}}
+  ::Type{ElR}, ::Type{<:Tensor{ElT,N,EStoreT,IndsT}}
 ) where {ElR,ElT<:Number,N,EStoreT<:EmptyStorage{ElT,StoreT},IndsT} where {StoreT}
-  return Tensor{ElR,N,similartype(StoreT,ElR),IndsT}
+  return Tensor{ElR,N,similartype(StoreT, ElR),IndsT}
 end
 
 function zeros(T::TensorT) where {TensorT<:EmptyTensor}
@@ -190,14 +198,7 @@ end
 setindex!!(T::EmptyTensor, x, I...) = setindex(T, x, I...)
 
 # Version of contraction where output storage is empty
-function contract!!(
-  R::EmptyTensor,
-  labelsR,
-  T1::Tensor,
-  labelsT1,
-  T2::Tensor,
-  labelsT2,
-)
+function contract!!(R::EmptyTensor, labelsR, T1::Tensor, labelsT1, T2::Tensor, labelsT2)
   RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
   return RR
 end
@@ -206,12 +207,7 @@ end
 # tensor.
 # XXX: make sure `R` is actually correct!
 function contract!!(
-  R::EmptyTensor,
-  labelsR,
-  T1::EmptyTensor,
-  labelsT1,
-  T2::Tensor,
-  labelsT2,
+  R::EmptyTensor, labelsR, T1::EmptyTensor, labelsT1, T2::Tensor, labelsT2
 )
   return R
 end
@@ -220,35 +216,20 @@ end
 # tensor.
 # XXX: make sure `R` is actually correct!
 function contract!!(
-  R::EmptyTensor,
-  labelsR,
-  T1::Tensor,
-  labelsT1,
-  T2::EmptyTensor,
-  labelsT2,
+  R::EmptyTensor, labelsR, T1::Tensor, labelsT1, T2::EmptyTensor, labelsT2
 )
   return R
 end
 
 function contract!!(
-  R::EmptyTensor,
-  labelsR,
-  T1::EmptyTensor,
-  labelsT1,
-  T2::EmptyTensor,
-  labelsT2,
+  R::EmptyTensor, labelsR, T1::EmptyTensor, labelsT1, T2::EmptyTensor, labelsT2
 )
   return R
 end
 
 # For ambiguity with versions in combiner.jl
 function contract!!(
-  R::EmptyTensor,
-  labelsR,
-  T1::CombinerTensor,
-  labelsT1,
-  T2::Tensor,
-  labelsT2,
+  R::EmptyTensor, labelsR, T1::CombinerTensor, labelsT1, T2::Tensor, labelsT2
 )
   RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
   return RR
@@ -256,12 +237,7 @@ end
 
 # For ambiguity with versions in combiner.jl
 function contract!!(
-  R::EmptyTensor,
-  labelsR,
-  T1::Tensor,
-  labelsT1,
-  T2::CombinerTensor,
-  labelsT2,
+  R::EmptyTensor, labelsR, T1::Tensor, labelsT1, T2::CombinerTensor, labelsT2
 )
   RR = contract(T1, labelsT1, T2, labelsT2, labelsR)
   return RR
@@ -269,7 +245,11 @@ end
 
 promote_rule(::Type{EmptyNumber}, ::Type{T}) where {T<:Number} = T
 
-promote_rule(::Type{T1}, ::Type{T2}) where {T1<:EmptyStorage{EmptyNumber},T2<:TensorStorage} = T2
+function promote_rule(
+  ::Type{T1}, ::Type{T2}
+) where {T1<:EmptyStorage{EmptyNumber},T2<:TensorStorage}
+  return T2
+end
 function promote_rule(::Type{T1}, ::Type{T2}) where {T1<:EmptyStorage,T2<:TensorStorage}
   return promote_type(similartype(T2, eltype(T1)), T2)
 end
@@ -295,31 +275,19 @@ function contraction_output(T1::EmptyTensor, T2::Tensor, is)
   return Tensor(emptystoragetypeR(), is)
 end
 
-function permutedims!!(
-  R::Tensor,
-  T::EmptyTensor,
-  perm::Tuple,
-  f::Function=(r, t) -> t
-)
+function permutedims!!(R::Tensor, T::EmptyTensor, perm::Tuple, f::Function=(r, t) -> t)
   RR = convert(promote_type(typeof(R), typeof(T)), R)
   RR = permutedims!!(RR, RR, ntuple(identity, Val(ndims(R))), (r, t) -> f(r, false))
   return RR
 end
 
-function permutedims!!(
-  R::EmptyTensor,
-  T::Tensor,
-  perm::Tuple,
-  f::Function=(r, t) -> t
-)
+function permutedims!!(R::EmptyTensor, T::Tensor, perm::Tuple, f::Function=(r, t) -> t)
   RR = similar(promote_type(typeof(R), typeof(T)), inds(R))
   RR = permutedims!!(RR, T, perm, (r, t) -> f(false, t))
   return RR
 end
 
-function permutedims!!(
-  R::EmptyTensor, T::EmptyTensor, perm::Tuple, f::Function=(r, t) -> t
-)
+function permutedims!!(R::EmptyTensor, T::EmptyTensor, perm::Tuple, f::Function=(r, t) -> t)
   RR = convert(promote_type(typeof(R), typeof(T)), R)
   return RR
 end
@@ -347,6 +315,5 @@ function HDF5.write(
 ) where {StoreT<:EmptyStorage}
   g = create_group(parent, name)
   attributes(g)["type"] = string(StoreT)
-  attributes(g)["version"] = 1
+  return attributes(g)["version"] = 1
 end
-

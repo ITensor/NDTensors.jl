@@ -121,23 +121,23 @@ _hash(::Tuple{}, h::UInt) = h + Base.tuplehash_seed
 end
 
 if VERSION < v"1.7.0-DEV.933"
-    # Stop inlining after some number of arguments to avoid code blowup
-    function _hash(t::Base.Any16, h::UInt)
-      out = h + Base.tuplehash_seed
-      for i = length(t):-1:1
-          out = hash(t[i], out)
-      end
-      return out
+  # Stop inlining after some number of arguments to avoid code blowup
+  function _hash(t::Base.Any16, h::UInt)
+    out = h + Base.tuplehash_seed
+    for i in length(t):-1:1
+      out = hash(t[i], out)
     end
+    return out
+  end
 else
-    # Stop inlining after some number of arguments to avoid code blowup
-    function _hash(t::Base.Any32, h::UInt)
-      out = h + Base.tuplehash_seed
-      for i = length(t):-1:1
-          out = hash(t[i], out)
-      end
-      return out
+  # Stop inlining after some number of arguments to avoid code blowup
+  function _hash(t::Base.Any32, h::UInt)
+    out = h + Base.tuplehash_seed
+    for i in length(t):-1:1
+      out = hash(t[i], out)
     end
+    return out
+  end
 end
 
 hash(b::Block) = UInt(b.hash)

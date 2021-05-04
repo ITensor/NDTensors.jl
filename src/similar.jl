@@ -37,16 +37,17 @@ similartype(::Type{<:Array{<:Any,N}}, eltype::Type) where {N} = Array{eltype,N}
 # A union type of AbstractArrays that are wrappers that define `Base.parent`.
 #const WrappedArray = Union{ReshapedArray,Adjoint,Transpose,SubArray}
 const WrappedArray{T,AW} = Union{
-    ReshapedArray{T,<:Any,AW},
-    Transpose{T,AW},
-    Adjoint{T,AW},
-    Symmetric{T,AW},
-    Hermitian{T,AW},
-    UpperTriangular{T,AW},
-    LowerTriangular{T,AW},
-    UnitUpperTriangular{T,AW},
-    UnitLowerTriangular{T,AW},
-    Diagonal{T,AW}}
+  ReshapedArray{T,<:Any,AW},
+  Transpose{T,AW},
+  Adjoint{T,AW},
+  Symmetric{T,AW},
+  Hermitian{T,AW},
+  UpperTriangular{T,AW},
+  LowerTriangular{T,AW},
+  UnitUpperTriangular{T,AW},
+  UnitLowerTriangular{T,AW},
+  Diagonal{T,AW},
+}
 
 parenttype(::Type{<:WrappedArray{<:Any,P}}) where {P} = P
 
@@ -61,4 +62,3 @@ end
 function similartype(::Type{ArrayT}) where {ArrayT<:WrappedArray}
   return similartype(parenttype(ArrayT))
 end
-

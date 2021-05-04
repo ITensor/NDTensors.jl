@@ -75,9 +75,7 @@ end
 # TODO: make these more general, move to tensorstorage.jl
 datatype(::Type{<:Dense{<:Any,DataT}}) where {DataT} = DataT
 
-function similar(
-  ::Type{StorageT}, ::Type{ElT}, length::Int
-) where {StorageT<:Dense,ElT}
+function similar(::Type{StorageT}, ::Type{ElT}, length::Int) where {StorageT<:Dense,ElT}
   return Dense(similar(datatype(StorageT), ElT, length))
 end
 
@@ -355,9 +353,7 @@ end
 
 # Version that may overwrite the result or promote
 # and return the result
-function permutedims!!(
-  R::DenseTensor, T::DenseTensor, perm::Tuple, f::Function=(r, t) -> t
-)
+function permutedims!!(R::DenseTensor, T::DenseTensor, perm::Tuple, f::Function=(r, t) -> t)
   RR = convert(promote_type(typeof(R), typeof(T)), R)
   #RA = array(R)
   #TA = array(T)
@@ -559,14 +555,7 @@ end
 
 # Move to tensor.jl? Is this generic for all storage types?
 function contract!!(
-  R::Tensor,
-  labelsR,
-  T1::Tensor,
-  labelsT1,
-  T2::Tensor,
-  labelsT2,
-  α::Number=1,
-  β::Number=0,
+  R::Tensor, labelsR, T1::Tensor, labelsT1, T2::Tensor, labelsT2, α::Number=1, β::Number=0
 )
   NR = ndims(R)
   N1 = ndims(T1)

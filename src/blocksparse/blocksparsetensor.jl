@@ -148,9 +148,7 @@ function similar(
 end
 
 # This version of similar creates a tensor with no blocks
-function similar(
-  ::Type{TensorT}, inds::Tuple
-) where {TensorT<:BlockSparseTensor}
+function similar(::Type{TensorT}, inds::Tuple) where {TensorT<:BlockSparseTensor}
   return similar(TensorT, BlockOffsets{ndims(TensorT)}(), inds)
 end
 

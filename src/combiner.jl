@@ -54,14 +54,7 @@ function contraction_output(
   return contraction_output(T2, T1, indsR)
 end
 
-function contract!!(
-  R::Tensor,
-  labelsR,
-  T1::CombinerTensor,
-  labelsT1,
-  T2::Tensor,
-  labelsT2
-)
+function contract!!(R::Tensor, labelsR, T1::CombinerTensor, labelsT1, T2::Tensor, labelsT2)
   NR = ndims(R)
   N1 = ndims(T1)
   N2 = ndims(T2)
@@ -114,12 +107,7 @@ function contract!!(
 end
 
 function contract!!(
-  R::Tensor,
-  labelsR,
-  T1::Tensor,
-  labelsT1,
-  T2::CombinerTensor,
-  labelsT2,
+  R::Tensor, labelsR, T1::Tensor, labelsT1, T2::CombinerTensor, labelsT2
 ) where {NR,N1,N2}
   return contract!!(R, labelsR, T2, labelsT2, T1, labelsT1)
 end

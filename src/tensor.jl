@@ -146,15 +146,21 @@ similar(T::Tensor) = setstorage(T, similar(storage(T)))
 # TODO: for BlockSparse, this needs to include the offsets
 # TODO: for Diag, the storage is not just the total dimension
 similar(T::Tensor, dims::Tuple) = _similar_from_dims(T, dims)
-similar(::Type{TensorT}, dims::Tuple) where {TensorT<:Tensor} = _similar_from_dims(TensorT, dims)
-similar(::Type{TensorT}, dims::Tuple{}) where {TensorT<:Tensor} = _similar_from_dims(TensorT, dims)
+function similar(::Type{TensorT}, dims::Tuple) where {TensorT<:Tensor}
+  return _similar_from_dims(TensorT, dims)
+end
+function similar(::Type{TensorT}, dims::Tuple{}) where {TensorT<:Tensor}
+  return _similar_from_dims(TensorT, dims)
+end
 
 # To handle method ambiguity with AbstractArray
 #similar(T::Tensor,dims::Dims) = _similar_from_dims(T,dims)
 
 similar(T::Tensor, ::Type{S}) where {S} = setstorage(T, similar(storage(T), S))
 
-similar(::Type{TensorT}, ::Type{S}, dims) where {TensorT<:Tensor,S<:Number} = _similar_from_dims(TensorT, S, dims)
+function similar(::Type{TensorT}, ::Type{S}, dims) where {TensorT<:Tensor,S<:Number}
+  return _similar_from_dims(TensorT, S, dims)
+end
 
 similar(T::Tensor, ::Type{S}, dims) where {S<:Number} = _similar_from_dims(T, S, dims)
 
@@ -171,7 +177,9 @@ function _similar_from_dims(::Type{TensorT}, dims) where {TensorT<:Tensor}
   return _similar_from_dims(TensorT, eltype(TensorT), dims)
 end
 
-function _similar_from_dims(::Type{TensorT}, ::Type{S}, dims) where {TensorT<:Tensor,S<:Number}
+function _similar_from_dims(
+  ::Type{TensorT}, ::Type{S}, dims
+) where {TensorT<:Tensor,S<:Number}
   return tensor(similar(storagetype(TensorT), S, dim(dims)), dims)
 end
 
