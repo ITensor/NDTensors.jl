@@ -59,6 +59,9 @@ export
   Diag,
   DiagTensor,
 
+  # combiner.jl
+  cinds,
+
   # empty.jl
   EmptyStorage,
   EmptyTensor,
