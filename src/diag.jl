@@ -323,7 +323,8 @@ function permutedims(
   T::DiagTensor{<:Number,N}, perm::NTuple{N,Int}, f::Function=identity
 ) where {N}
   R = similar(T, permute(inds(T), perm))
-  permutedims!(R, T, perm, f)
+  g(r, t) = f(t)
+  permutedims!(R, T, perm, g)
   return R
 end
 
