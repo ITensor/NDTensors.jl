@@ -670,7 +670,7 @@ end
 
 # <fermions>
 function scale_blocks!(T, compute_fac::Function=(b) -> 1) where {N}
-  # intentionally left blank
+  return T
 end
 
 # <fermions>
@@ -684,6 +684,7 @@ function scale_blocks!(
       scale!(Tblock, fac)
     end
   end
+  return T
 end
 
 # <fermions>
