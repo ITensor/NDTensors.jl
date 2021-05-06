@@ -24,6 +24,7 @@ blockperm(C::Combiner) = C.perm
 blockcomb(C::Combiner) = C.comb
 cinds(C::Combiner) = C.cind
 isconj(C::Combiner) = C.isconj
+setisconj(C::Combiner, isconj) = Combiner(blockperm(C), blockcomb(C), cinds(C), isconj)
 
 function copy(C::Combiner)
   return Combiner(copy(blockperm(C)), copy(blockcomb(C)), copy(cinds(C)), isconj(C))
@@ -35,8 +36,8 @@ eltype(::Combiner) = eltype(Combiner)
 
 promote_rule(::Type{<:Combiner}, StorageT::Type{<:Dense}) = StorageT
 
-Base.conj(::NeverAlias, C::Combiner) = Combiner(C.perm, C.comb, C.cind, !C.isconj)
-Base.conj(::AllowAlias, C::Combiner) = Base.conj(NeverAlias(), C)
+conj(::AllowAlias, C::Combiner) = setisconj(C, !isconj(C))
+conj(::NeverAlias, C::Combiner) = conj(AllowAlias(), copy(C))
 
 #
 # CombinerTensor (Tensor using Combiner storage)
