@@ -9,17 +9,14 @@ struct Combiner <: TensorStorage{Number}
   comb::Vector{Int}
   cind::Vector{Int}
   isconj::Bool
-  function Combiner(perm::Vector{Int},
-                    comb::Vector{Int},
-                    cind::Vector{Int},
-                    isconj::Bool)
-    new(perm,comb,cind,isconj)
+  function Combiner(perm::Vector{Int}, comb::Vector{Int}, cind::Vector{Int}, isconj::Bool)
+    return new(perm, comb, cind, isconj)
   end
 end
 
-Combiner() = Combiner(Int[],Int[],Int[1],false)
+Combiner() = Combiner(Int[], Int[], Int[1], false)
 
-Combiner(perm::Vector{Int},comb::Vector{Int}) = Combiner(perm,comb,Int[1],false)
+Combiner(perm::Vector{Int}, comb::Vector{Int}) = Combiner(perm, comb, Int[1], false)
 
 data(::Combiner) = error("Combiner storage has no data")
 
@@ -28,7 +25,9 @@ blockcomb(C::Combiner) = C.comb
 cinds(C::Combiner) = C.cind
 isconj(C::Combiner) = C.isconj
 
-copy(C::Combiner) = Combiner(copy(blockperm(C)), copy(blockcomb(C)),copy(cinds(C)),isconj(C))
+function copy(C::Combiner)
+  return Combiner(copy(blockperm(C)), copy(blockcomb(C)), copy(cinds(C)), isconj(C))
+end
 
 eltype(::Type{<:Combiner}) = Number
 
@@ -36,8 +35,8 @@ eltype(::Combiner) = eltype(Combiner)
 
 promote_rule(::Type{<:Combiner}, StorageT::Type{<:Dense}) = StorageT
 
-Base.conj(::NeverAlias,C::Combiner) = Combiner(C.perm,C.comb,C.cind,!C.isconj)
-Base.conj(::AllowAlias,C::Combiner) = Base.conj(NeverAlias(),C)
+Base.conj(::NeverAlias, C::Combiner) = Combiner(C.perm, C.comb, C.cind, !C.isconj)
+Base.conj(::AllowAlias, C::Combiner) = Base.conj(NeverAlias(), C)
 
 #
 # CombinerTensor (Tensor using Combiner storage)

@@ -1,6 +1,6 @@
 #<fermions>:
-before_combiner_signs(T,labelsT,indsT,C,labelsC,indsC,labelsR,indsR) = T
-after_combiner_signs(R,labelsR,indsR,C,labelsC,indsC) = R
+before_combiner_signs(T, labelsT, indsT, C, labelsC, indsC, labelsR, indsR) = T
+after_combiner_signs(R, labelsR, indsR, C, labelsC, indsC) = R
 
 function contract(T::BlockSparseTensor, labelsT, C::CombinerTensor, labelsC)
   #@timeit_debug timer "Block sparse (un)combiner" begin
@@ -20,7 +20,7 @@ function contract(T::BlockSparseTensor, labelsT, C::CombinerTensor, labelsC)
     indsRc = contract_inds(inds(C), labelsC, inds(T), labelsT, labelsRc)
 
     #<fermions>:
-    T = before_combiner_signs(T,labelsT,inds(T),C,labelsC,inds(C),labelsRc,indsRc)
+    T = before_combiner_signs(T, labelsT, inds(T), C, labelsC, inds(C), labelsRc, indsRc)
 
     perm = getperm(labelsRuc, labelsT)
     ucpos_in_labelsT = Tuple(findall(x -> x in labels_uc, labelsT))
@@ -44,12 +44,12 @@ function contract(T::BlockSparseTensor, labelsT, C::CombinerTensor, labelsC)
     indsRuc = contract_inds(inds(C), labelsC, inds(T), labelsT, labelsRuc)
 
     # <fermions>:
-    T = before_combiner_signs(T,labelsT,inds(T),C,labelsC,inds(C),labelsRuc,indsRuc)
+    T = before_combiner_signs(T, labelsT, inds(T), C, labelsC, inds(C), labelsRuc, indsRuc)
 
     Ruc = uncombine(T, indsRuc, cpos_in_labelsRc, blockperm(C), blockcomb(C))
 
     # <fermions>:
-    Ruc = after_combiner_signs(Ruc,labelsRuc,indsRuc,C,labelsC,inds(C))
+    Ruc = after_combiner_signs(Ruc, labelsRuc, indsRuc, C, labelsC, inds(C))
 
     return Ruc
   end
