@@ -328,8 +328,8 @@ function permutedims(
 end
 
 function permutedims(
-  T::UniformDiagTensor{ElT,N}, perm::NTuple{N,Int}, f::Function=identity
-) where {ElR,ElT,N}
+  T::UniformDiagTensor{<:Number,N}, perm::NTuple{N,Int}, f::Function=identity
+) where {N}
   R = tensor(Diag(f(getdiagindex(T, 1))), permute(inds(T), perm))
   return R
 end
