@@ -688,10 +688,7 @@ function scale_blocks!(
 end
 
 # <fermions>
-function permfactor(perm, block::Block{N}, inds) where {N}
-  #println("In default permfactor")
-  return 1
-end
+permfactor(perm, block, inds) = 1.0
 
 # Version where it is known that R has the same blocks
 # as T
