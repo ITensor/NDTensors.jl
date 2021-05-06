@@ -669,9 +669,7 @@ function permutedims!!(
 end
 
 # <fermions>
-function scale_blocks!(T, compute_fac::Function=(b) -> 1) where {N}
-  return T
-end
+scale_blocks!(T, compute_fac::Function=(b) -> 1) = T
 
 # <fermions>
 function scale_blocks!(
@@ -947,7 +945,6 @@ end
 function compute_alpha(
   ElR, labelsR, blockR, indsR, labelsT1, blockT1, indsT1, labelsT2, blockT2, indsT2
 )
-  #println("Default compute_alpha")
   return one(ElR)
 end
 
